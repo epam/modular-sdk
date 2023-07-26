@@ -1,5 +1,5 @@
 from pynamodb.attributes import UnicodeAttribute, MapAttribute, \
-    BooleanAttribute
+    BooleanAttribute, NumberAttribute
 
 from modular_sdk.models.pynamodb_extension.base_role_access_model import \
     BaseRoleAccessModel
@@ -17,6 +17,9 @@ DESCRIPTION = 'descr'
 META = 'meta'
 IS_DELETED = 'd'
 DELETION_DATE = 'dd'
+CREATION_TIMESTAMP = 'ct'
+UPDATE_TIMESTAMP = 'ut'
+DELETION_TIMESTAMP = 'dt'
 
 MODULAR_PARENTS_TABLE_NAME = 'Parents'
 
@@ -44,5 +47,8 @@ class Parent(BaseRoleAccessModel):
     meta = MapAttribute(attr_name=META, default=dict)
     is_deleted = BooleanAttribute(attr_name=IS_DELETED)
     deletion_date = UnicodeAttribute(attr_name=DELETION_DATE, null=True)
+    creation_timestamp = NumberAttribute(attr_name=CREATION_TIMESTAMP, null=True)
+    update_timestamp = NumberAttribute(attr_name=UPDATE_TIMESTAMP, null=True)
+    deletion_timestamp = NumberAttribute(attr_name=DELETION_TIMESTAMP, null=True)
 
     customer_id_type_index = CustomerIdTypeIndex()

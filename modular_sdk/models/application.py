@@ -1,5 +1,5 @@
 from pynamodb.attributes import UnicodeAttribute, BooleanAttribute, \
-    MapAttribute
+    MapAttribute, NumberAttribute
 from pynamodb.indexes import AllProjection
 
 from modular_sdk.models.base_meta import BaseMeta, TABLES_PREFIX
@@ -15,6 +15,9 @@ IS_DELETED = 'd'
 DELETION_DATE = 'dd'
 META = 'meta'
 SECRET = 'sec'
+CREATION_TIMESTAMP = 'ct'
+UPDATE_TIMESTAMP = 'ut'
+DELETION_TIMESTAMP = 'dt'
 
 MODULAR_APPLICATIONS_TABLE_NAME = 'Applications'
 
@@ -42,5 +45,8 @@ class Application(BaseRoleAccessModel):
     deletion_date = UnicodeAttribute(attr_name=DELETION_DATE, null=True)
     meta = MapAttribute(default=dict, attr_name=META)
     secret = UnicodeAttribute(null=True, attr_name=SECRET)
+    creation_timestamp = NumberAttribute(attr_name=CREATION_TIMESTAMP, null=True)
+    update_timestamp = NumberAttribute(attr_name=UPDATE_TIMESTAMP, null=True)
+    deletion_timestamp = NumberAttribute(attr_name=DELETION_TIMESTAMP, null=True)
 
     customer_id_type_index = CustomerIdTypeIndex()
