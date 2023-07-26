@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [2.1.5] - 2023-07-26
+* Application and Parent models were updated with new attributes:
+  * creation timestamp - `ct`
+  * update timestamp - `ut`
+  * deletion timestamp - `dt`
+
 # [2.1.4] - 2023-06-30
 * Update setup.cfg
 
