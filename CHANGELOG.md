@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [2.1.6] - 2023-08-03
+* Add `CUSTODIAN_ACCESS` parent type and `CUSTODIAN_ACCESS` tenant parent map 
+  type
+* Fix a bug when range_key_conditions for NumberAttributes did not work for MongoDB
+* Fix google credentials project id
+* added `job-started_at-index` GSI to the `ModularJobs` table
+
 # [2.1.5] - 2023-07-26
 * Application and Parent models were updated with new attributes:
   * creation timestamp - `ct`
