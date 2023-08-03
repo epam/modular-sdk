@@ -71,7 +71,9 @@ class TenantService:
             customer_id: str, active: Optional[bool] = None,
             tenant_name: Optional[str] = None, limit: int = None,
             last_evaluated_key: Union[dict, str] = None,
-            attributes_to_get: Optional[list] = None
+            cloud: Optional[str] = None,
+            attributes_to_get: Optional[list] = None,
+            rate_limit: Optional[int] = None
     ) -> Union[ResultIterator, Result]:
 
         condition = active if active is None else (Tenant.is_active == active)
@@ -82,10 +84,16 @@ class TenantService:
         elif name:
             condition = Tenant.name == name
 
+        if condition is not None and cloud:
+            condition &= Tenant.cloud == cloud
+        elif cloud:
+            condition = Tenant.cloud == cloud
+
         return Tenant.customer_name_index.query(
             hash_key=customer_id, filter_condition=condition, limit=limit,
             last_evaluated_key=last_evaluated_key,
-            attributes_to_get=attributes_to_get
+            attributes_to_get=attributes_to_get,
+            rate_limit=rate_limit
         )
 
     @staticmethod
