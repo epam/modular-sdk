@@ -185,11 +185,4 @@ class TenantService:
         tenant_json['regions'] = [
             each['maestro_name'] for each in regions if 'maestro_name' in each
         ]
-        # tenant_json['regions'] = [
-        #     each['maestro_name'] for each in regions
-        #     if 'maestro_name' in each and each.get('is_active') != False  # None is valid
-        # ]
-        # Maestro's regions in tenants have attribute "is_active" ("act").
-        # But currently (03.05.2023) they ignore it. They deem all the
-        # regions listed in an active tenant to be active as well.
         return tenant_json

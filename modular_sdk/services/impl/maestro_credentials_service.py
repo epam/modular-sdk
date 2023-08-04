@@ -452,8 +452,6 @@ class MaestroCredentialsService:
             credentials[ENV_CLOUDSDK_CORE_PROJECT] = tenant.project
             _LOG.debug(f'Google credentials project_id: '
                        f'{credentials[ENV_CLOUDSDK_CORE_PROJECT]}')
-            # if not credentials.get(ENV_CLOUDSDK_CORE_PROJECT):
-            #     credentials[ENV_CLOUDSDK_CORE_PROJECT] = tenant.project
             return credentials
 
         _LOG.info('Not known cloud. Proxying whatever was received')
