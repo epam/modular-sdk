@@ -21,6 +21,7 @@ ACTIVATION_DATE = 'ad'
 
 DNTL_NAME_KEY = 'dntl'
 GENERAL_PROJECT_ID = 'acc'
+GOOGLE_ACCOUNT_NUMBER = 'accN'
 PRIMARY_CONTACTS = 'pc'
 SECONDARY_CONTACTS = 'sc'
 TENANT_MANAGER = 'tmc'
@@ -77,6 +78,21 @@ class ProjectIndex(BaseGSI):
     project = UnicodeAttribute(attr_name=GENERAL_PROJECT_ID, hash_key=True)
 
 
+class AccountNumberIndex(BaseGSI):
+    """
+    This class represents an Account Number global secondary index
+    """
+
+    class Meta(BaseMeta):
+        index_name = F'{GOOGLE_ACCOUNT_NUMBER}-index'
+        read_capacity_units = 1
+        write_capacity_units = 1
+        projection = AllProjection()
+
+    account_number = UnicodeAttribute(attr_name=GOOGLE_ACCOUNT_NUMBER,
+                                      hash_key=True)
+
+
 class CustomerNameIndex(BaseGSI):
     class Meta(BaseMeta):
         index_name = f"{CUSTOMER_NAME}-index"
@@ -105,9 +121,13 @@ class Tenant(BaseRoleAccessModel):
     regions = ListAttribute(of=RegionAttr, attr_name=REGIONS, default=list)
     contacts = Contacts(attr_name=TENANT_CONTACT, null=True)
     parent_map = MapAttribute(attr_name=PARENT_MAP, default=dict)
+    account_number = UnicodeAttribute(attr_name=GOOGLE_ACCOUNT_NUMBER,
+                                      null=True)
+
     customer_name_index = CustomerNameIndex()
     project_index = ProjectIndex()
     dntl_c_index = DisplayNameToLowerCloudIndex()
+    accN_index = AccountNumberIndex()
 
     def get_parent_id(self, type_: str) -> Optional[str]:
         assert type_ in ALLOWED_TENANT_PARENT_MAP_KEYS

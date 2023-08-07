@@ -119,6 +119,7 @@ class CustodianApplicationMeta(AccessMeta):
     Application with type 'CUSTODIAN' meta
     """
     username: Optional[str]
+    results_storage: Optional[str]
 
 
 @dataclasses.dataclass()
@@ -446,10 +447,11 @@ class MaestroCredentialsService:
             _LOG.info('Tenant`s cloud is AWS. Proxying creds')
             return credentials
         elif tenant.cloud == GOOGLE_CLOUD:
-            _LOG.warning('Creds are requested for google tenant. '
-                         'Adding project id')
-            if not credentials.get(ENV_CLOUDSDK_CORE_PROJECT):
-                credentials[ENV_CLOUDSDK_CORE_PROJECT] = tenant.project
+            _LOG.info('Creds are requested for google tenant. '
+                      'Adding project id')
+            credentials[ENV_CLOUDSDK_CORE_PROJECT] = tenant.project
+            _LOG.debug(f'Google credentials project_id: '
+                       f'{credentials[ENV_CLOUDSDK_CORE_PROJECT]}')
             return credentials
 
         _LOG.info('Not known cloud. Proxying whatever was received')
