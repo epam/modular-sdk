@@ -123,6 +123,18 @@ class TenantService:
         )
 
     @staticmethod
+    def i_get_by_accN(accN: str, active: Optional[bool] = None,
+                      limit: int = None,
+                      last_evaluated_key: Union[dict, str] = None,
+                      attributes_to_get: List[str] = None):
+        fc = None if active is None else (Tenant.is_active == active)
+        return Tenant.accN_index.query(
+            hash_key=accN, filter_condition=fc,
+            limit=limit, last_evaluated_key=last_evaluated_key,
+            attributes_to_get=attributes_to_get
+        )
+
+    @staticmethod
     def add_to_parent_map(tenant: Tenant, parent: Parent,
                           type_: str) -> Tenant:
         if type_ not in ALLOWED_TENANT_PARENT_MAP_KEYS:
@@ -174,11 +186,11 @@ class TenantService:
 
     @staticmethod
     def get_dto(tenant: Tenant):
+        """Be CAREFUL: returns both active and inactive regions"""
         tenant_json = tenant.get_json()
         regions = tenant_json.get('regions') or []
         tenant_json['account_id'] = tenant_json.pop('project', None)
         tenant_json['regions'] = [
-            each['maestro_name'] for each in regions
-            if 'maestro_name' in each and each.get('is_active') != False  # None is valid
+            each['maestro_name'] for each in regions if 'maestro_name' in each
         ]
         return tenant_json

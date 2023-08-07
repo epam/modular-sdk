@@ -1,20 +1,22 @@
+import decimal
 import re
 from collections.abc import Iterator
 from itertools import islice
 from typing import Optional, Dict, List, Union
 
-from modular_sdk.connections.mongodb_connection import MongoDBConnection
-from modular_sdk.commons import DynamoDBJsonSerializer
 from pymongo import DeleteOne, ReplaceOne, DESCENDING, ASCENDING
 from pymongo.collection import Collection
 from pymongo.errors import BulkWriteError
 from pynamodb import indexes
 from pynamodb.expressions.condition import \
     Condition
-from pynamodb.expressions.operand import Value, Path, _Increment, _Decrement, _ListAppend, _ListAppendOperand
+from pynamodb.expressions.operand import Value, Path, _ListAppend
+from pynamodb.expressions.update import SetAction, RemoveAction, Action
 from pynamodb.models import Model
 from pynamodb.settings import OperationSettings
-from pynamodb.expressions.update import SetAction, RemoveAction, Action
+
+from modular_sdk.commons import DynamoDBJsonSerializer
+from modular_sdk.connections.mongodb_connection import MongoDBConnection
 
 
 class Result(Iterator):
@@ -92,14 +94,17 @@ class _PynamoDBExpressionsConverter:
     index_regex: re.Pattern = re.compile('\[\d+\]')
 
     @staticmethod
-    def value_to_raw(value: Value) -> Union[str, dict, list]:
+    def value_to_raw(value: Value) -> Union[str, dict, list, int, float]:
         """
         PynamoDB operand Value contains only one element in a list. This
         element is a dict: {'pynamo type': 'value'}
         :param value:
         :return:
         """
-        return DynamoDBJsonSerializer.deserializer.deserialize(value.value)
+        val = DynamoDBJsonSerializer.deserializer.deserialize(value.value)
+        if isinstance(val, decimal.Decimal):
+            val = float(val)
+        return val
 
     @classmethod
     def path_to_raw(cls, path: Path) -> str:
@@ -250,7 +255,8 @@ class UpdateExpressionConverter(_PynamoDBExpressionsConverter):
         if isinstance(action, RemoveAction):
             path, = action.values
             return {
-                '$unset': {cls.path_to_raw(path): ""}  # empty string does not matter https://www.mongodb.com/docs/manual/reference/operator/update/unset/#mongodb-update-up.-unset
+                '$unset': {cls.path_to_raw(path): ""}
+                # empty string does not matter https://www.mongodb.com/docs/manual/reference/operator/update/unset/#mongodb-update-up.-unset
             }
         raise NotImplementedError(
             f'Action {action.__class__.__name__} is not implemented'

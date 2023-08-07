@@ -5,7 +5,7 @@ from modular_sdk.services.environment_service import EnvironmentService
 from modular_sdk.services.events_service import EventsService
 from modular_sdk.services.lambda_service import LambdaService
 from modular_sdk.services.sqs_service import SQSService
-from modular_sdk.utils.runtime_tracer.abstarct import AbstractSegmentTracer, \
+from modular_sdk.utils.runtime_tracer.abstract import AbstractSegmentTracer, \
     AbstractSegment
 
 
