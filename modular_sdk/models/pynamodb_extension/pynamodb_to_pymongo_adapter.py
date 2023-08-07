@@ -1,8 +1,7 @@
 import decimal
 import re
-from collections.abc import Iterator
 from itertools import islice
-from typing import Optional, Dict, List, Union
+from typing import Optional, Dict, List, Union, TypeVar, Iterator
 
 from pymongo import DeleteOne, ReplaceOne, DESCENDING, ASCENDING
 from pymongo.collection import Collection
@@ -18,9 +17,11 @@ from pynamodb.settings import OperationSettings
 from modular_sdk.commons import DynamoDBJsonSerializer
 from modular_sdk.connections.mongodb_connection import MongoDBConnection
 
+T = TypeVar('T')
 
-class Result(Iterator):
-    def __init__(self, result: Iterator,
+
+class Result(Iterator[T]):
+    def __init__(self, result: Iterator[T],
                  _evaluated_key: Optional[int] = None,
                  page_size: Optional[int] = None):
         self._result_it = result
@@ -36,7 +37,7 @@ class Result(Iterator):
     def __iter__(self):
         return self
 
-    def __next__(self):
+    def __next__(self) -> T:
         # try:
         #     item = self._result_it.__next__()
         # except StopIteration as e:
@@ -200,7 +201,7 @@ class ConditionConverter(_PynamoDBExpressionsConverter):
         if op == 'begins_with':
             return {
                 cls.path_to_raw(condition.values[0]): {
-                    '$regex': {f'^{cls.value_to_raw(condition.values[1])}'}
+                    '$regex': f'^{cls.value_to_raw(condition.values[1])}'
                 }
             }
         raise NotImplementedError(f'Operator: {op} is not supported')

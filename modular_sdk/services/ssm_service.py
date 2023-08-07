@@ -159,7 +159,8 @@ class SSMService(AWSCredentialsProvider,  # actually it's a client
         """
         try:
             if isinstance(value, (list, dict)):
-                value = json.dumps(value)
+                value = json.dumps(value, separators=(",", ":"),
+                                   sort_keys=True)
             self.client.put_parameter(
                 Name=name,
                 Value=value,
