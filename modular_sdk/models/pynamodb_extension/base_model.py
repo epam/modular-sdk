@@ -86,8 +86,14 @@ class DynamicAttribute(Attribute):
         list: ListAttribute,
         tuple: ListAttribute,
         bool: BooleanAttribute,
-        bytes: JSONAttribute
+        bytes: JSONAttribute  # todo, BinaryAttribute would fit better but
     }
+    # ... but this class has a bug -> it does not perform data
+    # deserialization. The raw value from DB is returned all the time.
+    # For Unicode, Number, List, Bool it is more or less acceptable, and
+    # it works. For BinaryAttribute it will not work because BinaryAttribute
+    # class encodes the data to b64 before sending to DB. As you can guess,
+    # it does not decode the data when you receive it from DB.
 
     def serialize(self, value: Any) -> Any:
         value_type = type(value)
@@ -544,7 +550,9 @@ class LastEvaluatedKey:
 
     def serialize(self) -> str:
         payload = {self.payload_key_name: self._lek}
-        return base64.urlsafe_b64encode(json.dumps(payload).encode()).decode()
+        return base64.urlsafe_b64encode(
+            json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
+        ).decode()
 
     @classmethod
     def deserialize(cls, s: Optional[str] = None) -> 'LastEvaluatedKey':
