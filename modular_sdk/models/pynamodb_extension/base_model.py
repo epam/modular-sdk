@@ -434,9 +434,10 @@ class RawBaseModel(models.Model):
 
     @classmethod
     def from_json(cls, model_json: dict,
-                  attributes_to_get: Optional[List] = None) -> models.Model:
+                  attributes_to_get: Optional[List] = None,
+                  instance: Optional[_T] = None) -> models.Model:
         _id = model_json.pop('_id', None)
-        instance = cls()
+        instance = instance or cls()
         attribute_values = {k: json_to_attribute_value(v) for k, v in
                             model_json.items()}
         # if uncommented, custom DynamicAttribute won't work due to

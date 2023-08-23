@@ -4,7 +4,7 @@ from itertools import islice
 from typing import Optional, Dict, List, Union, TypeVar, Iterator
 
 from pymongo import DeleteOne, ReplaceOne, DESCENDING, ASCENDING
-from pymongo.collection import Collection
+from pymongo.collection import Collection, ReturnDocument
 from pymongo.errors import BulkWriteError
 from pynamodb import indexes
 from pynamodb.expressions.condition import \
@@ -318,7 +318,13 @@ class PynamoDBToPyMongoAdapter:
         for dct in [UpdateExpressionConverter.convert(a) for a in actions]:
             for action, query in dct.items():
                 _update.setdefault(action, {}).update(query)
-        collection.update_one(model_instance.get_keys(), _update)
+        res = collection.find_one_and_update(
+            filter=model_instance.get_keys(),
+            update=_update,
+            return_document=ReturnDocument.AFTER
+        )
+        if res:
+            type(model_instance).from_json(res, instance=model_instance)
 
     def get(self, model_class, hash_key, range_key=None) -> Model:
         result = self.get_nullable(model_class=model_class,
