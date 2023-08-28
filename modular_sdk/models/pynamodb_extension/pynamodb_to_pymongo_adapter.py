@@ -58,14 +58,14 @@ class BatchWrite:
 
     def save(self, put_item):
         json_to_save = put_item.dynamodb_model()
-        collection = self.mongo_connection.collection(
-            collection_name=self.collection_name)
-        if hasattr(put_item, 'mongo_id'):
-            collection.delete_one({'_id': put_item.mongo_id})
-            json_to_save.pop('mongo_id')
-        from boltons.iterutils import remap
-        encoded_document = self.mongo_connection.encode_keys(remap(
-            json_to_save, visit=lambda path, key, value: value is not None))
+        json_to_save.pop('mongo_id', None)
+
+        encoded_document = self.mongo_connection.encode_keys(
+            {
+                key: value for key, value in json_to_save.items()
+                if value is not None
+            }
+        )
         self.request.append(ReplaceOne(put_item.get_keys(),
                                        encoded_document, upsert=True))
 
@@ -212,6 +212,7 @@ class UpdateExpressionConverter(_PynamoDBExpressionsConverter):
     Currently just SetAction and RemoveAction, ListAppend, ListPrepend
     are supported, you can implement increment and decrement
     """
+
     @classmethod
     def convert(cls, action: Action):
         if isinstance(action, SetAction):
@@ -220,7 +221,8 @@ class UpdateExpressionConverter(_PynamoDBExpressionsConverter):
                 return {
                     '$set': {cls.path_to_raw(path): cls.value_to_raw(value)}
                 }
-            if isinstance(value, _ListAppend):  # appending from one list to another is not supported. However, Dynamo seems to support it
+            if isinstance(value,
+                          _ListAppend):  # appending from one list to another is not supported. However, Dynamo seems to support it
                 if isinstance(value.values[0], Path):  # append
                     return {
                         '$push': {cls.path_to_raw(path): {
