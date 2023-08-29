@@ -419,9 +419,29 @@ class PynamoDBToPyMongoAdapter:
         name = model.Meta.table_name
         return self.mongodb.collection(collection_name=name)
 
-    def count(self, model_class) -> int:
+    def count(self, model_class, hash_key=None,
+              range_key_condition=None,
+              filter_condition=None,
+              index_name=None,
+              limit=None) -> int:
         collection = self._collection_from_model(model_class)
-        return collection.count()
+
+        hash_key_name = getattr(model_class._hash_key_attribute(),
+                                'attr_name', None)
+        if index_name:
+            hash_key_name = getattr(
+                model_class._indexes[index_name]._hash_key_attribute(),
+                'attr_name', None
+            )
+
+        _query = {hash_key_name: hash_key}
+        if range_key_condition is not None:
+            _query.update(ConditionConverter.convert(range_key_condition))
+
+        if filter_condition is not None:
+            _query.update(ConditionConverter.convert(filter_condition))
+        cursor = collection.find(_query).limit(limit or 0)
+        return cursor.count()
 
     def batch_write(self, model_class) -> BatchWrite:
         return BatchWrite(model=model_class, mongo_connection=self.mongodb)

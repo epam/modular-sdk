@@ -324,7 +324,14 @@ class RawBaseModel(models.Model):
             settings: OperationSettings = OperationSettings.default,
     ) -> int:
         if cls.is_docker:
-            return cls.mongodb_handler().count(model_class=cls)
+            return cls.mongodb_handler().count(
+                model_class=cls,
+                hash_key=hash_key,
+                range_key_condition=range_key_condition,
+                filter_condition=filter_condition,
+                index_name=index_name,
+                limit=limit
+            )
         return super().count(hash_key, range_key_condition, filter_condition,
                              consistent_read, index_name, limit, rate_limit,
                              settings)
