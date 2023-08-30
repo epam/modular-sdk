@@ -4,7 +4,7 @@ from itertools import islice
 from typing import Optional, Dict, List, Union, TypeVar, Iterator
 
 from pymongo import DeleteOne, ReplaceOne, DESCENDING, ASCENDING
-from pymongo.collection import Collection
+from pymongo.collection import Collection, ReturnDocument
 from pymongo.errors import BulkWriteError
 from pynamodb import indexes
 from pynamodb.expressions.condition import \
@@ -58,14 +58,14 @@ class BatchWrite:
 
     def save(self, put_item):
         json_to_save = put_item.dynamodb_model()
-        collection = self.mongo_connection.collection(
-            collection_name=self.collection_name)
-        if hasattr(put_item, 'mongo_id'):
-            collection.delete_one({'_id': put_item.mongo_id})
-            json_to_save.pop('mongo_id')
-        from boltons.iterutils import remap
-        encoded_document = self.mongo_connection.encode_keys(remap(
-            json_to_save, visit=lambda path, key, value: value is not None))
+        json_to_save.pop('mongo_id', None)
+
+        encoded_document = self.mongo_connection.encode_keys(
+            {
+                key: value for key, value in json_to_save.items()
+                if value is not None
+            }
+        )
         self.request.append(ReplaceOne(put_item.get_keys(),
                                        encoded_document, upsert=True))
 
@@ -212,6 +212,7 @@ class UpdateExpressionConverter(_PynamoDBExpressionsConverter):
     Currently just SetAction and RemoveAction, ListAppend, ListPrepend
     are supported, you can implement increment and decrement
     """
+
     @classmethod
     def convert(cls, action: Action):
         if isinstance(action, SetAction):
@@ -220,7 +221,8 @@ class UpdateExpressionConverter(_PynamoDBExpressionsConverter):
                 return {
                     '$set': {cls.path_to_raw(path): cls.value_to_raw(value)}
                 }
-            if isinstance(value, _ListAppend):  # appending from one list to another is not supported. However, Dynamo seems to support it
+            if isinstance(value,
+                          _ListAppend):  # appending from one list to another is not supported. However, Dynamo seems to support it
                 if isinstance(value.values[0], Path):  # append
                     return {
                         '$push': {cls.path_to_raw(path): {
@@ -318,7 +320,13 @@ class PynamoDBToPyMongoAdapter:
         for dct in [UpdateExpressionConverter.convert(a) for a in actions]:
             for action, query in dct.items():
                 _update.setdefault(action, {}).update(query)
-        collection.update_one(model_instance.get_keys(), _update)
+        res = collection.find_one_and_update(
+            filter=model_instance.get_keys(),
+            update=_update,
+            return_document=ReturnDocument.AFTER
+        )
+        if res:
+            type(model_instance).from_json(res, instance=model_instance)
 
     def get(self, model_class, hash_key, range_key=None) -> Model:
         result = self.get_nullable(model_class=model_class,
@@ -411,9 +419,29 @@ class PynamoDBToPyMongoAdapter:
         name = model.Meta.table_name
         return self.mongodb.collection(collection_name=name)
 
-    def count(self, model_class) -> int:
+    def count(self, model_class, hash_key=None,
+              range_key_condition=None,
+              filter_condition=None,
+              index_name=None,
+              limit=None) -> int:
         collection = self._collection_from_model(model_class)
-        return collection.count()
+
+        hash_key_name = getattr(model_class._hash_key_attribute(),
+                                'attr_name', None)
+        if index_name:
+            hash_key_name = getattr(
+                model_class._indexes[index_name]._hash_key_attribute(),
+                'attr_name', None
+            )
+
+        _query = {hash_key_name: hash_key}
+        if range_key_condition is not None:
+            _query.update(ConditionConverter.convert(range_key_condition))
+
+        if filter_condition is not None:
+            _query.update(ConditionConverter.convert(filter_condition))
+        cursor = collection.find(_query).limit(limit or 0)
+        return cursor.count()
 
     def batch_write(self, model_class) -> BatchWrite:
         return BatchWrite(model=model_class, mongo_connection=self.mongodb)

@@ -163,13 +163,14 @@ class BaseSafeUpdateModel(BaseModel):
 
     @classmethod
     def from_json(cls, model_json: dict,
-                  attributes_to_get: Optional[List] = None
+                  attributes_to_get: Optional[List] = None, instance=None
                   ) -> Optional[models.Model]:
         """
         For MongoDB
         TODO use attributes_to_get as projection expression
         :param model_json:
         :param attributes_to_get:
+        :param instance:
         :return:
         """
         if not model_json:
@@ -177,6 +178,6 @@ class BaseSafeUpdateModel(BaseModel):
         _additional_data = \
             cls._retrieve_additional_data(model_json, cls.get_attributes())
         _additional_data.pop('_id', None)
-        instance = super().from_json(model_json, attributes_to_get)
+        instance = super().from_json(model_json, attributes_to_get, instance)
         setattr(instance, cls._additional_data_attr_name, _additional_data)
         return instance
