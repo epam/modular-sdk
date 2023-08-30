@@ -445,6 +445,13 @@ class RawBaseModel(models.Model):
                   instance: Optional[_T] = None) -> models.Model:
         _id = model_json.pop('_id', None)
         instance = instance or cls()
+        if attributes_to_get:
+            to_get = set(
+                attr.attr_name if isinstance(attr, Attribute) else attr
+                for attr in attributes_to_get
+            )
+            model_json = {k: v for k, v in model_json.items() if k in to_get}
+
         attribute_values = {k: json_to_attribute_value(v) for k, v in
                             model_json.items()}
         # if uncommented, custom DynamicAttribute won't work due to
@@ -452,9 +459,6 @@ class RawBaseModel(models.Model):
         # instance._update_attribute_types(attribute_values)
         instance.deserialize(attribute_values)
         instance.mongo_id = _id
-        if attributes_to_get:
-            unwanted = set(instance.attribute_values) - set(attributes_to_get)
-            [instance.attribute_values.pop(a, None) for a in unwanted]
         return instance
 
     @staticmethod

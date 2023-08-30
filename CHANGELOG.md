@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix save method for batch_write for PynamoTOMondoDBAdapter
 - Fix PynamoTOMondoDBAdapter.count action. Now it can accept
   filter_condition and range_key_condition
+- Fix attributes_to_get (UnicodeAttribute is not hashable)
 
 # [2.2.1] - 2023-08-07
 - Fix a bug with PynamoTOMondoDBAdapter startswith condition
