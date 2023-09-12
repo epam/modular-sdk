@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [2.3.0] - 2023-09-12
+- redid mark_deleted in application_service & parent_service. Now these 
+  methods update items in DB. You don't need to call .save() afterwards
+- added (temporarily ethereal) application_id index to parent. It's currently 
+  not used because it does not exist in DB but once it's added to DB it 
+  should be immediately taken to advantage of
+- added `cid-s-index` (customer_id, scope) index to Parent model. It's used 
+  in order to adjust connections between tenants and parents
+- added new public methods to parent_service which use `cid-s-index`:
+  - create_all_scope
+  - create_tenant_scope
+  - get_by_tenant_scope
+  - get_by_all_scope
+  - get_linked_parent_by_tenant
+  - get_linked_parent
+  
+  and some other methods though they're not that "high level"
+- added `deprecated` decorator to mark methods that should not be used
+
+
 # [2.2.2] - 2023-08-29
 - Fix update action for PynamoTOMondoDBAdapter. Now if you use update, the 
   python instance will be updated as well.
