@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [2.2.3] - 2023-09-11
+- Fix an issue related to bug in encrypt method in case if parameter was not passed
+- Fix an issue related to bug in get_signed_headers method in case if parameter was not passed
+
 # [2.2.2] - 2023-08-29
 - Fix update action for PynamoTOMondoDBAdapter. Now if you use update, the 
   python instance will be updated as well.
