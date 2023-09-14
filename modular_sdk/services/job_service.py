@@ -1,5 +1,7 @@
 from typing import Optional, List
+
 from pynamodb.exceptions import DoesNotExist
+from pynamodb.expressions.condition import Key
 
 from modular_sdk.commons import generate_id
 from modular_sdk.commons import ModularException, \
@@ -38,7 +40,16 @@ class JobService:
 
     @staticmethod
     def list(job) -> List[Job]:
-        return list(Job.job_started_at_index.query(hash_key=job))
+        jobs = Job.query(hash_key=job)
+        return list(jobs)
+
+    @staticmethod
+    def list_within_daterange(job, start_date, end_date) -> List[Job]:
+        jobs = Job.job_started_at_index.query(
+            hash_key=job,
+            condition=Key('started_at').between(start_date, end_date)
+        )
+        return list(jobs)
 
     @staticmethod
     def save(job: Job):
