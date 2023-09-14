@@ -51,13 +51,16 @@ class JobService:
                error_type: Optional[str] = None, 
                error_reason: Optional[str] = None, 
                meta: Optional[dict] = None):
-        job.started_at = started_at or job.started_at
-        job.state = state or job.state
-        job.stopped_at = stopped_at or job.stopped_at
-        job.error_type = error_type or job.error_type
-        job.error_reason = error_reason or job.error_reason
-        job.meta = meta or job.meta
-        job.save()
+        job.update(
+            actions=[
+                Job.started_at.set(started_at or job.started_at),
+                Job.state.set(state or job.state),
+                Job.stopped_at.set(stopped_at or job.stopped_at),
+                Job.error_type.set(error_type or job.error_type),
+                Job.error_reason.set(error_reason or job.error_reason),
+                Job.meta.set(meta or job.meta)
+            ]
+        )
         
 
     @staticmethod
