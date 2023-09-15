@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional, List
 
 from pynamodb.exceptions import DoesNotExist
@@ -13,8 +14,8 @@ _LOG = get_logger(__name__)
 
 class JobService:
     @staticmethod
-    def create(job, job_id, application, started_at, state, 
-               stopped_at: Optional[dict] = None,
+    def create(job: str, job_id: str, application: str, started_at: datetime, 
+               state: str, stopped_at: Optional[dict] = None,
                error_type: Optional[str] = None, 
                error_reason: Optional[str] = None, 
                meta: Optional[dict] = None) -> Job:
@@ -38,12 +39,13 @@ class JobService:
         return job_item
 
     @staticmethod
-    def list(job) -> List[Job]:
+    def list(job: str) -> List[Job]:
         jobs = Job.query(hash_key=job)
         return list(jobs)
 
     @staticmethod
-    def list_within_daterange(job, start_date, end_date) -> List[Job]:
+    def list_within_daterange(job: str, start_date: datetime, 
+                              end_date: datetime) -> List[Job]:
         jobs = Job.job_started_at_index.query(
             hash_key=job,
             range_key_condition=Job.started_at.between(start_date, end_date)
