@@ -15,7 +15,7 @@ _LOG = get_logger(__name__)
 class JobService:
     @staticmethod
     def create(job: str, job_id: str, application: str, started_at: datetime, 
-               state: str, stopped_at: Optional[dict] = None,
+               state: str, stopped_at: Optional[datetime] = None,
                error_type: Optional[str] = None, 
                error_reason: Optional[str] = None, 
                meta: Optional[dict] = None) -> Job:
@@ -57,9 +57,9 @@ class JobService:
         job.save()
 
     @staticmethod
-    def update(job: Job, started_at: Optional[str] = None, 
+    def update(job: Job, started_at: Optional[datetime] = None, 
                state: Optional[str] = None, 
-               stopped_at: Optional[dict] = None,
+               stopped_at: Optional[datetime] = None,
                error_type: Optional[str] = None, 
                error_reason: Optional[str] = None, 
                meta: Optional[dict] = None):
