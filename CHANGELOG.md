@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # [2.2.3] - 2023-09-11
 - Fix an issue related to bug in encrypt method in case if parameter was not passed
 - Fix an issue related to bug in get_signed_headers method in case if parameter was not passed
+- Add `JobService`
 
 # [2.2.2] - 2023-08-29
 - Fix update action for PynamoTOMondoDBAdapter. Now if you use update, the 
