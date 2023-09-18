@@ -63,17 +63,20 @@ class JobService:
                error_type: Optional[str] = None, 
                error_reason: Optional[str] = None, 
                meta: Optional[dict] = None):
-        job.update(
-            actions=[
-                Job.started_at.set(started_at or job.started_at),
-                Job.state.set(state or job.state),
-                Job.stopped_at.set(stopped_at or job.stopped_at),
-                Job.error_type.set(error_type or job.error_type),
-                Job.error_reason.set(error_reason or job.error_reason),
-                Job.meta.set(meta or job.meta)
-            ]
-        )
-        
+        attributes = {
+            'started_at': started_at,
+            'state': state,
+            'stopped_at': stopped_at,
+            'error_type': error_type,
+            'error_reason': error_reason,
+            'meta': meta
+        }
+        actions = [
+            getattr(Job, attr).set(value or getattr(job, attr))
+            for attr, value in attributes.items() 
+            if value or getattr(job, attr)
+        ]
+        job.update(actions=actions)
 
     @staticmethod
     def get_dto(Job: Job) -> dict:
