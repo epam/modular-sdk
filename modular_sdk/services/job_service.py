@@ -27,7 +27,7 @@ class JobService:
     @staticmethod
     def get_by_id(job: str, job_id: str) -> Optional[Job]:
         try:
-            job_item = Job.get_nullable(hash_key=job, range_key=job_id)
+            job_item = Job.get(hash_key=job, range_key=job_id)
         except DoesNotExist:
             job_does_not_exist_message = f'Job with {job} name and {job_id} ' \
                                     f'id does not exists'
