@@ -311,10 +311,9 @@ class ParentService:
                 f'{type_}{COMPOUND_KEYS_SEPARATOR}')
         else:
             rkc = None
-        if is_deleted:
-            fc = (Parent.is_deleted == True)
-        else:
-            fc = (Parent.is_deleted != True)  # False or empty
+        fc = None
+        if isinstance(is_deleted, bool):
+            fc = (Parent.is_deleted == is_deleted)
         return Parent.customer_id_scope_index.query(
             hash_key=customer_id,
             range_key_condition=rkc,

@@ -13,12 +13,7 @@ from modular_sdk.models.pynamodb_extension.pynamodb_to_pymongo_adapter import \
 from modular_sdk.models.tenant import Tenant
 from modular_sdk.services.customer_service import CustomerService
 
-CLOUD_KEY = 'c'
-DNTL_NAME_KEY = 'dntl'
-DNTL_INDEX_NAME = 'dntl-c-index'
-CLOUD_INDEX_NAME = 'c-index'
-
-_LOG = get_logger('TenantService')
+_LOG = get_logger(__name__)
 
 
 class TenantService:
