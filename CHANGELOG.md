@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and some other methods though they're not that "high level"
 - added `deprecated` decorator to mark methods that should not be used
 
+# [2.2.4] - 2023-09-19
+- Fix unhandled exception in `get_by_id` method in `JobService`
+
+# [2.2.3] - 2023-09-11
+- Fix an issue related to bug in encrypt method in case if parameter was not passed
+- Fix an issue related to bug in get_signed_headers method in case if parameter was not passed
+- Add `JobService`
 
 # [2.2.2] - 2023-08-29
 - Fix update action for PynamoTOMondoDBAdapter. Now if you use update, the 

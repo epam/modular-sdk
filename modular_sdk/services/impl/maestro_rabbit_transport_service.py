@@ -146,6 +146,11 @@ class MaestroRabbitMQTransport(RabbitMQTransport):
         Encrypt data, add initialization vector ("iv") at beginning of encrypted
         message and encode entire data in Base64 format
         """
+        if not secret_key:
+            raise ModularException(
+                code=503,
+                content='Cannot detect secret_key. Please add it first'
+            )
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
         iv = os.urandom(12)
         plain_text = data if isinstance(data, str) else json.dumps(data)
@@ -167,6 +172,11 @@ class MaestroRabbitMQTransport(RabbitMQTransport):
         """
         Create and sign necessary headers for interaction with Maestro API
         """
+        if not access_key or not user:
+            raise ModularException(
+                code=503,
+                content='Cannot detect access_key or user. Please add it first'
+            )
         date = int(datetime.now().timestamp()) * 1000
         signature = hmac.new(
             key=bytearray(f'{secret_key}{date}'.encode('utf-8')),
