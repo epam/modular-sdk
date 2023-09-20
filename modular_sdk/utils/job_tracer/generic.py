@@ -1,10 +1,9 @@
 from datetime import datetime
-from pynamodb.exceptions import DoesNotExist
-from commons.constants import JOB_RUNNING_STATE, JOB_FAIL_STATE, JOB_SUCCESS_STATE
+from modular_sdk.commons.constants import JOB_RUNNING_STATE, JOB_FAIL_STATE, \
+    JOB_SUCCESS_STATE
 
-from modular_sdk.commons import ModularException, RESPONSE_RESOURCE_NOT_FOUND_CODE, \
-    RESPONSE_BAD_REQUEST_CODE, RESPONSE_FORBIDDEN_CODE
-from modular_sdk.models.job import Job
+from modular_sdk.commons import ModularException, RESPONSE_BAD_REQUEST_CODE, \
+    RESPONSE_FORBIDDEN_CODE
 
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.services.environment_service import EnvironmentService
