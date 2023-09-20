@@ -1,5 +1,6 @@
 from datetime import datetime
 from pynamodb.exceptions import DoesNotExist
+from commons.constants import JOB_RUNNING_STATE, JOB_FAIL_STATE, JOB_SUCCESS_STATE
 
 from modular_sdk.commons import ModularException, RESPONSE_RESOURCE_NOT_FOUND_CODE, \
     RESPONSE_BAD_REQUEST_CODE, RESPONSE_FORBIDDEN_CODE
@@ -7,6 +8,7 @@ from modular_sdk.models.job import Job
 
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.services.environment_service import EnvironmentService
+from modular_sdk.services.job_service import JobService
 from modular_sdk.utils.operation_mode.generic import \
     ModularOperationModeManagerService
 from modular_sdk.utils.job_tracer.abstract import AbstractJobTracer
@@ -27,13 +29,11 @@ class ModularJobTracer(AbstractJobTracer):
                    f'started')
 
         # self.is_permitted_to_start()
-        Job(
-            job=self.component,
-            job_id=job_id,
-            application=self.application,
-            state='RUNNING',
-            started_at=datetime.utcnow(),
-        ).save()
+        job = JobService.create(job=self.component, job_id=job_id,
+                                    application=self.application, 
+                                    started_at=datetime.utcnow(), 
+                                    state=JOB_RUNNING_STATE, meta={})
+        JobService.save(job=job)
 
     def is_permitted_to_start(self):
         result = self.operation_mode_service.get_mode(
@@ -51,16 +51,7 @@ class ModularJobTracer(AbstractJobTracer):
 
     @staticmethod
     def __get_job(job, job_id):
-        try:
-            job_item = Job.get_nullable(hash_key=job, range_key=job_id)
-        except DoesNotExist:
-            job_not_exist_message = f'Job with {job} name and {job_id} ' \
-                                    f'id does not exists'
-            _LOG.error(job_not_exist_message)
-            raise ModularException(
-                code=RESPONSE_RESOURCE_NOT_FOUND_CODE,
-                content=job_not_exist_message
-            )
+        job_item = JobService.get_by_id(job=job, job_id=job_id)
         if job_item.state in ['SUCCESS', 'FAIL']:
             job_invalid_state_message = f'Job with {job_id} id and ' \
                                         f'{job} name with state ' \
@@ -80,20 +71,22 @@ class ModularJobTracer(AbstractJobTracer):
 
         job_item = self.__get_job(job=self.component, job_id=job_id)
 
-        job_item.stopped_at = datetime.utcnow()
-        job_item.state = 'FAIL'
-        job_item.error_type = error.__class__.__name__
-        job_item.error_reason = error.__str__()
-        job_item.save()
+        stopped_at = datetime.utcnow()
+        state = JOB_FAIL_STATE
+        error_type = error.__class__.__name__
+        error_reason = error.__str__()
+        JobService.update(job=job_item, stopped_at=stopped_at, state=state, 
+                          error_type=error_type, error_reason=error_reason)
 
-    def succeed(self, job_id):
+    def succeed(self, job_id, meta):
         _LOG.debug(f'Going to mark Job {self.component} and {job_id} id as '
                    f'succeeded')
         job_item = self.__get_job(job=self.component, job_id=job_id)
 
-        job_item.stopped_at = datetime.utcnow()
-        job_item.state = 'SUCCESS'
-        job_item.save()
+        stopped_at = datetime.utcnow()
+        state = JOB_SUCCESS_STATE
+        JobService.update(job=job_item, stopped_at=stopped_at, state=state, 
+                          meta=meta)
 
     def track_error(self):
         # todo submit error to aggregation pipeline
