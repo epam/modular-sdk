@@ -323,6 +323,7 @@ class PynamoDBToPyMongoAdapter:
         res = collection.find_one_and_update(
             filter=model_instance.get_keys(),
             update=_update,
+            upsert=True,
             return_document=ReturnDocument.AFTER
         )
         if res:
