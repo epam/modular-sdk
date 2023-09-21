@@ -1,4 +1,5 @@
 import decimal
+import json
 import re
 from itertools import islice
 from typing import Optional, Dict, List, Union, TypeVar, Iterator
@@ -103,9 +104,11 @@ class _PynamoDBExpressionsConverter:
         :return:
         """
         val = DynamoDBJsonSerializer.deserializer.deserialize(value.value)
-        if isinstance(val, decimal.Decimal):
-            val = float(val)
-        return val
+        # now we can return the val, BUT some its values (top-level and nested)
+        # can contain decimal.Decimal which is not acceptable by MongoDB.
+        # we should convert them to simple floats. json.dumps is quite an
+        # easy way to do it recursively. These values will not be huge
+        return json.loads(json.dumps(val, default=float))  # get rid of decimal
 
     @classmethod
     def path_to_raw(cls, path: Path) -> str:
