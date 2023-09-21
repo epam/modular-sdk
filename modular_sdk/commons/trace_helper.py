@@ -7,6 +7,11 @@ from modular_sdk.utils.runtime_tracer.generic import SegmentTracer, \
     ScheduledSegmentTracer
 
 
+def __resolve_event(args, kwargs):
+    if len(args) != 2:
+        return kwargs['event']
+    return args[0]
+
 def __resolve_context(args, kwargs):
     if len(args) != 2:
         return kwargs['context']
@@ -32,8 +37,9 @@ def tracer_decorator(is_scheduled=False, is_job=False):
                     environment_service=environment_service
                 )
 
+                event = __resolve_event(args, kwargs)
                 context = __resolve_context(args, kwargs)
-                request_id = context.aws_request_id
+                request_id = event.get('request_id') or context.aws_request_id
 
             if is_scheduled:
                 runtime_tracer = ScheduledSegmentTracer(
@@ -64,7 +70,7 @@ def tracer_decorator(is_scheduled=False, is_job=False):
                 raise e
             else:
                 if is_job:
-                    job_tracer.succeed(job_id=request_id)
+                    job_tracer.succeed(job_id=request_id, meta=response)
                 segment.stop()
                 return response
 

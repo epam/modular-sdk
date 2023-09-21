@@ -15,5 +15,5 @@ class AbstractJobTracer(ABC):
         pass
 
     @abstractmethod
-    def succeed(self, request_id):
+    def succeed(self, request_id, meta):
         pass
