@@ -38,7 +38,8 @@ def tracer_decorator(is_scheduled=False, is_job=False):
                 )
 
                 event = __resolve_event(args, kwargs)
-                request_id = event.get('request_id')
+                context = __resolve_context(args, kwargs)
+                request_id = event.get('request_id') or context.aws_request_id
 
             if is_scheduled:
                 runtime_tracer = ScheduledSegmentTracer(
