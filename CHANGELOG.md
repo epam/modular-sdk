@@ -23,6 +23,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and some other methods though they're not that "high level"
 - added `deprecated` decorator to mark methods that should not be used
 
+# [2.2.6] - 2023-09-20
+- integrated job service into modular job tracer
+- handle Decimal for on-prem update recursively
+
+# [2.2.5] - 2023-09-20
+- added `limit` attribute to `i_get_by_tenant` and `i_get_by_key` 
+  methods for tenant_settings_service;
+- added method `get` to tenant_settings_service
+- create an item in MongoDB in case it does not exist after performing .update
+
 # [2.2.4] - 2023-09-19
 - Fix unhandled exception in `get_by_id` method in `JobService`
 

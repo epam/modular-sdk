@@ -183,3 +183,8 @@ class ParentScope:
         for name in dir(self):
             if not name.startswith('__'):
                 yield getattr(self, name)
+
+
+JOB_SUCCESS_STATE = 'SUCCESS'
+JOB_FAIL_STATE = 'FAIL'
+JOB_RUNNING_STATE = 'RUNNING'
