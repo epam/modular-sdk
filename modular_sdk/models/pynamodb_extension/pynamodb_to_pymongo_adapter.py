@@ -385,6 +385,8 @@ class PynamoDBToPyMongoAdapter:
         last_evaluated_key = last_evaluated_key or 0
 
         cursor = collection.find(_query).limit(limit).skip(last_evaluated_key)
+        page_size = collection.count_documents(_query, limit=limit) \
+            if limit else collection.count_documents(_query)
         if range_key_name:
             cursor = cursor.sort(
                 range_key_name, ASCENDING if scan_index_forward else
@@ -394,7 +396,7 @@ class PynamoDBToPyMongoAdapter:
             result=(model_class.from_json(self.mongodb.decode_keys(i),
                                           attributes_to_get) for i in cursor),
             _evaluated_key=last_evaluated_key,
-            page_size=cursor.count()
+            page_size=page_size
         )
 
     def scan(self, model_class, filter_condition=None, limit=None,
@@ -409,11 +411,13 @@ class PynamoDBToPyMongoAdapter:
         last_evaluated_key = last_evaluated_key or 0
 
         cursor = collection.find(_query).limit(limit).skip(last_evaluated_key)
+        page_size = collection.count_documents(_query, limit=limit) \
+            if limit else collection.count_documents(_query)
         return Result(
             result=(model_class.from_json(self.mongodb.decode_keys(i),
                                           attributes_to_get) for i in cursor),
             _evaluated_key=last_evaluated_key,
-            page_size=cursor.count()
+            page_size=page_size
         )
 
     def refresh(self, consistent_read):
@@ -444,8 +448,11 @@ class PynamoDBToPyMongoAdapter:
 
         if filter_condition is not None:
             _query.update(ConditionConverter.convert(filter_condition))
-        cursor = collection.find(_query).limit(limit or 0)
-        return cursor.count()
+
+        if limit:
+            return collection.count_documents(_query, limit=limit)
+
+        return collection.count_documents(_query)
 
     def batch_write(self, model_class) -> BatchWrite:
         return BatchWrite(model=model_class, mongo_connection=self.mongodb)
