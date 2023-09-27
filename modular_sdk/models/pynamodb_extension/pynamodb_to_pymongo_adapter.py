@@ -1,4 +1,5 @@
 import decimal
+import json
 import re
 from itertools import islice
 from typing import Optional, Dict, List, Union, TypeVar, Iterator
@@ -103,9 +104,11 @@ class _PynamoDBExpressionsConverter:
         :return:
         """
         val = DynamoDBJsonSerializer.deserializer.deserialize(value.value)
-        if isinstance(val, decimal.Decimal):
-            val = float(val)
-        return val
+        # now we can return the val, BUT some its values (top-level and nested)
+        # can contain decimal.Decimal which is not acceptable by MongoDB.
+        # we should convert them to simple floats. json.dumps is quite an
+        # easy way to do it recursively. These values will not be huge
+        return json.loads(json.dumps(val, default=float))  # get rid of decimal
 
     @classmethod
     def path_to_raw(cls, path: Path) -> str:
@@ -323,6 +326,7 @@ class PynamoDBToPyMongoAdapter:
         res = collection.find_one_and_update(
             filter=model_instance.get_keys(),
             update=_update,
+            upsert=True,
             return_document=ReturnDocument.AFTER
         )
         if res:
@@ -381,6 +385,8 @@ class PynamoDBToPyMongoAdapter:
         last_evaluated_key = last_evaluated_key or 0
 
         cursor = collection.find(_query).limit(limit).skip(last_evaluated_key)
+        page_size = collection.count_documents(_query, limit=limit) \
+            if limit else collection.count_documents(_query)
         if range_key_name:
             cursor = cursor.sort(
                 range_key_name, ASCENDING if scan_index_forward else
@@ -390,7 +396,7 @@ class PynamoDBToPyMongoAdapter:
             result=(model_class.from_json(self.mongodb.decode_keys(i),
                                           attributes_to_get) for i in cursor),
             _evaluated_key=last_evaluated_key,
-            page_size=cursor.count()
+            page_size=page_size
         )
 
     def scan(self, model_class, filter_condition=None, limit=None,
@@ -405,11 +411,13 @@ class PynamoDBToPyMongoAdapter:
         last_evaluated_key = last_evaluated_key or 0
 
         cursor = collection.find(_query).limit(limit).skip(last_evaluated_key)
+        page_size = collection.count_documents(_query, limit=limit) \
+            if limit else collection.count_documents(_query)
         return Result(
             result=(model_class.from_json(self.mongodb.decode_keys(i),
                                           attributes_to_get) for i in cursor),
             _evaluated_key=last_evaluated_key,
-            page_size=cursor.count()
+            page_size=page_size
         )
 
     def refresh(self, consistent_read):
@@ -440,8 +448,11 @@ class PynamoDBToPyMongoAdapter:
 
         if filter_condition is not None:
             _query.update(ConditionConverter.convert(filter_condition))
-        cursor = collection.find(_query).limit(limit or 0)
-        return cursor.count()
+
+        if limit:
+            return collection.count_documents(_query, limit=limit)
+
+        return collection.count_documents(_query)
 
     def batch_write(self, model_class) -> BatchWrite:
         return BatchWrite(model=model_class, mongo_connection=self.mongodb)

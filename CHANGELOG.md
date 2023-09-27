@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [3.0.0] - 2023-09-26
+- Added Python 3.10 compatibility
+- Updated libraries version
+- File setup.cfg brought to compatibility with new setuptools syntax
+
+# [2.2.6] - 2023-09-20
+- integrated job service into modular job tracer
+- handle Decimal for on-prem update recursively
+
+# [2.2.5] - 2023-09-20
+- added `limit` attribute to `i_get_by_tenant` and `i_get_by_key` 
+  methods for tenant_settings_service;
+- added method `get` to tenant_settings_service
+- create an item in MongoDB in case it does not exist after performing .update
+
+# [2.2.4] - 2023-09-19
+- Fix unhandled exception in `get_by_id` method in `JobService`
+
+# [2.2.3] - 2023-09-11
+- Fix an issue related to bug in encrypt method in case if parameter was not passed
+- Fix an issue related to bug in get_signed_headers method in case if parameter was not passed
+- Add `JobService`
+
 # [2.2.2] - 2023-08-29
 - Fix update action for PynamoTOMondoDBAdapter. Now if you use update, the 
   python instance will be updated as well.
