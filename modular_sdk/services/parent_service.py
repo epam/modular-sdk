@@ -159,15 +159,15 @@ class ParentService:
         if parent.is_deleted:
             _LOG.warning(f'Parent \'{parent.parent_id}\' is already deleted.')
             return
-        if parent.tenant_name:
-            _LOG.debug(f'Parent has {parent.scope} scope. '
-                       f'Checking whether its tenant exists')
-            if self.tenant_service.does_exist(parent.tenant_name, True):
-                raise ModularException(
-                    code=RESPONSE_BAD_REQUEST_CODE,
-                    content=f'The parent is linked to an active '
-                            f'tenant: {parent.tenant_name}'
-                )
+        # if parent.tenant_name:
+        #     _LOG.debug(f'Parent has {parent.scope} scope. '
+        #                f'Checking whether its tenant exists')
+        #     if self.tenant_service.does_exist(parent.tenant_name, True):
+        #         raise ModularException(
+        #             code=RESPONSE_BAD_REQUEST_CODE,
+        #             content=f'The parent is linked to an active '
+        #                     f'tenant: {parent.tenant_name}'
+        #         )
         parent.update(actions=[
             Parent.is_deleted.set(True),
             Parent.deletion_date.set(utc_iso())
@@ -190,7 +190,7 @@ class ParentService:
         scope = (scope or '').upper()
         tenant_name = tenant_name or ''
         cloud = (cloud or '').upper()
-        assert type_ in ALL_PARENT_TYPES, f'Invalid parent type {type_}'
+        # assert type_ in ALL_PARENT_TYPES, f'Invalid parent type {type_}'
         if not scope:
             _LOG.debug('Scope was not provided to build_type_scope. '
                        'Keeping tenant and cloud empty')
@@ -240,10 +240,10 @@ class ParentService:
                          description: Optional[str] = None,
                          meta: Optional[dict] = None,
                          cloud: Optional[str] = None) -> Parent:
-        return self.create(
+        return self._create(
             application_id=application_id,
             customer_id=customer_id,
-            parent_type=parent_type,
+            type_=parent_type,
             is_deleted=is_deleted,
             description=description,
             meta=meta,
@@ -257,10 +257,10 @@ class ParentService:
                             is_deleted: bool = False,
                             description: Optional[str] = None,
                             meta: Optional[dict] = None) -> Parent:
-        return self.create(
+        return self._create(
             application_id=application_id,
             customer_id=customer_id,
-            parent_type=parent_type,
+            type_=parent_type,
             is_deleted=is_deleted,
             description=description,
             meta=meta,
@@ -366,10 +366,17 @@ class ParentService:
             type_=type_
         )
 
-    def get_linked_parent(self, tenant_name: str, cloud: str,
+    def get_linked_parent(self, tenant_name: str, cloud: Optional[str],
                           customer_name: str,
                           type_: str) -> Optional[Parent]:
-        """"""
+        """
+
+        :param tenant_name:
+        :param cloud:
+        :param customer_name:
+        :param type_:
+        :return:
+        """
         _LOG.debug(f'Looking for a disabled parent with type {type_} for '
                    f'tenant {tenant_name}')
         disabled = next(self.get_by_tenant_scope(
