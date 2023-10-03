@@ -30,6 +30,7 @@ class Modular(metaclass=SingletonMeta):
     __settings_service = None
     __instantiated_setting_group = []
     __credentials_service = None
+    __thread_local_storage_service = None
 
     __ssm_service = None
     __assume_role_ssm_service = None
@@ -251,6 +252,13 @@ class Modular(metaclass=SingletonMeta):
             self.__credentials_service = \
                 MaestroCredentialsService.build()
         return self.__credentials_service
+
+    def thread_local_storage_service(self):
+        if not self.__thread_local_storage_service:
+            from modular_sdk.services.thread_local_storage_service \
+                import ThreadLocalStorageService
+            self.__thread_local_storage_service = ThreadLocalStorageService()
+        return self.__thread_local_storage_service
 
     def reset(self, service: str):
         """Removes the saved instance of the service. It is useful,
