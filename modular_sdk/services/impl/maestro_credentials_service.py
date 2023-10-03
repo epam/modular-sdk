@@ -322,11 +322,11 @@ class RabbitMQCredentials(_CredentialsBase):
     sdk_access_key: Optional[str] = None
 
 
-@dataclasses.dataclass(frozen=True, repr=False)
+@dataclasses.dataclass(repr=False)
 class K8SServiceAccountCredentials(DataclassBase):
     endpoint: str
     ca: str
-    token: Optional[str]
+    token: Optional[str] = None
 
     def ca_file(self) -> Path:
         with tempfile.NamedTemporaryFile(delete=False) as file:
