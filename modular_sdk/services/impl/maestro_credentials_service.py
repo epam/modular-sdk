@@ -13,11 +13,9 @@ from botocore.exceptions import ClientError
 from urllib3.util import parse_url, Url
 
 from modular_sdk.commons import DataclassBase
-from modular_sdk.commons.constants import AZURE_CLOUD, GOOGLE_CLOUD, \
-    AWS_ROLE, AWS_CREDENTIALS, AZURE_CREDENTIALS, AZURE_CERTIFICATE, \
-    GCP_SERVICE_ACCOUNT, GCP_COMPUTE_ACCOUNT, DEFAULT_AWS_REGION, \
-    ENV_AZURE_SUBSCRIPTION_ID, ENV_CLOUDSDK_CORE_PROJECT, AWS_CLOUD, \
-    RABBITMQ_TYPE, HTTPS_ATTR, HTTP_ATTR, K8S_SERVICE_ACCOUNT_TYPE
+from modular_sdk.commons.constants import DEFAULT_AWS_REGION, \
+    ENV_AZURE_SUBSCRIPTION_ID, ENV_CLOUDSDK_CORE_PROJECT, HTTPS_ATTR, \
+    HTTP_ATTR, Cloud, ApplicationType
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.application import Application
 from modular_sdk.models.parent import Parent
@@ -502,15 +500,15 @@ class MaestroCredentialsService:
     def complete_credentials_dict(credentials: dict,
                                   tenant: Tenant, **kwargs) -> dict:
         _LOG.info('Going to fulfill the credentials')
-        if tenant.cloud == AZURE_CLOUD:
+        if tenant.cloud == Cloud.AZURE:
             _LOG.info('Tenant`s cloud is AZURE. Adding subscription id')
             if not credentials.get(ENV_AZURE_SUBSCRIPTION_ID):
                 credentials[ENV_AZURE_SUBSCRIPTION_ID] = tenant.project
             return credentials
-        elif tenant.cloud == AWS_CLOUD:
+        elif tenant.cloud == Cloud.AWS:
             _LOG.info('Tenant`s cloud is AWS. Proxying creds')
             return credentials
-        elif tenant.cloud == GOOGLE_CLOUD:
+        elif tenant.cloud == Cloud.GOOGLE:
             _LOG.info('Creds are requested for google tenant. '
                       'Adding project id')
             credentials[ENV_CLOUDSDK_CORE_PROJECT] = tenant.project
@@ -581,14 +579,14 @@ class MaestroCredentialsService:
         Method must have application as input
         """
         return {
-            AZURE_CREDENTIALS: self._get_azure_credentials,
-            AZURE_CERTIFICATE: self._get_azure_certificate,
-            AWS_CREDENTIALS: self._get_aws_credentials,
-            AWS_ROLE: self._get_aws_credentials_from_role,
-            GCP_SERVICE_ACCOUNT: self._get_gcp_credentials,
-            GCP_COMPUTE_ACCOUNT: self._get_gcp_credentials,
-            RABBITMQ_TYPE: self._get_rabbitmq_credentials,
-            K8S_SERVICE_ACCOUNT_TYPE: self._get_k8s_service_account_credentials
+            ApplicationType.AZURE_CREDENTIALS: self._get_azure_credentials,
+            ApplicationType.AZURE_CERTIFICATE: self._get_azure_certificate,
+            ApplicationType.AWS_CREDENTIALS: self._get_aws_credentials,
+            ApplicationType.AWS_ROLE: self._get_aws_credentials_from_role,
+            ApplicationType.GCP_SERVICE_ACCOUNT: self._get_gcp_credentials,
+            ApplicationType.GCP_COMPUTE_ACCOUNT: self._get_gcp_credentials,
+            ApplicationType.RABBITMQ: self._get_rabbitmq_credentials,
+            ApplicationType.K8S_SERVICE_ACCOUNT: self._get_k8s_service_account_credentials
         }
 
     def _get_aws_credentials_from_role(self, application: Application,

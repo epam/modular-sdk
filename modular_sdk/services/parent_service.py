@@ -94,7 +94,8 @@ class ParentService:
 
     def create(self, application_id: str, customer_id: str, parent_type: str,
                is_deleted: bool = False, description: Optional[str] = None,
-               meta: Optional[dict] = None, scope: Optional[str] = None,
+               meta: Optional[dict] = None,
+               scope: Optional[ParentScope] = None,
                tenant_name: Optional[str] = None,
                cloud: Optional[str] = None) -> Parent:
         """
@@ -176,7 +177,7 @@ class ParentService:
 
     # new methods
     @staticmethod
-    def build_type_scope(type_: str, scope: Optional[str] = None,
+    def build_type_scope(type_: str, scope: Optional[ParentScope] = None,
                          tenant_name: Optional[str] = None,
                          cloud: Optional[str] = None) -> str:
         """
@@ -187,7 +188,7 @@ class ParentService:
         :param cloud:
         :return:
         """
-        scope = (scope or '').upper()
+        scope = scope or ''
         tenant_name = tenant_name or ''
         cloud = (cloud or '').upper()
         # assert type_ in ALL_PARENT_TYPES, f'Invalid parent type {type_}'
@@ -195,7 +196,6 @@ class ParentService:
             _LOG.debug('Scope was not provided to build_type_scope. '
                        'Keeping tenant and cloud empty')
             return COMPOUND_KEYS_SEPARATOR.join((type_, scope, ''))
-        assert scope in ParentScope(), f'Invalid scope: {scope}'
         if cloud:
             assert cloud in CLOUD_PROVIDERS, f'Invalid cloud: {cloud}'
         if scope == ParentScope.ALL:
@@ -205,7 +205,7 @@ class ParentService:
 
     def _create(self, customer_id: str, application_id: str, type_: str,
                 description: Optional[str] = None, meta: Optional[dict] = None,
-                is_deleted: bool = False, scope: Optional[str] = '',
+                is_deleted: bool = False, scope: Optional[ParentScope] = None,
                 tenant_name: Optional[str] = '', cloud: Optional[str] = ''
                 ) -> Parent:
         """
@@ -270,7 +270,7 @@ class ParentService:
 
     def query_by_scope_index(self, customer_id: str,
                              type_: Optional[str] = None,
-                             scope: Optional[str] = None,
+                             scope: Optional[ParentScope] = None,
                              tenant_or_cloud: Optional[str] = None,
                              by_prefix: Optional[bool] = False,
                              is_deleted: Optional[bool] = False,
