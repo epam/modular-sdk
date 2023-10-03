@@ -180,7 +180,8 @@ class MaestroRabbitMQTransport(RabbitMQTransport):
         date = int(datetime.now().timestamp()) * 1000
         signature = hmac.new(
             key=bytearray(f'{secret_key}{date}'.encode('utf-8')),
-            msg=bytearray(f'M3-POST:{access_key}:{date}'.encode('utf-8')),
+            msg=bytearray(f'M3-POST:{access_key}:{date}:{user}'.encode('utf-8')
+                          ),
             digestmod=hashlib.sha256
         ).hexdigest()
         n = 2
