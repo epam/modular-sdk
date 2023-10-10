@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-# [2.3.0] - 2023-09-12
+# [3.3.0] - 2023-09-12
 - redid mark_deleted in application_service & parent_service. Now these 
   methods update items in DB. You don't need to call .save() afterwards
 - added (temporarily ethereal) application_id index to parent. It's currently 
@@ -22,6 +22,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   
   and some other methods though they're not that "high level"
 - added `deprecated` decorator to mark methods that should not be used
+
+# [3.2.0] - 2023-10-03
+- Requests signature changed(maestro-user-identifier added to the signature)
+
+# [3.1.0] - 2023-10-03
+- Added ThreadLocalStorageService
+
+# [3.0.0] - 2023-09-26
+- Added Python 3.10 compatibility
+- Updated libraries version
+- File setup.cfg brought to compatibility with new setuptools syntax
 
 # [2.2.6] - 2023-09-20
 - integrated job service into modular job tracer
