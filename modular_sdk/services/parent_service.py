@@ -1,7 +1,7 @@
 from typing import Optional, Iterator, Union, List
 
 from pynamodb.expressions.condition import Condition
-
+from datetime import datetime
 from modular_sdk.commons import RESPONSE_BAD_REQUEST_CODE, \
     RESPONSE_RESOURCE_NOT_FOUND_CODE
 from modular_sdk.commons import generate_id
@@ -144,8 +144,16 @@ class ParentService:
         )
 
     @staticmethod
-    def get_dto(parent: Parent):
-        return parent.get_json()
+    def get_dto(parent: Parent) -> dict:
+        dct = parent.get_json()
+        ct = dct.pop('creation_timestamp', None)
+        if ct:
+            dct['created_at'] = utc_iso(datetime.fromtimestamp(ct / 1e3))
+        dct.pop('type_scope', None)
+        dct['scope'] = parent.scope
+        if parent.cloud:
+            dct['cloud'] = parent.cloud
+        return dct
 
     @staticmethod
     def save(parent: Parent):
