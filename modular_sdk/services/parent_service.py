@@ -92,7 +92,8 @@ class ParentService:
             last_evaluated_key=last_evaluated_key
         )
 
-    def create(self, application_id: str, customer_id: str, parent_type: str,
+    def create(self, application_id: str, customer_id: str,
+               parent_type: ParentType,
                is_deleted: bool = False, description: Optional[str] = None,
                meta: Optional[dict] = None,
                scope: Optional[ParentScope] = None,
@@ -235,7 +236,7 @@ class ParentService:
         )
 
     def create_all_scope(self, application_id: str,
-                         customer_id: str, parent_type: ParentType,
+                         customer_id: str, type_: ParentType,
                          is_deleted: bool = False,
                          description: Optional[str] = None,
                          meta: Optional[dict] = None,
@@ -243,7 +244,7 @@ class ParentService:
         return self._create(
             application_id=application_id,
             customer_id=customer_id,
-            type_=parent_type,
+            type_=type_,
             is_deleted=is_deleted,
             description=description,
             meta=meta,
@@ -252,7 +253,7 @@ class ParentService:
         )
 
     def create_tenant_scope(self, application_id: str,
-                            customer_id: str, parent_type: ParentType,
+                            customer_id: str, type_: ParentType,
                             tenant_name: str, disabled: bool = False,
                             is_deleted: bool = False,
                             description: Optional[str] = None,
@@ -260,7 +261,7 @@ class ParentService:
         return self._create(
             application_id=application_id,
             customer_id=customer_id,
-            type_=parent_type,
+            type_=type_,
             is_deleted=is_deleted,
             description=description,
             meta=meta,
