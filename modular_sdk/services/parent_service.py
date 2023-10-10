@@ -6,7 +6,7 @@ from modular_sdk.commons import RESPONSE_BAD_REQUEST_CODE, \
     RESPONSE_RESOURCE_NOT_FOUND_CODE
 from modular_sdk.commons import generate_id
 from modular_sdk.commons.constants import ALL_PARENT_TYPES, ParentScope, \
-    COMPOUND_KEYS_SEPARATOR, CLOUD_PROVIDERS
+    COMPOUND_KEYS_SEPARATOR, CLOUD_PROVIDERS, ParentType
 from modular_sdk.commons.exception import ModularException
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.commons.time_helper import java_timestamp
@@ -177,7 +177,7 @@ class ParentService:
 
     # new methods
     @staticmethod
-    def build_type_scope(type_: str, scope: Optional[ParentScope] = None,
+    def build_type_scope(type_: ParentType, scope: Optional[ParentScope] = None,
                          tenant_name: Optional[str] = None,
                          cloud: Optional[str] = None) -> str:
         """
@@ -203,7 +203,7 @@ class ParentService:
         # scope in (ParentScope.DISABLED, ParentScope.SPECIFIC)
         return COMPOUND_KEYS_SEPARATOR.join((type_, scope, tenant_name))
 
-    def _create(self, customer_id: str, application_id: str, type_: str,
+    def _create(self, customer_id: str, application_id: str, type_: ParentType,
                 description: Optional[str] = None, meta: Optional[dict] = None,
                 is_deleted: bool = False, scope: Optional[ParentScope] = None,
                 tenant_name: Optional[str] = '', cloud: Optional[str] = ''
@@ -235,7 +235,7 @@ class ParentService:
         )
 
     def create_all_scope(self, application_id: str,
-                         customer_id: str, parent_type: str,
+                         customer_id: str, parent_type: ParentType,
                          is_deleted: bool = False,
                          description: Optional[str] = None,
                          meta: Optional[dict] = None,
@@ -252,7 +252,7 @@ class ParentService:
         )
 
     def create_tenant_scope(self, application_id: str,
-                            customer_id: str, parent_type: str,
+                            customer_id: str, parent_type: ParentType,
                             tenant_name: str, disabled: bool = False,
                             is_deleted: bool = False,
                             description: Optional[str] = None,
@@ -269,7 +269,7 @@ class ParentService:
         )
 
     def query_by_scope_index(self, customer_id: str,
-                             type_: Optional[str] = None,
+                             type_: Optional[ParentType] = None,
                              scope: Optional[ParentScope] = None,
                              tenant_or_cloud: Optional[str] = None,
                              by_prefix: Optional[bool] = False,
@@ -323,7 +323,7 @@ class ParentService:
             filter_condition=fc
         )
 
-    def get_by_tenant_scope(self, customer_id: str, type_: str,
+    def get_by_tenant_scope(self, customer_id: str, type_: ParentType,
                             tenant_name: Optional[str] = None,
                             disabled: bool = False,
                             limit: Optional[int] = None,
@@ -340,7 +340,7 @@ class ParentService:
             ascending=ascending
         )
 
-    def get_by_all_scope(self, customer_id: str, type_: str,
+    def get_by_all_scope(self, customer_id: str, type_: ParentType,
                          cloud: Optional[str] = None,
                          limit: Optional[int] = None,
                          last_evaluated_key: Optional[dict] = None,
@@ -357,7 +357,7 @@ class ParentService:
             ascending=ascending
         )
 
-    def get_linked_parent_by_tenant(self, tenant: Tenant, type_: str
+    def get_linked_parent_by_tenant(self, tenant: Tenant, type_: ParentType
                                     ) -> Optional[Parent]:
         return self.get_linked_parent(
             tenant_name=tenant.name,
@@ -368,7 +368,7 @@ class ParentService:
 
     def get_linked_parent(self, tenant_name: str, cloud: Optional[str],
                           customer_name: str,
-                          type_: str) -> Optional[Parent]:
+                          type_: ParentType) -> Optional[Parent]:
         """
 
         :param tenant_name:
