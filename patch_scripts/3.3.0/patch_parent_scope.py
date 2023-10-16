@@ -97,7 +97,7 @@ class TermColor:
         return f'{cls.DEBUG}{st}{cls.DEBUG}'
 
 
-class OldParents:
+class ParentsCol:
     def __init__(self, filename: str):
         self._filename = Path(filename)
 
@@ -202,7 +202,8 @@ class PatchAllScope(ActionHandler):
             )
 
     def __call__(self):
-        old_parents = OldParents('old_parents.json')
+        old_parents = ParentsCol('old_parents.json')
+        new_parents = ParentsCol('new_parents.json')
         it = Parent.scan(
             rate_limit=1,
             filter_condition=(Parent.meta['scope'] == ParentScope.ALL.value)
@@ -246,6 +247,7 @@ class PatchAllScope(ActionHandler):
                     _LOG.info(
                         f'Creating a new parent with id {copy.parent_id}')
                     copy.save()
+                    new_parents.add(copy.parent_id)
             _LOG.info(f'Parent {parent.parent_id} was patched')
 
 
@@ -276,7 +278,8 @@ class PatchSpecificScope(ActionHandler):
             return parent
 
     def __call__(self, tenant_names: Tuple[str, ...], types: List[str]):
-        old_parents = OldParents('old_parents.json')
+        old_parents = ParentsCol('old_parents.json')
+        new_parents = ParentsCol('new_parents.json')
         _LOG.info('Going to patch specific scopes')
         if not types:
             _LOG.warning('Concrete types are not provided. All the found '
@@ -307,6 +310,7 @@ class PatchSpecificScope(ActionHandler):
                     creation_timestamp=java_timestamp(),
                     type_scope=f'{parent.type}{COMPOUND_KEYS_SEPARATOR}{ParentScope.SPECIFIC}{COMPOUND_KEYS_SEPARATOR}{tenant.name}'
                 )
+                new_parents.add(copy.parent_id)
                 _LOG.info(f'A new specific parent: '
                           f'{copy.parent_id}:{copy.type} will be created')
 
