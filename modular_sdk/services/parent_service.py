@@ -53,22 +53,20 @@ class ParentService:
         return Parent.scan(filter_condition=condition, limit=limit,
                            last_evaluated_key=last_evaluated_key)
 
-    @staticmethod
-    def i_get_parent_by_customer(
-            customer_id: str, 
-            parent_type: Optional[Union[str, List[str]]] = None,
-            is_deleted: Optional[bool] = None,
-            meta_conditions: Optional[Condition] = None,
-            limit: Optional[int] = None,
-            last_evaluated_key: Optional[dict] = None
-    ) -> Iterator[Parent]:
+    def i_get_parent_by_customer(self, customer_id: str,
+                                 parent_type: Optional[Union[ParentType, List[ParentType]]] = None,  # noqa
+                                 is_deleted: Optional[bool] = None,
+                                 meta_conditions: Optional[Condition] = None,
+                                 limit: Optional[int] = None,
+                                 last_evaluated_key: Optional[dict] = None
+                                 ) -> Iterator[Parent]:
         """
         Meta conditions can be used like this:
         parent = next(parent_service.i_get_parent_by_customer(
             customer_id='EPAM Systems',
             parent_type='CUSTODIAN',
             is_deleted=False,
-            meta_conditions=(Parent.meta['scope'] == 'ALL') & Parent.meta['clouds'].contains('AWS'),
+            meta_conditions=(Parent.meta['key'] == 'value'),
             limit=1
         ), None)
         :param customer_id:
@@ -80,13 +78,18 @@ class ParentService:
         :return:
         """
         condition = meta_conditions
-        if parent_type:  # list or str
-            types = parent_type if isinstance(parent_type, list) else [parent_type]
-            condition &= (Parent.type.is_in(*types))
+        rkc = None
+        if isinstance(parent_type, list):
+            condition &= (Parent.type.is_in(*parent_type))
+        elif parent_type:  # enum value or str
+            rkc = Parent.type_scope.startswith(
+                self.build_type_scope(parent_type)
+            )
         if isinstance(is_deleted, bool):
             condition &= (Parent.is_deleted == is_deleted)
-        return Parent.customer_id_type_index.query(
+        return Parent.customer_id_scope_index.query(
             hash_key=customer_id,
+            range_key_condition=rkc,
             filter_condition=condition,
             limit=limit,
             last_evaluated_key=last_evaluated_key

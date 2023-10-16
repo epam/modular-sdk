@@ -26,17 +26,6 @@ SCOPE_ATTR = 's'
 MODULAR_PARENTS_TABLE_NAME = 'Parents'
 
 
-class CustomerIdTypeIndex(BaseGSI):
-    class Meta(BaseMeta):
-        index_name = f"{CUSTOMER_ID}-index"
-        read_capacity_units = 1
-        write_capacity_units = 1
-        projection = AllProjection()
-
-    customer_id = UnicodeAttribute(hash_key=True, attr_name=CUSTOMER_ID)
-    # type = UnicodeAttribute(range_key=True, attr_name=TYPE)
-
-
 class CustomerIdScopeIndex(BaseGSI):
     class Meta(BaseMeta):
         index_name = f'{CUSTOMER_ID}-{SCOPE_ATTR}-index'
@@ -81,7 +70,6 @@ class Parent(BaseRoleAccessModel):
     # adhere to [type]#[scope]#[tenant|cloud]
     type_scope = UnicodeAttribute(attr_name=SCOPE_ATTR, null=True)
 
-    customer_id_type_index = CustomerIdTypeIndex()
     customer_id_scope_index = CustomerIdScopeIndex()
     # application_id_index = ApplicationIdIndex()  # use when it becomes real
 

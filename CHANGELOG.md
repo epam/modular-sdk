@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   should be immediately taken to advantage of
 - added `cid-s-index` (customer_id, scope) index to Parent model. It's used 
   in order to adjust connections between tenants and parents
+- removed `cid-index` from Parent model
 - added new public methods to parent_service which use `cid-s-index`:
   - create_all_scope
   - create_tenant_scope
