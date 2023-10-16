@@ -237,7 +237,7 @@ class ParentService:
             parent_id=generate_id(),
             customer_id=customer_id,
             application_id=application_id,
-            type=type_,
+            type=type_.value if isinstance(type_, ParentType) else type_,
             description=description,
             meta=meta if isinstance(meta, dict) else {},
             is_deleted=is_deleted,

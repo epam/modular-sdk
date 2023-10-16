@@ -2,7 +2,8 @@ from typing import Optional, Iterator
 
 from modular_sdk.commons import RESPONSE_BAD_REQUEST_CODE, \
     RESPONSE_RESOURCE_NOT_FOUND_CODE, generate_id, default_instance
-from modular_sdk.commons.constants import AVAILABLE_APPLICATION_TYPES
+from modular_sdk.commons.constants import AVAILABLE_APPLICATION_TYPES, \
+    ApplicationType
 from modular_sdk.commons.exception import ModularException
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.commons.time_helper import utc_iso
@@ -39,7 +40,7 @@ class ApplicationService:
         return Application(
             application_id=application_id,
             customer_id=customer_id,
-            type=type,
+            type=type.value if isinstance(type, ApplicationType) else type,
             description=description,
             is_deleted=is_deleted,
             meta=meta,
