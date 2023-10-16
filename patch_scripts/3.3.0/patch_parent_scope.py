@@ -1,12 +1,16 @@
 import argparse
+import json
 import logging
 import logging.config
 import sys
+import uuid
 from abc import ABC, abstractmethod
-from typing import Callable, List, Tuple, Generator
+from pathlib import Path
+from typing import Callable, List, Tuple, Generator, Optional
 
 from modular_sdk.commons.constants import ALLOWED_TENANT_PARENT_MAP_KEYS, \
     ParentScope, COMPOUND_KEYS_SEPARATOR
+from modular_sdk.commons.time_helper import java_timestamp
 from modular_sdk.models.parent import Parent
 from modular_sdk.models.tenant import Tenant
 
@@ -18,9 +22,8 @@ QUESTION1 = 'Do you really want to patch the parent? Although it has scope ' \
             'SPECIFIC multiple tenants can be linked to it. If you proceed ' \
             'the patch only the linkage with {tenant} will remain. ' \
             'Others WILL be destroyed!'
-QUESTION2 = 'Parent has multiple clouds in its scope. ' \
-            'Multiple clouds cannot be patched. Do you want to allow ' \
-            'this parent for all the tenants independently on cloud?'
+QUESTION2 = 'Parent has multiple clouds in its scope. A new parent for each ' \
+            'cloud will be created. Do you agree?'
 
 
 def get_logger():
@@ -94,6 +97,21 @@ class TermColor:
         return f'{cls.DEBUG}{st}{cls.DEBUG}'
 
 
+class OldParents:
+    def __init__(self, filename: str):
+        self._filename = Path(filename)
+
+    def add(self, pid: str):
+        if not self._filename.exists():
+            data = set()
+        else:
+            with open(self._filename, 'r') as file:
+                data = set(json.load(file))
+        data.add(pid)
+        with open(self._filename, 'w') as file:
+            json.dump(list(data), file)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description='Parent scope patch entrypoint'
@@ -159,40 +177,82 @@ class ActionHandler(ABC):
 
 
 class PatchAllScope(ActionHandler):
+    @staticmethod
+    def divide_by_cloud(parent: Parent) -> Generator[Parent, None, None]:
+        """
+        Creates a new parent with the same business logic
+        :param parent:
+        :return:
+        """
+        meta = parent.meta.as_dict()
+        clouds = meta.pop('clouds', None) or []  # they must be
+        meta.pop('scope', None)  # ALL
+        for cloud in clouds:
+            yield Parent(
+                parent_id=str(uuid.uuid4()),
+                customer_id=parent.customer_id,
+                application_id=parent.application_id,
+                type=parent.type,
+                description=parent.description,
+                meta=meta,
+                is_deleted=False,
+                creation_timestamp=java_timestamp(),
+                type_scope=f'{parent.type}{COMPOUND_KEYS_SEPARATOR}{ParentScope.ALL}{COMPOUND_KEYS_SEPARATOR}{cloud}'
+                # noqa
+            )
+
     def __call__(self):
+        old_parents = OldParents('old_parents.json')
         it = Parent.scan(
             rate_limit=1,
             filter_condition=(Parent.meta['scope'] == ParentScope.ALL.value)
         )
         for parent in it:
-            _LOG.info(f'Going to patch parent: {parent.parent_id}')
+            _LOG.info(f'Going to patch '
+                      f'parent: {parent.parent_id}:{parent.type}')
             clouds = parent.meta.as_dict().get('clouds') or []
             if not clouds:
                 _LOG.info('Parent has no clouds in its scope. '
                           'Patching with no clouds')
                 parent.update(actions=[
                     Parent.type_scope.set(
-                        f'{parent.type}{COMPOUND_KEYS_SEPARATOR}{ParentScope.ALL}{COMPOUND_KEYS_SEPARATOR}')  # noqa
+                        f'{parent.type}{COMPOUND_KEYS_SEPARATOR}{ParentScope.ALL}{COMPOUND_KEYS_SEPARATOR}')
+                    # noqa
                 ])
             elif len(clouds) == 1:
                 _LOG.info('Parent has one cloud in its scope. '
                           'Patching with one clouds')
                 parent.update(actions=[
                     Parent.type_scope.set(
-                        f'{parent.type}{COMPOUND_KEYS_SEPARATOR}{ParentScope.ALL}{COMPOUND_KEYS_SEPARATOR}{clouds[0]}')  # noqa
+                        f'{parent.type}{COMPOUND_KEYS_SEPARATOR}{ParentScope.ALL}{COMPOUND_KEYS_SEPARATOR}{clouds[0]}')
+                    # noqa
                 ])
-            else:  # multiple clouds
+            elif len(clouds) == 3:  # all clouds
+                _LOG.info(f'Parent contains all the '
+                          f'clouds: {", ".join(clouds)}. Can be patched')
+                parent.update(actions=[
+                    Parent.type_scope.set(
+                        f'{parent.type}{COMPOUND_KEYS_SEPARATOR}{ParentScope.ALL}{COMPOUND_KEYS_SEPARATOR}')
+                    # noqa
+                ])
+            else:  # multiple clouds but not all
                 if not query_yes_no(TermColor.blue(QUESTION2)):
                     _LOG.info('Skipping patch')
                     continue
-                parent.update(actions=[
-                    Parent.type_scope.set(
-                        f'{parent.type}{COMPOUND_KEYS_SEPARATOR}{ParentScope.ALL}{COMPOUND_KEYS_SEPARATOR}')  # noqa
-                ])
+                old_parents.add(parent.parent_id)
+                _LOG.info(
+                    f'Parent with id {parent.parent_id} won`t be changed')
+                for copy in self.divide_by_cloud(parent):
+                    _LOG.info(
+                        f'Creating a new parent with id {copy.parent_id}')
+                    copy.save()
             _LOG.info(f'Parent {parent.parent_id} was patched')
 
 
 class PatchSpecificScope(ActionHandler):
+
+    def __init__(self):
+        self._parent_cache = {}
 
     @staticmethod
     def iter_tenant_parents(tenant: Tenant, types: List[str]
@@ -207,7 +267,16 @@ class PatchSpecificScope(ActionHandler):
                 if pid.get(t):
                     yield pid[t]
 
+    def get_parent(self, pid: str) -> Optional[Parent]:
+        if pid in self._parent_cache:
+            return self._parent_cache[pid]
+        parent = Parent.get_nullable(pid)
+        if parent:
+            self._parent_cache[pid] = parent
+            return parent
+
     def __call__(self, tenant_names: Tuple[str, ...], types: List[str]):
+        old_parents = OldParents('old_parents.json')
         _LOG.info('Going to patch specific scopes')
         if not types:
             _LOG.warning('Concrete types are not provided. All the found '
@@ -219,21 +288,27 @@ class PatchSpecificScope(ActionHandler):
                 continue
             for parent_id in self.iter_tenant_parents(tenant, types):
                 _LOG.info(f'Going to patch parent: {parent_id}')
-                parent = Parent.get_nullable(parent_id)
+                parent = self.get_parent(parent_id)
                 if not parent:
                     _LOG.warning('Parent not found. Skipping')
                     continue
-                if not query_yes_no(
-                        TermColor.blue(QUESTION1.format(tenant=name))):
-                    _LOG.info(f'Skipping patch')
-                    continue
-                parent.update(actions=[
-                    Parent.type_scope.set(
-                        f'{parent.type}{COMPOUND_KEYS_SEPARATOR}{ParentScope.SPECIFIC}{COMPOUND_KEYS_SEPARATOR}{tenant.name}')  # noqa
-                    # noqa
-                ])
-                _LOG.info(f'Parent {parent_id} was patched')
-                # also we should remove scope and clouds from meta
+                old_parents.add(parent_id)
+                meta = parent.meta.as_dict()
+                meta.pop('scope', None)
+                meta.pop('clouds', None)
+                copy = Parent(
+                    parent_id=str(uuid.uuid4()),
+                    customer_id=parent.customer_id,
+                    application_id=parent.application_id,
+                    type=parent.type,
+                    description=parent.description,
+                    meta=meta,
+                    is_deleted=False,
+                    creation_timestamp=java_timestamp(),
+                    type_scope=f'{parent.type}{COMPOUND_KEYS_SEPARATOR}{ParentScope.SPECIFIC}{COMPOUND_KEYS_SEPARATOR}{tenant.name}'
+                )
+                _LOG.info(f'A new specific parent: '
+                          f'{copy.parent_id}:{copy.type} will be created')
 
 
 def main():
