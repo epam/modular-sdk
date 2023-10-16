@@ -290,7 +290,8 @@ class PatchSpecificScope(ActionHandler):
                 _LOG.warning(f'{name} - not found. Skipping')
                 continue
             for parent_id in self.iter_tenant_parents(tenant, types):
-                _LOG.info(f'Going to patch parent: {parent_id}')
+                _LOG.info(f'Going to patch parent: {parent_id} for '
+                          f'tenant: {name}')
                 parent = self.get_parent(parent_id)
                 if not parent:
                     _LOG.warning('Parent not found. Skipping')
@@ -313,6 +314,7 @@ class PatchSpecificScope(ActionHandler):
                 new_parents.add(copy.parent_id)
                 _LOG.info(f'A new specific parent: '
                           f'{copy.parent_id}:{copy.type} will be created')
+                copy.save()
 
 
 def main():
