@@ -289,6 +289,7 @@ class PatchSpecificScope(ActionHandler):
             if not tenant:
                 _LOG.warning(f'{name} - not found. Skipping')
                 continue
+            _LOG.info(f'Going to patch tenant: {name}')
             for parent_id in self.iter_tenant_parents(tenant, types):
                 _LOG.info(f'Going to patch parent: {parent_id} for '
                           f'tenant: {name}')
