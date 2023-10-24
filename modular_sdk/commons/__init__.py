@@ -1,10 +1,10 @@
 import copy
-from datetime import datetime
+import dataclasses
+import warnings
+from functools import partial
 from uuid import uuid4
 
 from boto3.dynamodb.types import TypeDeserializer, TypeSerializer
-import dataclasses
-from functools import partial
 
 from modular_sdk.commons.exception import ModularException
 
@@ -19,6 +19,23 @@ RESPONSE_NOT_IMPLEMENTED = 501
 RESPONSE_SERVICE_UNAVAILABLE_CODE = 503
 
 
+def deprecated(message):
+    def deprecated_decorator(func):
+        def deprecated_func(*args, **kwargs):
+            warnings.warn(
+                "{} is a deprecated function. {}".format(func.__name__,
+                                                         message),
+                category=DeprecationWarning,
+                stacklevel=2)
+            warnings.simplefilter('default', DeprecationWarning)
+            return func(*args, **kwargs)
+
+        return deprecated_func
+
+    return deprecated_decorator
+
+
+@deprecated('not a part of the lib')
 def build_response(content, code=200):
     if code == RESPONSE_OK_CODE:
         if isinstance(content, str):
@@ -72,13 +89,6 @@ def validate_params(event, required_params_list):
 
 def generate_id():
     return str(uuid4())
-
-
-def get_iso_timestamp():
-    """
-    Deprecated, use `modular_sdk.commons.time_helper.utc_iso` instead
-    """
-    return datetime.now().isoformat()
 
 
 def default_instance(value, _type: type, *args, **kwargs):
@@ -154,6 +164,7 @@ class DataclassBase:
     dataclasses from this class.
     Ignore warnings below
     """
+
     @staticmethod
     def _factory(x: dict, exclude: set = None) -> dict:
         dct = {k: v for k, v in x if v is not None}

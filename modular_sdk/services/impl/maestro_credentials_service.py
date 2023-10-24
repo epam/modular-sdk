@@ -12,17 +12,15 @@ from typing import Optional, Union, Dict, Callable, TypeVar, TypedDict, Literal
 from botocore.exceptions import ClientError
 from urllib3.util import parse_url, Url
 
-from modular_sdk.modular import Modular
 from modular_sdk.commons import DataclassBase
-from modular_sdk.commons.constants import AZURE_CLOUD, GOOGLE_CLOUD, \
-    AWS_ROLE, AWS_CREDENTIALS, AZURE_CREDENTIALS, AZURE_CERTIFICATE, \
-    GCP_SERVICE_ACCOUNT, GCP_COMPUTE_ACCOUNT, DEFAULT_AWS_REGION, \
-    ENV_AZURE_SUBSCRIPTION_ID, ENV_CLOUDSDK_CORE_PROJECT, AWS_CLOUD, \
-    RABBITMQ_TYPE, HTTPS_ATTR, HTTP_ATTR
+from modular_sdk.commons.constants import DEFAULT_AWS_REGION, \
+    ENV_AZURE_SUBSCRIPTION_ID, ENV_CLOUDSDK_CORE_PROJECT, HTTPS_ATTR, \
+    HTTP_ATTR, Cloud, ApplicationType
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.application import Application
 from modular_sdk.models.parent import Parent
 from modular_sdk.models.tenant import Tenant
+from modular_sdk.modular import Modular
 from modular_sdk.services.application_service import ApplicationService
 from modular_sdk.services.environment_service import EnvironmentService, \
     EnvironmentContext
@@ -238,6 +236,23 @@ class GOOGLECredentialsRaw1(TypedDict):
 # ----- not used currently -----
 
 
+@dataclasses.dataclass()
+class K8SServiceAccountApplicationMeta(DataclassBase):
+    """
+    Application with type 'K8S_SERVICE_ACCOUNT' meta
+    """
+    endpoint: str
+    ca: str  # certificate authority
+
+
+@dataclasses.dataclass(repr=False)
+class K8SServiceAccountApplicationSecret(DataclassBase):
+    """
+    Application with type 'K8S_SERVICE_ACCOUNT' secret
+    """
+    token: str
+
+
 class _CredentialsBase(DataclassBase):
     """
     Some useful method for credentials.
@@ -307,12 +322,59 @@ class RabbitMQCredentials(_CredentialsBase):
     sdk_access_key: Optional[str] = None
 
 
+@dataclasses.dataclass(repr=False)
+class K8SServiceAccountCredentials(DataclassBase):
+    endpoint: str
+    ca: str
+    token: Optional[str] = None
+
+    def ca_file(self) -> Path:
+        with tempfile.NamedTemporaryFile(delete=False) as file:
+            file.write(base64.b64decode(self.ca))
+
+    def _build_config(self, context: Optional[str] = 'temp') -> dict:
+        cluster = context + '-cluster'
+        user = context + '-user'
+        return {
+            'apiVersion': 'v1',
+            'kind': 'Config',
+            'clusters': [{
+                'name': cluster,
+                'cluster': {
+                    'server': self.endpoint,
+                    'certificate-authority-data': self.ca
+                }
+            }],
+            'contexts': [{
+                'name': context,
+                'context': {
+                    'cluster': cluster,
+                    'user': user
+                }
+            }],
+            'current-context': context,
+            'preferences': {},
+            'users': [{
+                'name': user,
+                'user': {
+                    'token': self.token
+                }
+            }]
+        }
+
+    def save(self) -> Path:
+        with tempfile.NamedTemporaryFile(delete=False, mode='w') as fp:
+            json.dump(self._build_config(), fp, separators=(',', ':'))
+        return Path(fp.name)
+
+
 Credentials = Union[
     AWSCredentials,
     AZURECredentials,
     AZURECertificate,
     GOOGLECredentials,
-    RabbitMQCredentials
+    RabbitMQCredentials,
+    K8SServiceAccountCredentials
 ]
 
 
@@ -438,15 +500,15 @@ class MaestroCredentialsService:
     def complete_credentials_dict(credentials: dict,
                                   tenant: Tenant, **kwargs) -> dict:
         _LOG.info('Going to fulfill the credentials')
-        if tenant.cloud == AZURE_CLOUD:
+        if tenant.cloud == Cloud.AZURE:
             _LOG.info('Tenant`s cloud is AZURE. Adding subscription id')
             if not credentials.get(ENV_AZURE_SUBSCRIPTION_ID):
                 credentials[ENV_AZURE_SUBSCRIPTION_ID] = tenant.project
             return credentials
-        elif tenant.cloud == AWS_CLOUD:
+        elif tenant.cloud == Cloud.AWS:
             _LOG.info('Tenant`s cloud is AWS. Proxying creds')
             return credentials
-        elif tenant.cloud == GOOGLE_CLOUD:
+        elif tenant.cloud == Cloud.GOOGLE:
             _LOG.info('Creds are requested for google tenant. '
                       'Adding project id')
             credentials[ENV_CLOUDSDK_CORE_PROJECT] = tenant.project
@@ -517,13 +579,14 @@ class MaestroCredentialsService:
         Method must have application as input
         """
         return {
-            AZURE_CREDENTIALS: self._get_azure_credentials,
-            AZURE_CERTIFICATE: self._get_azure_certificate,
-            AWS_CREDENTIALS: self._get_aws_credentials,
-            AWS_ROLE: self._get_aws_credentials_from_role,
-            GCP_SERVICE_ACCOUNT: self._get_gcp_credentials,
-            GCP_COMPUTE_ACCOUNT: self._get_gcp_credentials,
-            RABBITMQ_TYPE: self._get_rabbitmq_credentials
+            ApplicationType.AZURE_CREDENTIALS: self._get_azure_credentials,
+            ApplicationType.AZURE_CERTIFICATE: self._get_azure_certificate,
+            ApplicationType.AWS_CREDENTIALS: self._get_aws_credentials,
+            ApplicationType.AWS_ROLE: self._get_aws_credentials_from_role,
+            ApplicationType.GCP_SERVICE_ACCOUNT: self._get_gcp_credentials,
+            ApplicationType.GCP_COMPUTE_ACCOUNT: self._get_gcp_credentials,
+            ApplicationType.RABBITMQ: self._get_rabbitmq_credentials,
+            ApplicationType.K8S_SERVICE_ACCOUNT: self._get_k8s_service_account_credentials
         }
 
     def _get_aws_credentials_from_role(self, application: Application,
@@ -678,4 +741,22 @@ class MaestroCredentialsService:
             request_queue=meta.request_queue,
             response_queue=meta.response_queue,
             sdk_access_key=meta.sdk_access_key
+        )
+
+    def _get_k8s_service_account_credentials(self, application: Application,
+                                             tenant: Optional[Tenant] = None
+                                             ) -> K8SServiceAccountCredentials:
+        meta = K8SServiceAccountApplicationMeta.from_dict(
+            application.meta.as_dict()
+        )
+        token = None
+        if application.secret:
+            param = self._ssm_service.get_parameter(application.secret)
+            if param:
+                token = K8SServiceAccountApplicationSecret.from_dict(
+                    param).token
+        return K8SServiceAccountCredentials(
+            endpoint=meta.endpoint,
+            ca=meta.ca,
+            token=token
         )

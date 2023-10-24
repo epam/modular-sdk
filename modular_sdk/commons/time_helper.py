@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -26,3 +27,7 @@ def utc_iso(_from: Optional[datetime] = None) -> str:
     """
     obj = _from or utc_datetime()
     return obj.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
+
+
+def java_timestamp() -> float:
+    return time.time() * 1e3
