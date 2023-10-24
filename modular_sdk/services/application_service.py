@@ -1,9 +1,9 @@
 from typing import Optional, Iterator
 
 from modular_sdk.commons import RESPONSE_BAD_REQUEST_CODE, \
-    RESPONSE_RESOURCE_NOT_FOUND_CODE, generate_id, default_instance, \
-    RESPONSE_OK_CODE
-from modular_sdk.commons.constants import AVAILABLE_APPLICATION_TYPES
+    RESPONSE_RESOURCE_NOT_FOUND_CODE, generate_id, default_instance
+from modular_sdk.commons.constants import AVAILABLE_APPLICATION_TYPES, \
+    ApplicationType
 from modular_sdk.commons.exception import ModularException
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.commons.time_helper import utc_iso
@@ -40,7 +40,7 @@ class ApplicationService:
         return Application(
             application_id=application_id,
             customer_id=customer_id,
-            type=type,
+            type=type.value if isinstance(type, ApplicationType) else type,
             description=description,
             is_deleted=is_deleted,
             meta=meta,
@@ -95,16 +95,15 @@ class ApplicationService:
         return application.get_json()
 
     def mark_deleted(self, application: Application):
+        _LOG.debug(f'Going to mark the application '
+                   f'{application.application_id} as deleted')
         if application.is_deleted:
-            _LOG.error(f'Application \'{application.application_id}\' '
-                       f'has already been removed.')
-            raise ModularException(
-                code=RESPONSE_OK_CODE,
-                content=f'Application \'{application.application_id}\' '
-                        f'has already been removed.'
-            )
+            _LOG.warning(f'Application \'{application.application_id}\' '
+                         f'is already deleted.')
+            return
         _LOG.debug(f'Searching for application parents')
         from modular_sdk.services.parent_service import ParentService
+        # TODO USE GSI
         app_parent = next(ParentService.i_list_application_parents(
             application_id=application.application_id,
             limit=1
@@ -117,7 +116,8 @@ class ApplicationService:
                 code=RESPONSE_BAD_REQUEST_CODE,
                 content=message
             )
-        _LOG.debug(f'Deleting application \'{application.application_id}\'')
-        application.is_deleted = True
-        application.deletion_date = utc_iso()
-        return application
+        application.update(actions=[
+            Application.is_deleted.set(True),
+            Application.deletion_date.set(utc_iso())
+        ])
+        _LOG.debug('Application was marked as deleted')

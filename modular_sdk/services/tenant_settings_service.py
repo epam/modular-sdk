@@ -3,7 +3,7 @@ from typing import Optional
 from pynamodb.pagination import ResultIterator
 
 from modular_sdk.commons import RESPONSE_BAD_REQUEST_CODE
-from modular_sdk.commons import build_response
+from modular_sdk.commons.exception import ModularException
 from modular_sdk.models.tenant_settings import TenantSettings
 
 RESOURCE_QUOTA = 'RESOURCE_QUOTA'
@@ -51,7 +51,7 @@ class TenantSettingsService:
                    tenants))
 
         if not tenant_item:
-            raise build_response(
+            raise ModularException(
                 code=RESPONSE_BAD_REQUEST_CODE,
                 content=f'Tenant with name {tenant} is not found'
             )

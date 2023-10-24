@@ -235,13 +235,10 @@ class RawBaseModel(models.Model):
             return cls.get(hash_key, range_key,
                            attributes_to_get=attributes_to_get)
         except DoesNotExist as e:
-            _LOG.warning('The entity does not exist '
-                         'with the following keys: Model:{0}; '
-                         'hash_key:{1}; sort_key:{2}'.format(cls,
-                                                             hash_key,
-                                                             range_key))
-            _LOG.warning(e.msg)
-            return None
+            _LOG.debug(f'{cls.__name__} does not exist '
+                       f'with the following keys: hash_key={hash_key}, '
+                       f'range_key={range_key}: {e.msg}')
+            return
 
     def save(self, condition: Optional[Condition] = None,
              settings: OperationSettings = OperationSettings.default

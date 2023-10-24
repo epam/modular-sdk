@@ -2,21 +2,18 @@ from typing import Optional, Iterator, Union, List
 
 from pynamodb.pagination import ResultIterator
 
-from modular_sdk.commons import (RESPONSE_BAD_REQUEST_CODE, default_instance)
+from modular_sdk.commons import RESPONSE_BAD_REQUEST_CODE, default_instance, \
+    deprecated
 from modular_sdk.commons.constants import ALLOWED_TENANT_PARENT_MAP_KEYS
 from modular_sdk.commons.exception import ModularException
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.parent import Parent
-from modular_sdk.models.pynamodb_extension.pynamodb_to_pymongo_adapter import Result
+from modular_sdk.models.pynamodb_extension.pynamodb_to_pymongo_adapter import \
+    Result
 from modular_sdk.models.tenant import Tenant
 from modular_sdk.services.customer_service import CustomerService
 
-CLOUD_KEY = 'c'
-DNTL_NAME_KEY = 'dntl'
-DNTL_INDEX_NAME = 'dntl-c-index'
-CLOUD_INDEX_NAME = 'c-index'
-
-_LOG = get_logger('TenantService')
+_LOG = get_logger(__name__)
 
 
 class TenantService:
@@ -24,8 +21,29 @@ class TenantService:
         self.customer_service = customer_service
 
     @staticmethod
-    def get(tenant_name):
-        return Tenant.get_nullable(hash_key=tenant_name)
+    def get(tenant_name: str,
+            attributes_to_get: Optional[list] = None) -> Optional[Tenant]:
+        return Tenant.get_nullable(
+            hash_key=tenant_name,
+            attributes_to_get=attributes_to_get
+        )
+
+    def does_exist(self, tenant_name: str,
+                   is_active: Optional[bool] = None) -> bool:
+        """
+        Use this method only if you really don't need the tenant instance.
+        Only if you need to know whether the tenant exists
+        :param tenant_name:
+        :param is_active: if None, this attribute is ignored. If bool,
+        the tenant will be checked
+        :return:
+        """
+        if isinstance(is_active, bool):
+            item = self.get(tenant_name,
+                            attributes_to_get=[Tenant.name, Tenant.is_active])
+            return bool(item) and item.is_active == is_active
+        # is_active == None
+        return bool(self.get(tenant_name, attributes_to_get=[Tenant.name]))
 
     @staticmethod
     def scan_tenants(only_active=False, limit: int = None,
@@ -43,10 +61,12 @@ class TenantService:
                            filter_condition=condition)
 
     @classmethod
+    @deprecated('represented logic is deprecated')
     def get_tenants_by_parent_id(cls, parent_id, only_active=True):
         return list(cls.i_get_tenant_by_parent_id(parent_id, only_active))
 
     @staticmethod
+    @deprecated('represented logic is deprecated')
     def i_get_tenant_by_parent_id(parent_id: str,
                                   active: Optional[bool] = None,
                                   limit: Optional[int] = None,
@@ -110,9 +130,9 @@ class TenantService:
 
     @staticmethod
     def i_get_by_dntl(
-        dntl: str, cloud: str = None, active: Optional[bool] = None,
-        limit: int = None, last_evaluated_key: Union[dict, str] = None,
-        attributes_to_get: List[str] = None
+            dntl: str, cloud: str = None, active: Optional[bool] = None,
+            limit: int = None, last_evaluated_key: Union[dict, str] = None,
+            attributes_to_get: List[str] = None
     ):
         fc = None if active is None else (Tenant.is_active == active)
         rc = None if cloud is None else (Tenant.cloud == cloud.upper())
