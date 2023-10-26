@@ -60,7 +60,9 @@ def tracer_decorator(is_scheduled=False, is_job=False):
             segment = runtime_tracer.start()
             if is_job:
                 meta = None
-                if event.get('dry_run') == 'true':
+                dry_run = event.get('dry_run')
+                if dry_run in ('true', 't', 'y', 'yes') \
+                        or (isinstance(dry_run, bool) and dry_run):
                     meta = {'message': 'Dry run mode enabled.'}
                 job_tracer.start(job_id=request_id, meta=meta)
             try:
