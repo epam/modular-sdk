@@ -156,6 +156,8 @@ class ParentService:
         dct['scope'] = parent.scope
         if parent.cloud:
             dct['cloud'] = parent.cloud
+        if parent.tenant_name:
+            dct['tenant_name'] = parent.tenant_name
         return dct
 
     @staticmethod
