@@ -160,8 +160,7 @@ def dict_without(dct: dict, without: dict) -> dict:
 
 class DataclassBase:
     """
-    Provides some useful methods for dataclass instances. Inherit your
-    dataclasses from this class.
+    Provides some useful methods for dataclass instances.
     Ignore warnings below
     """
 

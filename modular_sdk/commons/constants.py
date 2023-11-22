@@ -144,7 +144,7 @@ class ApplicationType(str, Enum):
     RIGHTSIZER = 'RIGHTSIZER'
     RABBITMQ = 'RABBITMQ'
     DEFECT_DOJO = 'DEFECT_DOJO'
-    K8S_SERVICE_ACCOUNT = 'K8S_SERVICE_ACCOUNT'
+    K8S_KUBE_CONFIG = 'K8S_KUBE_CONFIG'
 
     @classmethod
     def iter(cls):
