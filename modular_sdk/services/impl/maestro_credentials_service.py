@@ -236,14 +236,6 @@ class GOOGLECredentialsRaw1(TypedDict):
 # ----- not used currently -----
 
 
-@dataclasses.dataclass()
-class K8SKubeConfigApplicationMeta(DataclassBase):
-    """
-    Application with type 'K8S_KUBE_CONFIG' meta
-    """
-    uuid: str
-
-
 # K8SKubeConfigApplicationSecret contains raw kubeconfig
 
 
