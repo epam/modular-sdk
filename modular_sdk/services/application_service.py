@@ -102,20 +102,20 @@ class ApplicationService:
                          f'is already deleted.')
             return
         _LOG.debug(f'Searching for application parents')
-        from modular_sdk.services.parent_service import ParentService
-        # TODO USE GSI
-        app_parent = next(ParentService.i_list_application_parents(
-            application_id=application.application_id,
-            limit=1
-        ), None)
-        if app_parent:
-            message = f'There are parents associated ' \
-                      f'with the application: {app_parent.parent_id}'
-            _LOG.error(message)
-            raise ModularException(
-                code=RESPONSE_BAD_REQUEST_CODE,
-                content=message
-            )
+        # from modular_sdk.services.parent_service import ParentService
+        # # TODO USE GSI
+        # app_parent = next(ParentService.i_list_application_parents(
+        #     application_id=application.application_id,
+        #     limit=1
+        # ), None)
+        # if app_parent:
+        #     message = f'There are parents associated ' \
+        #               f'with the application: {app_parent.parent_id}'
+        #     _LOG.error(message)
+        #     raise ModularException(
+        #         code=RESPONSE_BAD_REQUEST_CODE,
+        #         content=message
+        #     )
         application.update(actions=[
             Application.is_deleted.set(True),
             Application.deletion_date.set(utc_iso())
