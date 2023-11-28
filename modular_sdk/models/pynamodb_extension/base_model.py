@@ -350,8 +350,6 @@ class RawBaseModel(models.Model):
             settings: OperationSettings = OperationSettings.default,
     ) -> ResultIterator[_T]:
         if cls.is_docker:
-            if page_size:
-                limit = page_size
             return cls.mongodb_handler().query(
                 model_class=cls,
                 hash_key=hash_key,
@@ -383,8 +381,6 @@ class RawBaseModel(models.Model):
             settings: OperationSettings = OperationSettings.default,
     ) -> ResultIterator[_T]:
         if cls.is_docker:
-            if page_size:
-                limit = page_size
             return cls.mongodb_handler().scan(
                 model_class=cls,
                 filter_condition=filter_condition,
@@ -522,8 +518,6 @@ class RawBaseGSI(indexes.GlobalSecondaryIndex):
               page_size: Optional[int] = None,
               rate_limit: Optional[float] = None) -> ResultIterator[_M]:
         if cls.is_docker:
-            if page_size:
-                limit = page_size
             return cls.mongodb_handler().query(
                 model_class=cls,
                 hash_key=hash_key,
