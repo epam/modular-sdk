@@ -4,8 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-# [3.3.7] - 2023-11-28
+# [3.3.8] - 2023-11-28
 - add `RIGHTSIZER_LICENSES` application type
+
+# [3.3.7] - 2023-11-28
+- do not scan parents when we remove application
 
 # [3.3.6] - 2023-11-14
 - remove K8S application meta dataclass because it's empty
