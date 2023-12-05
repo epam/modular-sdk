@@ -32,7 +32,7 @@ class CustomerIdTypeIndex(BaseGSI):
         projection = AllProjection()
 
     customer_id = UnicodeAttribute(hash_key=True, attr_name=CUSTOMER_ID)
-    type = UnicodeAttribute(range_key=True, attr_name=TYPE) # todo deprecated
+    # type = UnicodeAttribute(range_key=True, attr_name=TYPE)
 
 
 class Application(BaseRoleAccessModel):
