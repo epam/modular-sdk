@@ -13,6 +13,7 @@ from modular_sdk.commons.time_helper import java_timestamp
 from modular_sdk.commons.time_helper import utc_iso
 from modular_sdk.models.parent import Parent
 from modular_sdk.models.tenant import Tenant
+from modular_sdk.modular import Modular
 from modular_sdk.services.customer_service import CustomerService
 from modular_sdk.services.tenant_service import TenantService
 
@@ -101,7 +102,8 @@ class ParentService:
                meta: Optional[dict] = None,
                scope: Optional[ParentScope] = None,
                tenant_name: Optional[str] = None,
-               cloud: Optional[str] = None) -> Parent:
+               cloud: Optional[str] = None,
+               created_by: Optional[str] = None) -> Parent:
         """
         Make sure to provide valid scope, tenant_name and cloud. Or
         use specific methods: create_all_scope, create_tenant_scope
@@ -114,6 +116,7 @@ class ParentService:
         :param scope:
         :param tenant_name:
         :param cloud:
+        :param created_by:
         :return:
         """
         # TODO either move validation from here to outside or make the
@@ -134,6 +137,13 @@ class ParentService:
                 code=RESPONSE_RESOURCE_NOT_FOUND_CODE,
                 content=f'Customer with name \'{customer_id}\' does not exist'
             )
+        if not created_by:
+            created_by = Modular().thread_local_storage_service().get(
+                'modular_user')
+            if not created_by:
+                _LOG.warning(
+                    f'User \'modular_user\' not found in thread local storage. '
+                    f'The "created_by" field will be null.')
         return self._create(
             customer_id=customer_id,
             application_id=application_id,
@@ -143,7 +153,8 @@ class ParentService:
             is_deleted=is_deleted,
             scope=scope,
             tenant_name=tenant_name,
-            cloud=cloud
+            cloud=cloud,
+            created_by=created_by
         )
 
     @staticmethod
@@ -185,7 +196,7 @@ class ParentService:
         #         )
         parent.update(actions=[
             Parent.is_deleted.set(True),
-            Parent.deletion_date.set(utc_iso())
+            Parent.deletion_timestamp.set(utc_iso())
         ])
         _LOG.debug('Parent was marked as deleted')
 
@@ -220,8 +231,8 @@ class ParentService:
     def _create(self, customer_id: str, application_id: str, type_: ParentType,
                 description: Optional[str] = None, meta: Optional[dict] = None,
                 is_deleted: bool = False, scope: Optional[ParentScope] = None,
-                tenant_name: Optional[str] = '', cloud: Optional[str] = ''
-                ) -> Parent:
+                tenant_name: Optional[str] = '', cloud: Optional[str] = '',
+                create_by: Optional[str] = None) -> Parent:
         """
         Raw create without excessive validations
         :param customer_id:
@@ -233,6 +244,7 @@ class ParentService:
         :param scope:
         :param tenant_name:
         :param cloud:
+        :param create_by:
         :return:
         """
         return Parent(
@@ -244,8 +256,8 @@ class ParentService:
             meta=meta if isinstance(meta, dict) else {},
             is_deleted=is_deleted,
             creation_timestamp=java_timestamp(),
-            type_scope=self.build_type_scope(type_, scope, tenant_name, cloud)
-
+            type_scope=self.build_type_scope(type_, scope, tenant_name, cloud),
+            create_by=create_by
         )
 
     def create_all_scope(self, application_id: str,
@@ -253,7 +265,8 @@ class ParentService:
                          is_deleted: bool = False,
                          description: Optional[str] = None,
                          meta: Optional[dict] = None,
-                         cloud: Optional[str] = None) -> Parent:
+                         cloud: Optional[str] = None,
+                         create_by: Optional[str] = None) -> Parent:
         return self._create(
             application_id=application_id,
             customer_id=customer_id,
@@ -263,6 +276,7 @@ class ParentService:
             meta=meta,
             scope=ParentScope.ALL,
             cloud=cloud,
+            create_by=create_by
         )
 
     def create_tenant_scope(self, application_id: str,
@@ -270,7 +284,8 @@ class ParentService:
                             tenant_name: str, disabled: bool = False,
                             is_deleted: bool = False,
                             description: Optional[str] = None,
-                            meta: Optional[dict] = None) -> Parent:
+                            meta: Optional[dict] = None,
+                            create_by: Optional[str] = None) -> Parent:
         return self._create(
             application_id=application_id,
             customer_id=customer_id,
@@ -280,6 +295,7 @@ class ParentService:
             meta=meta,
             scope=ParentScope.DISABLED if disabled else ParentScope.SPECIFIC,
             tenant_name=tenant_name,
+            create_by=create_by
         )
 
     def query_by_scope_index(self, customer_id: str,

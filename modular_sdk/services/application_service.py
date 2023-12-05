@@ -8,6 +8,7 @@ from modular_sdk.commons.exception import ModularException
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.commons.time_helper import utc_iso
 from modular_sdk.models.application import Application
+from modular_sdk.modular import Modular
 from modular_sdk.services.customer_service import CustomerService
 
 _LOG = get_logger(__name__)
@@ -21,7 +22,17 @@ class ApplicationService:
     def create(self, customer_id, type, description,
                application_id: Optional[str] = None,
                is_deleted=False, meta: Optional[dict] = None,
-               secret: Optional[str] = None) -> Application:
+               secret: Optional[str] = None,
+               created_by: Optional[str] = None) -> Application:
+
+        if not created_by:
+            created_by = Modular().thread_local_storage_service().get(
+                'modular_user')
+            if not created_by:
+                _LOG.warning(
+                    f'User \'modular_user\' not found in thread local storage. '
+                    f'The "created_by" field will be null.')
+
         application_id = application_id or generate_id()
         if type not in AVAILABLE_APPLICATION_TYPES:
             _LOG.error(f'Invalid application type specified. Available '
@@ -44,7 +55,8 @@ class ApplicationService:
             description=description,
             is_deleted=is_deleted,
             meta=meta,
-            secret=secret
+            secret=secret,
+            created_by=created_by
         )
 
     @staticmethod
@@ -118,6 +130,6 @@ class ApplicationService:
         #     )
         application.update(actions=[
             Application.is_deleted.set(True),
-            Application.deletion_date.set(utc_iso())
+            Application.deletion_timestamp.set(utc_iso())
         ])
         _LOG.debug('Application was marked as deleted')

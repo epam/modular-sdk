@@ -17,11 +17,13 @@ TYPE = 't'
 DESCRIPTION = 'descr'
 META = 'meta'
 IS_DELETED = 'd'
-DELETION_DATE = 'dd'
+DELETION_DATE = 'dd' # todo deprecated
 CREATION_TIMESTAMP = 'ct'
 UPDATE_TIMESTAMP = 'ut'
 DELETION_TIMESTAMP = 'dt'
 SCOPE_ATTR = 's'
+UPDATED_BY = 'ub'
+CREATED_BY = 'cb'
 
 MODULAR_PARENTS_TABLE_NAME = 'Parents'
 
@@ -62,6 +64,8 @@ class Parent(BaseRoleAccessModel):
     deletion_date = UnicodeAttribute(attr_name=DELETION_DATE, null=True)
     creation_timestamp = NumberAttribute(attr_name=CREATION_TIMESTAMP,
                                          null=True)
+    deletion_date = UnicodeAttribute(attr_name=DELETION_DATE, null=True) # todo deprecated
+    creation_timestamp = NumberAttribute(attr_name=CREATION_TIMESTAMP, null=True)
     update_timestamp = NumberAttribute(attr_name=UPDATE_TIMESTAMP, null=True)
     deletion_timestamp = NumberAttribute(attr_name=DELETION_TIMESTAMP,
                                          null=True)
@@ -69,6 +73,9 @@ class Parent(BaseRoleAccessModel):
     # in case the attribute is not null its format must
     # adhere to [type]#[scope]#[tenant|cloud]
     type_scope = UnicodeAttribute(attr_name=SCOPE_ATTR, null=True)
+    deletion_timestamp = NumberAttribute(attr_name=DELETION_TIMESTAMP, null=True)
+    updated_by = UnicodeAttribute(attr_name=UPDATED_BY, null=True)
+    created_by = UnicodeAttribute(attr_name=CREATED_BY, null=True)
 
     customer_id_scope_index = CustomerIdScopeIndex()
     # application_id_index = ApplicationIdIndex()  # use when it becomes real
