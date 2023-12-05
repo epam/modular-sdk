@@ -6,7 +6,7 @@ from modular_sdk.commons.constants import AVAILABLE_APPLICATION_TYPES, \
     ApplicationType
 from modular_sdk.commons.exception import ModularException
 from modular_sdk.commons.log_helper import get_logger
-from modular_sdk.commons.time_helper import utc_iso
+from modular_sdk.commons.time_helper import utc_datetime
 from modular_sdk.models.application import Application
 from modular_sdk.modular import Modular
 from modular_sdk.services.customer_service import CustomerService
@@ -137,6 +137,6 @@ class ApplicationService:
         #     )
         application.update(actions=[
             Application.is_deleted.set(True),
-            Application.deletion_timestamp.set(utc_iso())
+            Application.deletion_timestamp.set(utc_datetime().timestamp() * 1e3)
         ])
         _LOG.debug('Application was marked as deleted')

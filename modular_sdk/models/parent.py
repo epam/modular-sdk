@@ -61,11 +61,9 @@ class Parent(BaseRoleAccessModel):
     description = UnicodeAttribute(attr_name=DESCRIPTION, null=True)
     meta = MapAttribute(attr_name=META, default=dict)
     is_deleted = BooleanAttribute(attr_name=IS_DELETED)
-    deletion_date = UnicodeAttribute(attr_name=DELETION_DATE, null=True)
+    deletion_date = UnicodeAttribute(attr_name=DELETION_DATE, null=True) # todo deprecated
     creation_timestamp = NumberAttribute(attr_name=CREATION_TIMESTAMP,
                                          null=True)
-    deletion_date = UnicodeAttribute(attr_name=DELETION_DATE, null=True) # todo deprecated
-    creation_timestamp = NumberAttribute(attr_name=CREATION_TIMESTAMP, null=True)
     update_timestamp = NumberAttribute(attr_name=UPDATE_TIMESTAMP, null=True)
     deletion_timestamp = NumberAttribute(attr_name=DELETION_TIMESTAMP,
                                          null=True)
@@ -73,7 +71,6 @@ class Parent(BaseRoleAccessModel):
     # in case the attribute is not null its format must
     # adhere to [type]#[scope]#[tenant|cloud]
     type_scope = UnicodeAttribute(attr_name=SCOPE_ATTR, null=True)
-    deletion_timestamp = NumberAttribute(attr_name=DELETION_TIMESTAMP, null=True)
     updated_by = UnicodeAttribute(attr_name=UPDATED_BY, null=True)
     created_by = UnicodeAttribute(attr_name=CREATED_BY, null=True)
 
