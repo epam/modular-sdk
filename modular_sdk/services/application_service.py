@@ -100,6 +100,13 @@ class ApplicationService:
 
     @staticmethod
     def save(application: Application):
+        updated_by = Modular().thread_local_storage_service().get(
+            'modular_user')
+        if not updated_by:
+            _LOG.warning(
+                f'User \'modular_user\' not found in thread local storage. '
+                f'The "created_by" field will be null.')
+        application.updated_by = updated_by
         application.save()
 
     @staticmethod
