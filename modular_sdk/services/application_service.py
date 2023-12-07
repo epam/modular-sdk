@@ -24,15 +24,12 @@ class ApplicationService:
                is_deleted=False, meta: Optional[dict] = None,
                secret: Optional[str] = None,
                created_by: Optional[str] = None) -> Application:
-
+        created_by = created_by or Modular().thread_local_storage_service().get(
+            'modular_user')
         if not created_by:
-            created_by = Modular().thread_local_storage_service().get(
-                'modular_user')
-            if not created_by:
-                _LOG.warning(
-                    f'User \'modular_user\' not found in thread local storage. '
-                    f'The "created_by" field will be null.')
-
+            _LOG.warning(
+                f'User \'modular_user\' not found in thread local storage. '
+                f'The "created_by" field will be null.')
         application_id = application_id or generate_id()
         if type not in AVAILABLE_APPLICATION_TYPES:
             _LOG.error(f'Invalid application type specified. Available '
