@@ -94,30 +94,22 @@ class ApplicationService:
     def get_dto(application: Application) -> dict:
         return application.get_json()
 
-    def mark_deleted(self, application: Application):
+    @staticmethod
+    def mark_deleted(application: Application):
         _LOG.debug(f'Going to mark the application '
                    f'{application.application_id} as deleted')
         if application.is_deleted:
             _LOG.warning(f'Application \'{application.application_id}\' '
                          f'is already deleted.')
             return
-        _LOG.debug(f'Searching for application parents')
-        # from modular_sdk.services.parent_service import ParentService
-        # # TODO USE GSI
-        # app_parent = next(ParentService.i_list_application_parents(
-        #     application_id=application.application_id,
-        #     limit=1
-        # ), None)
-        # if app_parent:
-        #     message = f'There are parents associated ' \
-        #               f'with the application: {app_parent.parent_id}'
-        #     _LOG.error(message)
-        #     raise ModularException(
-        #         code=RESPONSE_BAD_REQUEST_CODE,
-        #         content=message
-        #     )
         application.update(actions=[
             Application.is_deleted.set(True),
             Application.deletion_date.set(utc_iso())
         ])
         _LOG.debug('Application was marked as deleted')
+
+    @staticmethod
+    def force_delete(application: Application):
+        _LOG.debug(f'Going to delete application {application.application_id}')
+        application.delete()
+        _LOG.debug('Application has been deleted')
