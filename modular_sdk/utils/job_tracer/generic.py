@@ -17,11 +17,11 @@ _LOG = get_logger('modular_sdk-job-tracer')
 
 class ModularJobTracer(AbstractJobTracer):
     def __init__(self, operation_mode_service: ModularOperationModeManagerService,
-                 environment_service: EnvironmentService):
+                 environment_service: EnvironmentService, component=None):
         self.operation_mode_service = operation_mode_service
         self.environment_service = environment_service
         self.application = self.environment_service.application()
-        self.component = self.environment_service.component()
+        self.component = component or self.environment_service.component()
 
     def start(self, job_id):
         _LOG.debug(f'Going to mark Job {self.component} and {job_id} id as '
@@ -29,9 +29,9 @@ class ModularJobTracer(AbstractJobTracer):
 
         # self.is_permitted_to_start()
         job = JobService.create(job=self.component, job_id=job_id,
-                                    application=self.application, 
-                                    started_at=datetime.utcnow(), 
-                                    state=JOB_RUNNING_STATE, meta={})
+                                application=self.application,
+                                started_at=datetime.utcnow(),
+                                state=JOB_RUNNING_STATE, meta={})
         JobService.save(job=job)
 
     def is_permitted_to_start(self):

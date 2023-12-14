@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [3.3.10] - 2023-12-14
+- add optional `consistent_read` argument to the `get_nullable` function
+- add the ability to set `component` of `job_tracer` decorator also manually via an argument
+
 # [3.3.9] - 2023-12-08
 - add methods for force deletion of Application/Parent
 
