@@ -19,7 +19,7 @@ def __resolve_context(args, kwargs):
     return args[1]
 
 
-def tracer_decorator(is_scheduled=False, is_job=False):
+def tracer_decorator(is_scheduled=False, is_job=False, component=None):
     def real_wrapper(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -36,7 +36,8 @@ def tracer_decorator(is_scheduled=False, is_job=False):
                 operation_mode_service = ModularOperationModeManagerService()
                 job_tracer = ModularJobTracer(
                     operation_mode_service=operation_mode_service,
-                    environment_service=environment_service
+                    environment_service=environment_service,
+                    component=component
                 )
 
                 event = __resolve_event(args, kwargs)
