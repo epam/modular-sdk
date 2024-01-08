@@ -227,13 +227,15 @@ class RawBaseModel(models.Model):
         return os.environ.get(MODULAR_SERVICE_MODE_ENV) == SERVICE_MODE_DOCKER
 
     @classmethod
-    def get_nullable(cls, hash_key, range_key=None, attributes_to_get=None):
+    def get_nullable(cls, hash_key, range_key=None, attributes_to_get=None,
+                     consistent_read=False):
         if cls.is_docker:
             return cls.mongodb_handler().get_nullable(
                 model_class=cls, hash_key=hash_key, sort_key=range_key)
         try:
             return cls.get(hash_key, range_key,
-                           attributes_to_get=attributes_to_get)
+                           attributes_to_get=attributes_to_get,
+                           consistent_read=consistent_read)
         except DoesNotExist as e:
             _LOG.debug(f'{cls.__name__} does not exist '
                        f'with the following keys: hash_key={hash_key}, '

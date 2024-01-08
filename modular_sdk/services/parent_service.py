@@ -180,7 +180,8 @@ class ParentService:
         parent.updated_by = updated_by
         parent.save()
 
-    def mark_deleted(self, parent: Parent):
+    @staticmethod
+    def mark_deleted(parent: Parent):
         """
         Updates the item in DB! No need to save afterwards
         :param parent:
@@ -190,20 +191,18 @@ class ParentService:
         if parent.is_deleted:
             _LOG.warning(f'Parent \'{parent.parent_id}\' is already deleted.')
             return
-        # if parent.tenant_name:
-        #     _LOG.debug(f'Parent has {parent.scope} scope. '
-        #                f'Checking whether its tenant exists')
-        #     if self.tenant_service.does_exist(parent.tenant_name, True):
-        #         raise ModularException(
-        #             code=RESPONSE_BAD_REQUEST_CODE,
-        #             content=f'The parent is linked to an active '
-        #                     f'tenant: {parent.tenant_name}'
-        #         )
+
         parent.update(actions=[
             Parent.is_deleted.set(True),
             Parent.deletion_timestamp.set(utc_datetime().timestamp() * 1e3)
         ])
         _LOG.debug('Parent was marked as deleted')
+
+    @staticmethod
+    def force_delete(parent: Parent):
+        _LOG.debug(f'Going to delete parent {parent.parent_id}')
+        parent.delete()
+        _LOG.debug('Parent has been deleted')
 
     # new methods
     @staticmethod

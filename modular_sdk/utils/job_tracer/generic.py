@@ -17,21 +17,24 @@ _LOG = get_logger('modular_sdk-job-tracer')
 
 class ModularJobTracer(AbstractJobTracer):
     def __init__(self, operation_mode_service: ModularOperationModeManagerService,
-                 environment_service: EnvironmentService):
+                 environment_service: EnvironmentService, component=None):
         self.operation_mode_service = operation_mode_service
         self.environment_service = environment_service
         self.application = self.environment_service.application()
-        self.component = self.environment_service.component()
+        self.component = component or self.environment_service.component()
 
-    def start(self, job_id):
+    def start(self, job_id, meta=None):
         _LOG.debug(f'Going to mark Job {self.component} and {job_id} id as '
                    f'started')
 
+        if meta is None:
+            meta = {}
+
         # self.is_permitted_to_start()
         job = JobService.create(job=self.component, job_id=job_id,
-                                    application=self.application, 
-                                    started_at=datetime.utcnow(), 
-                                    state=JOB_RUNNING_STATE, meta={})
+                                application=self.application,
+                                started_at=datetime.utcnow(),
+                                state=JOB_RUNNING_STATE, meta=meta)
         JobService.save(job=job)
 
     def is_permitted_to_start(self):
@@ -74,7 +77,7 @@ class ModularJobTracer(AbstractJobTracer):
         state = JOB_FAIL_STATE
         error_type = error.__class__.__name__
         error_reason = error.__str__()
-        JobService.update(job=job_item, stopped_at=stopped_at, state=state, 
+        JobService.update(job=job_item, stopped_at=stopped_at, state=state,
                           error_type=error_type, error_reason=error_reason)
 
     def succeed(self, job_id, meta):
@@ -84,7 +87,7 @@ class ModularJobTracer(AbstractJobTracer):
 
         stopped_at = datetime.utcnow()
         state = JOB_SUCCESS_STATE
-        JobService.update(job=job_item, stopped_at=stopped_at, state=state, 
+        JobService.update(job=job_item, stopped_at=stopped_at, state=state,
                           meta=meta)
 
     def track_error(self):
