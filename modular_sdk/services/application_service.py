@@ -1,3 +1,4 @@
+import warnings
 from typing import Optional, Iterator
 
 from modular_sdk.commons import RESPONSE_BAD_REQUEST_CODE, \
@@ -19,17 +20,15 @@ class ApplicationService:
     def __init__(self, customer_service: CustomerService):
         self.customer_service = customer_service
 
-    def create(self, customer_id, type, description,
-               application_id: Optional[str] = None,
-               is_deleted=False, meta: Optional[dict] = None,
-               secret: Optional[str] = None,
-               created_by: Optional[str] = None) -> Application:
-        created_by = created_by or Modular().thread_local_storage_service().get(
-            'modular_user')
-        if not created_by:
-            _LOG.warning(
-                f'User \'modular_user\' not found in thread local storage. '
-                f'The "created_by" field will be null.')
+    def create(self, *args, **kwargs):
+        warnings.warn("This function is deprecated, use `build' instead",
+                      DeprecationWarning)
+        return self.build(*args, **kwargs)
+
+    def build(self, customer_id: str, type: str, description: str,
+              created_by: str, application_id: Optional[str] = None,
+              is_deleted=False, meta: Optional[dict] = None,
+              secret: Optional[str] = None) -> Application:
         application_id = application_id or generate_id()
         if type not in AVAILABLE_APPLICATION_TYPES:
             _LOG.error(f'Invalid application type specified. Available '
@@ -96,13 +95,7 @@ class ApplicationService:
         return Application.scan(filter_condition=condition, limit=limit)
 
     @staticmethod
-    def save(application: Application):
-        updated_by = Modular().thread_local_storage_service().get(
-            'modular_user')
-        if not updated_by:
-            _LOG.warning(
-                f'User \'modular_user\' not found in thread local storage. '
-                f'The "created_by" field will be null.')
+    def save(application: Application, updated_by: str):
         application.updated_by = updated_by
         application.save()
 
