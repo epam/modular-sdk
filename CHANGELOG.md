@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [4.0.0] - 2023-01-08
+- Change the models in Python to match the models in Java. Table names:
+  * `Application`:
+    * Added: `ub` (updated by), `cb`(created by)
+  * `Parents`:
+    * Added: `ub` (updated by), `cb`(created by)
+- Update the logic when creating `Application` and `Parents` items. New fields `ub`
+and `cb` are required.
+
 # [3.3.11] - 2023-10-26
 - add dry run mode message in meta field when starting job tracer if there is
 `dry_run` attribute in event
