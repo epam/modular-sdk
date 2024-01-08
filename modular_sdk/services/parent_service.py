@@ -142,12 +142,6 @@ class ParentService:
                 code=RESPONSE_RESOURCE_NOT_FOUND_CODE,
                 content=f'Customer with name \'{customer_id}\' does not exist'
             )
-        created_by = created_by or Modular().thread_local_storage_service().get(
-            'modular_user')
-        if not created_by:
-            _LOG.warning(
-                f'User \'modular_user\' not found in thread local storage. '
-                f'The "created_by" field will be null.')
         return self._create(
             customer_id=customer_id,
             application_id=application_id,
