@@ -29,6 +29,7 @@ def tracer_decorator(is_scheduled=False, is_job=False, component=None):
 
             job_tracer = None
             request_id = None
+            event = {}
             if is_job:
                 from modular_sdk.utils.job_tracer.generic import \
                     ModularJobTracer
@@ -59,7 +60,12 @@ def tracer_decorator(is_scheduled=False, is_job=False, component=None):
 
             segment = runtime_tracer.start()
             if is_job:
-                job_tracer.start(job_id=request_id)
+                meta = None
+                dry_run = event.get('dry_run')
+                if dry_run in ('true', 't', 'y', 'yes') \
+                        or (isinstance(dry_run, bool) and dry_run):
+                    meta = {'message': 'Dry run mode enabled.'}
+                job_tracer.start(job_id=request_id, meta=meta)
             try:
                 from aws_xray_sdk.core import patch
                 libs_to_patch = ('boto3', 'pynamodb')
