@@ -1,5 +1,5 @@
 import warnings
-from typing import Optional, Iterator
+from typing import Optional, Iterator, List
 
 from modular_sdk.commons import RESPONSE_BAD_REQUEST_CODE, \
     RESPONSE_RESOURCE_NOT_FOUND_CODE, generate_id, default_instance
@@ -95,16 +95,35 @@ class ApplicationService:
         return Application.scan(filter_condition=condition, limit=limit)
 
     @staticmethod
-    def save(application: Application, updated_by: str):
-        application.updated_by = updated_by
+    def save(application: Application):
         application.save()
+
+    def update_meta(self, application: Application):
+        _LOG.debug(f'Going to update meta')
+
+        self.update(
+            application=application,
+            attributes=[
+                'meta',
+                'updated_by'
+            ]
+        )
+        _LOG.debug('Application meta was updated')
+
+    @staticmethod
+    def update(application: Application, attributes: List[str]):
+        updates = {field: getattr(application, field) for field in attributes}
+        actions = [getattr(Application, attr).set(value) for attr, value in
+                   updates.items()]
+        # add Application.updated_by.set(?)
+        application.update(actions=actions)
 
     @staticmethod
     def get_dto(application: Application) -> dict:
         return application.get_json()
 
     @staticmethod
-    def mark_deleted(application: Application):
+    def mark_deleted(application: Application): # TODO investigate this
         _LOG.debug(f'Going to mark the application '
                    f'{application.application_id} as deleted')
         if application.is_deleted:

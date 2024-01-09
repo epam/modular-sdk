@@ -170,12 +170,31 @@ class ParentService:
         return dct
 
     @staticmethod
-    def save(parent: Parent, updated_by: str):
-        parent.updated_by = updated_by
+    def save(parent: Parent):
         parent.save()
 
+    def update_meta(self, parent: Parent):
+        _LOG.debug(f'Going to update meta')
+
+        self.update(
+            parent=parent,
+            attributes=[
+                'meta',
+                'updated_by'
+            ]
+        )
+        _LOG.debug('Parent meta was updated')
+
     @staticmethod
-    def mark_deleted(parent: Parent):
+    def update(parent: Parent, attributes: List[str]):
+        updates = {field: getattr(parent, field) for field in attributes}
+        actions = [getattr(Parent, attr).set(value) for attr, value in
+                   updates.items()]
+        # add Parent.updated_by.set(?)
+        parent.update(actions=actions)
+
+    @staticmethod
+    def mark_deleted(parent: Parent): # TODO investigate this
         """
         Updates the item in DB! No need to save afterwards
         :param parent:
