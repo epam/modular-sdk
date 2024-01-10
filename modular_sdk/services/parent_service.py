@@ -1,4 +1,3 @@
-import warnings
 from typing import Optional, Iterator, Union, List
 
 from pynamodb.expressions.condition import Condition
@@ -187,9 +186,7 @@ class ParentService:
             Parent.meta,
             Parent.type,
             Parent.updated_by,
-            Parent.update_timestamp,
             Parent.is_deleted,
-            Parent.deletion_timestamp,
             Parent.type_scope
         ]
 
@@ -212,7 +209,7 @@ class ParentService:
         parent.update(actions=actions)
 
     @staticmethod
-    def mark_deleted(parent: Parent): # TODO investigate this
+    def mark_deleted(parent: Parent):
         """
         Updates the item in DB! No need to save afterwards
         :param parent:
@@ -297,12 +294,11 @@ class ParentService:
         )
 
     def create_all_scope(self, application_id: str,
-                         customer_id: str, type_: ParentType,
+                         customer_id: str, type_: ParentType, created_by: str,
                          is_deleted: bool = False,
                          description: Optional[str] = None,
                          meta: Optional[dict] = None,
-                         cloud: Optional[str] = None,
-                         created_by: Optional[str] = None) -> Parent:
+                         cloud: Optional[str] = None) -> Parent:
         return self._create(
             application_id=application_id,
             customer_id=customer_id,
@@ -317,11 +313,11 @@ class ParentService:
 
     def create_tenant_scope(self, application_id: str,
                             customer_id: str, type_: ParentType,
-                            tenant_name: str, disabled: bool = False,
+                            tenant_name: str,  created_by: str,
+                            disabled: bool = False,
                             is_deleted: bool = False,
                             description: Optional[str] = None,
-                            meta: Optional[dict] = None,
-                            created_by: Optional[str] = None) -> Parent:
+                            meta: Optional[dict] = None) -> Parent:
         return self._create(
             application_id=application_id,
             customer_id=customer_id,

@@ -1,4 +1,3 @@
-import warnings
 from typing import Optional, Iterator, List
 
 from modular_sdk.commons import RESPONSE_BAD_REQUEST_CODE, \
@@ -113,9 +112,7 @@ class ApplicationService:
             Application.meta,
             Application.secret,
             Application.updated_by,
-            Application.update_timestamp,
-            Application.is_deleted,
-            Application.deletion_timestamp,
+            Application.is_deleted
         ]
 
         actions = []
@@ -141,7 +138,7 @@ class ApplicationService:
         return application.get_json()
 
     @staticmethod
-    def mark_deleted(application: Application): # TODO investigate this
+    def mark_deleted(application: Application):
         _LOG.debug(f'Going to mark the application '
                    f'{application.application_id} as deleted')
         if application.is_deleted:
