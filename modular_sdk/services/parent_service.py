@@ -97,11 +97,6 @@ class ParentService:
             last_evaluated_key=last_evaluated_key
         )
 
-    def create(self, *args, **kwargs):
-        warnings.warn("This function is deprecated, use `build' instead",
-                      DeprecationWarning)
-        return self.build(*args, **kwargs)
-
     def build(self, application_id: str, customer_id: str,
               parent_type: ParentType, created_by: str,
               is_deleted: bool = False, description: Optional[str] = None,

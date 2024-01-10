@@ -20,11 +20,6 @@ class ApplicationService:
     def __init__(self, customer_service: CustomerService):
         self.customer_service = customer_service
 
-    def create(self, *args, **kwargs):
-        warnings.warn("This function is deprecated, use `build' instead",
-                      DeprecationWarning)
-        return self.build(*args, **kwargs)
-
     def build(self, customer_id: str, type: str, description: str,
               created_by: str, application_id: Optional[str] = None,
               is_deleted=False, meta: Optional[dict] = None,
