@@ -98,24 +98,47 @@ class ApplicationService:
     def save(application: Application):
         application.save()
 
-    def update_meta(self, application: Application):
-        _LOG.debug(f'Going to update meta')
+    def update_meta(self, application: Application, updated_by: str):
+        _LOG.debug(f'Going to update application {application.application_id}'
+                   f'meta')
 
         self.update(
             application=application,
             attributes=[
-                'meta',
-                'updated_by'
-            ]
+                Application.meta
+            ],
+            updated_by=updated_by
         )
         _LOG.debug('Application meta was updated')
 
     @staticmethod
-    def update(application: Application, attributes: List[str]):
-        updates = {field: getattr(application, field) for field in attributes}
-        actions = [getattr(Application, attr).set(value) for attr, value in
-                   updates.items()]
-        # add Application.updated_by.set(?)
+    def update(application: Application, attributes: List, updated_by: str):
+        updatable_attributes = [
+            Application.description,
+            Application.meta,
+            Application.secret,
+            Application.updated_by,
+            Application.update_timestamp,
+            Application.is_deleted,
+            Application.deletion_timestamp,
+        ]
+
+        actions = []
+
+        for attribute in attributes:
+            if attribute not in updatable_attributes:
+                _LOG.warning(f'Attribute {attribute.attr_name} '
+                             f'can\'t be updated.')
+                continue
+            python_attr_name = Application._dynamo_to_python_attr(
+                attribute.attr_name)
+            update_value = getattr(application, python_attr_name)
+            actions.append(attribute.set(update_value))
+
+        actions.append(Application.updated_by.set(updated_by))
+        actions.append(Application.update_timestamp.set(
+            int(utc_datetime().timestamp() * 1e3)))
+
         application.update(actions=actions)
 
     @staticmethod

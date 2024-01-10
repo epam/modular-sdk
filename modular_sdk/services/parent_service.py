@@ -173,24 +173,47 @@ class ParentService:
     def save(parent: Parent):
         parent.save()
 
-    def update_meta(self, parent: Parent):
-        _LOG.debug(f'Going to update meta')
+    def update_meta(self, parent: Parent, updated_by: str):
+        _LOG.debug(f'Going to update parent {parent.parent_id} meta')
 
         self.update(
             parent=parent,
             attributes=[
-                'meta',
-                'updated_by'
-            ]
+                Parent.meta
+            ],
+            updated_by=updated_by
         )
         _LOG.debug('Parent meta was updated')
 
     @staticmethod
-    def update(parent: Parent, attributes: List[str]):
-        updates = {field: getattr(parent, field) for field in attributes}
-        actions = [getattr(Parent, attr).set(value) for attr, value in
-                   updates.items()]
-        # add Parent.updated_by.set(?)
+    def update(parent: Parent, attributes: List, updated_by: str):
+        updatable_attributes = [
+            Parent.description,
+            Parent.meta,
+            Parent.type,
+            Parent.updated_by,
+            Parent.update_timestamp,
+            Parent.is_deleted,
+            Parent.deletion_timestamp,
+            Parent.type_scope
+        ]
+
+        actions = []
+
+        for attribute in attributes:
+            if attribute not in updatable_attributes:
+                _LOG.warning(f'Attribute {attribute.attr_name} '
+                             f'can\'t be updated.')
+                continue
+            python_attr_name = Parent._dynamo_to_python_attr(
+                attribute.attr_name)
+            update_value = getattr(parent, python_attr_name)
+            actions.append(attribute.set(update_value))
+
+        actions.append(Parent.updated_by.set(updated_by))
+        actions.append(
+            Parent.update_timestamp.set(int(utc_datetime().timestamp() * 1e3)))
+
         parent.update(actions=actions)
 
     @staticmethod
