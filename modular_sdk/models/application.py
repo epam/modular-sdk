@@ -12,12 +12,14 @@ CUSTOMER_ID = 'cid'
 TYPE = 't'
 DESCRIPTION = 'descr'
 IS_DELETED = 'd'
-DELETION_DATE = 'dd'
+DELETION_DATE = 'dd' # todo deprecated
 META = 'meta'
 SECRET = 'sec'
 CREATION_TIMESTAMP = 'ct'
 UPDATE_TIMESTAMP = 'ut'
 DELETION_TIMESTAMP = 'dt'
+UPDATED_BY = 'ub'
+CREATED_BY = 'cb'
 
 MODULAR_APPLICATIONS_TABLE_NAME = 'Applications'
 
@@ -42,11 +44,13 @@ class Application(BaseRoleAccessModel):
     type = UnicodeAttribute(attr_name=TYPE)
     description = UnicodeAttribute(attr_name=DESCRIPTION)
     is_deleted = BooleanAttribute(attr_name=IS_DELETED)
-    deletion_date = UnicodeAttribute(attr_name=DELETION_DATE, null=True)
+    deletion_date = UnicodeAttribute(attr_name=DELETION_DATE, null=True) # todo deprecated
     meta = MapAttribute(default=dict, attr_name=META)
     secret = UnicodeAttribute(null=True, attr_name=SECRET)
     creation_timestamp = NumberAttribute(attr_name=CREATION_TIMESTAMP, null=True)
     update_timestamp = NumberAttribute(attr_name=UPDATE_TIMESTAMP, null=True)
     deletion_timestamp = NumberAttribute(attr_name=DELETION_TIMESTAMP, null=True)
+    updated_by = UnicodeAttribute(attr_name=UPDATED_BY, null=True)
+    created_by = UnicodeAttribute(attr_name=CREATED_BY, null=True)
 
     customer_id_type_index = CustomerIdTypeIndex()
