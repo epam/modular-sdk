@@ -9,10 +9,11 @@ from modular_sdk.commons.constants import ALL_PARENT_TYPES, ParentScope, \
     COMPOUND_KEYS_SEPARATOR, CLOUD_PROVIDERS, ParentType
 from modular_sdk.commons.exception import ModularException
 from modular_sdk.commons.log_helper import get_logger
-from modular_sdk.commons.time_helper import java_timestamp
+from modular_sdk.commons.time_helper import java_timestamp, utc_datetime
 from modular_sdk.commons.time_helper import utc_iso
 from modular_sdk.models.parent import Parent
 from modular_sdk.models.tenant import Tenant
+from modular_sdk.modular import Modular
 from modular_sdk.services.customer_service import CustomerService
 from modular_sdk.services.tenant_service import TenantService
 
@@ -95,13 +96,13 @@ class ParentService:
             last_evaluated_key=last_evaluated_key
         )
 
-    def create(self, application_id: str, customer_id: str,
-               parent_type: ParentType,
-               is_deleted: bool = False, description: Optional[str] = None,
-               meta: Optional[dict] = None,
-               scope: Optional[ParentScope] = None,
-               tenant_name: Optional[str] = None,
-               cloud: Optional[str] = None) -> Parent:
+    def build(self, application_id: str, customer_id: str,
+              parent_type: ParentType, created_by: str,
+              is_deleted: bool = False, description: Optional[str] = None,
+              meta: Optional[dict] = None,
+              scope: Optional[ParentScope] = None,
+              tenant_name: Optional[str] = None,
+              cloud: Optional[str] = None) -> Parent:
         """
         Make sure to provide valid scope, tenant_name and cloud. Or
         use specific methods: create_all_scope, create_tenant_scope
@@ -114,6 +115,7 @@ class ParentService:
         :param scope:
         :param tenant_name:
         :param cloud:
+        :param created_by:
         :return:
         """
         # TODO either move validation from here to outside or make the
@@ -143,7 +145,8 @@ class ParentService:
             is_deleted=is_deleted,
             scope=scope,
             tenant_name=tenant_name,
-            cloud=cloud
+            cloud=cloud,
+            created_by=created_by
         )
 
     @staticmethod
@@ -164,6 +167,47 @@ class ParentService:
     def save(parent: Parent):
         parent.save()
 
+    def update_meta(self, parent: Parent, updated_by: str):
+        _LOG.debug(f'Going to update parent {parent.parent_id} meta')
+
+        self.update(
+            parent=parent,
+            attributes=[
+                Parent.meta
+            ],
+            updated_by=updated_by
+        )
+        _LOG.debug('Parent meta was updated')
+
+    @staticmethod
+    def update(parent: Parent, attributes: List, updated_by: str):
+        updatable_attributes = [
+            Parent.description,
+            Parent.meta,
+            Parent.type,
+            Parent.updated_by,
+            Parent.is_deleted,
+            Parent.type_scope
+        ]
+
+        actions = []
+
+        for attribute in attributes:
+            if attribute not in updatable_attributes:
+                _LOG.warning(f'Attribute {attribute.attr_name} '
+                             f'can\'t be updated.')
+                continue
+            python_attr_name = Parent._dynamo_to_python_attr(
+                attribute.attr_name)
+            update_value = getattr(parent, python_attr_name)
+            actions.append(attribute.set(update_value))
+
+        actions.append(Parent.updated_by.set(updated_by))
+        actions.append(
+            Parent.update_timestamp.set(int(utc_datetime().timestamp() * 1e3)))
+
+        parent.update(actions=actions)
+
     @staticmethod
     def mark_deleted(parent: Parent):
         """
@@ -178,7 +222,7 @@ class ParentService:
 
         parent.update(actions=[
             Parent.is_deleted.set(True),
-            Parent.deletion_date.set(utc_iso())
+            Parent.deletion_timestamp.set(utc_datetime().timestamp() * 1e3)
         ])
         _LOG.debug('Parent was marked as deleted')
 
@@ -217,10 +261,11 @@ class ParentService:
         return COMPOUND_KEYS_SEPARATOR.join((type_, scope, tenant_name))
 
     def _create(self, customer_id: str, application_id: str, type_: ParentType,
-                description: Optional[str] = None, meta: Optional[dict] = None,
-                is_deleted: bool = False, scope: Optional[ParentScope] = None,
-                tenant_name: Optional[str] = '', cloud: Optional[str] = ''
-                ) -> Parent:
+                created_by: str, description: Optional[str] = None,
+                meta: Optional[dict] = None, is_deleted: bool = False,
+                scope: Optional[ParentScope] = None,
+                tenant_name: Optional[str] = '',
+                cloud: Optional[str] = '') -> Parent:
         """
         Raw create without excessive validations
         :param customer_id:
@@ -232,6 +277,7 @@ class ParentService:
         :param scope:
         :param tenant_name:
         :param cloud:
+        :param created_by:
         :return:
         """
         return Parent(
@@ -239,16 +285,16 @@ class ParentService:
             customer_id=customer_id,
             application_id=application_id,
             type=type_.value if isinstance(type_, ParentType) else type_,
+            created_by=created_by,
             description=description,
             meta=meta if isinstance(meta, dict) else {},
             is_deleted=is_deleted,
             creation_timestamp=java_timestamp(),
             type_scope=self.build_type_scope(type_, scope, tenant_name, cloud)
-
         )
 
     def create_all_scope(self, application_id: str,
-                         customer_id: str, type_: ParentType,
+                         customer_id: str, type_: ParentType, created_by: str,
                          is_deleted: bool = False,
                          description: Optional[str] = None,
                          meta: Optional[dict] = None,
@@ -262,11 +308,13 @@ class ParentService:
             meta=meta,
             scope=ParentScope.ALL,
             cloud=cloud,
+            created_by=created_by
         )
 
     def create_tenant_scope(self, application_id: str,
                             customer_id: str, type_: ParentType,
-                            tenant_name: str, disabled: bool = False,
+                            tenant_name: str,  created_by: str,
+                            disabled: bool = False,
                             is_deleted: bool = False,
                             description: Optional[str] = None,
                             meta: Optional[dict] = None) -> Parent:
@@ -279,6 +327,7 @@ class ParentService:
             meta=meta,
             scope=ParentScope.DISABLED if disabled else ParentScope.SPECIFIC,
             tenant_name=tenant_name,
+            created_by=created_by
         )
 
     def query_by_scope_index(self, customer_id: str,

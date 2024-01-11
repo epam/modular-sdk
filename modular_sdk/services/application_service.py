@@ -1,4 +1,4 @@
-from typing import Optional, Iterator
+from typing import Optional, Iterator, List
 
 from modular_sdk.commons import RESPONSE_BAD_REQUEST_CODE, \
     RESPONSE_RESOURCE_NOT_FOUND_CODE, generate_id, default_instance
@@ -6,8 +6,9 @@ from modular_sdk.commons.constants import AVAILABLE_APPLICATION_TYPES, \
     ApplicationType
 from modular_sdk.commons.exception import ModularException
 from modular_sdk.commons.log_helper import get_logger
-from modular_sdk.commons.time_helper import utc_iso
+from modular_sdk.commons.time_helper import utc_datetime
 from modular_sdk.models.application import Application
+from modular_sdk.modular import Modular
 from modular_sdk.services.customer_service import CustomerService
 
 _LOG = get_logger(__name__)
@@ -18,10 +19,10 @@ class ApplicationService:
     def __init__(self, customer_service: CustomerService):
         self.customer_service = customer_service
 
-    def create(self, customer_id, type, description,
-               application_id: Optional[str] = None,
-               is_deleted=False, meta: Optional[dict] = None,
-               secret: Optional[str] = None) -> Application:
+    def build(self, customer_id: str, type: str, description: str,
+              created_by: str, application_id: Optional[str] = None,
+              is_deleted=False, meta: Optional[dict] = None,
+              secret: Optional[str] = None) -> Application:
         application_id = application_id or generate_id()
         if type not in AVAILABLE_APPLICATION_TYPES:
             _LOG.error(f'Invalid application type specified. Available '
@@ -44,7 +45,8 @@ class ApplicationService:
             description=description,
             is_deleted=is_deleted,
             meta=meta,
-            secret=secret
+            secret=secret,
+            created_by=created_by
         )
 
     @staticmethod
@@ -90,6 +92,47 @@ class ApplicationService:
     def save(application: Application):
         application.save()
 
+    def update_meta(self, application: Application, updated_by: str):
+        _LOG.debug(f'Going to update application {application.application_id}'
+                   f'meta')
+
+        self.update(
+            application=application,
+            attributes=[
+                Application.meta
+            ],
+            updated_by=updated_by
+        )
+        _LOG.debug('Application meta was updated')
+
+    @staticmethod
+    def update(application: Application, attributes: List, updated_by: str):
+        updatable_attributes = [
+            Application.description,
+            Application.meta,
+            Application.secret,
+            Application.updated_by,
+            Application.is_deleted
+        ]
+
+        actions = []
+
+        for attribute in attributes:
+            if attribute not in updatable_attributes:
+                _LOG.warning(f'Attribute {attribute.attr_name} '
+                             f'can\'t be updated.')
+                continue
+            python_attr_name = Application._dynamo_to_python_attr(
+                attribute.attr_name)
+            update_value = getattr(application, python_attr_name)
+            actions.append(attribute.set(update_value))
+
+        actions.append(Application.updated_by.set(updated_by))
+        actions.append(Application.update_timestamp.set(
+            int(utc_datetime().timestamp() * 1e3)))
+
+        application.update(actions=actions)
+
     @staticmethod
     def get_dto(application: Application) -> dict:
         return application.get_json()
@@ -104,7 +147,7 @@ class ApplicationService:
             return
         application.update(actions=[
             Application.is_deleted.set(True),
-            Application.deletion_date.set(utc_iso())
+            Application.deletion_timestamp.set(utc_datetime().timestamp() * 1e3)
         ])
         _LOG.debug('Application was marked as deleted')
 
