@@ -147,7 +147,8 @@ class ApplicationService:
             return
         application.update(actions=[
             Application.is_deleted.set(True),
-            Application.deletion_timestamp.set(utc_datetime().timestamp() * 1e3)
+            Application.deletion_timestamp.set(
+                int(utc_datetime().timestamp() * 1e3))
         ])
         _LOG.debug('Application was marked as deleted')
 

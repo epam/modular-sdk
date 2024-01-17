@@ -222,7 +222,7 @@ class ParentService:
 
         parent.update(actions=[
             Parent.is_deleted.set(True),
-            Parent.deletion_timestamp.set(utc_datetime().timestamp() * 1e3)
+            Parent.deletion_timestamp.set(int(utc_datetime().timestamp() * 1e3))
         ])
         _LOG.debug('Parent was marked as deleted')
 
