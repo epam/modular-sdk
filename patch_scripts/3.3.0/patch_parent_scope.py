@@ -196,7 +196,7 @@ class PatchAllScope(ActionHandler):
                 description=parent.description,
                 meta=meta,
                 is_deleted=False,
-                creation_timestamp=java_timestamp(),
+                creation_timestamp=int(java_timestamp()),
                 type_scope=f'{parent.type}{COMPOUND_KEYS_SEPARATOR}{ParentScope.ALL}{COMPOUND_KEYS_SEPARATOR}{cloud}'
                 # noqa
             )
@@ -309,7 +309,7 @@ class PatchSpecificScope(ActionHandler):
                     description=parent.description,
                     meta=meta,
                     is_deleted=False,
-                    creation_timestamp=java_timestamp(),
+                    creation_timestamp=int(java_timestamp()),
                     type_scope=f'{parent.type}{COMPOUND_KEYS_SEPARATOR}{ParentScope.SPECIFIC}{COMPOUND_KEYS_SEPARATOR}{tenant.name}'
                 )
                 new_parents.add(copy.parent_id)
