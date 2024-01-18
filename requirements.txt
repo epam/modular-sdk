@@ -12,5 +12,5 @@ boltons==23.0.0
 aws-xray-sdk==2.12.0
 pycparser==2.21
 cffi==1.15.1
-cryptography==41.0.3
+cryptography==41.0.4
 cachetools==5.3.1
