@@ -289,7 +289,7 @@ class ParentService:
             description=description,
             meta=meta if isinstance(meta, dict) else {},
             is_deleted=is_deleted,
-            creation_timestamp=java_timestamp(),
+            creation_timestamp=int(java_timestamp()),
             type_scope=self.build_type_scope(type_, scope, tenant_name, cloud)
         )
 
