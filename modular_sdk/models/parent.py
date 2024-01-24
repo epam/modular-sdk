@@ -75,7 +75,7 @@ class Parent(BaseRoleAccessModel):
     created_by = UnicodeAttribute(attr_name=CREATED_BY, null=True)
 
     customer_id_scope_index = CustomerIdScopeIndex()
-    # application_id_index = ApplicationIdIndex()  # use when it becomes real
+    application_id_index = ApplicationIdIndex()
 
     # todo use if self.type is removed
     # @property
