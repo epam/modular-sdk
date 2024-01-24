@@ -47,12 +47,16 @@ class ParentService:
                                    limit: Optional[int] = None,
                                    last_evaluated_key: Optional[dict] = None
                                    ) -> Iterator[Parent]:
-        # TODO refactor to use index
-        condition = Parent.application_id == application_id
+        condition = None
         if only_active:
-            condition &= (Parent.is_deleted == False)
-        return Parent.scan(filter_condition=condition, limit=limit,
-                           last_evaluated_key=last_evaluated_key)
+            condition = (Parent.is_deleted == False)
+
+        return Parent.application_id_index.query(
+            hash_key=application_id,
+            filter_condition=condition,
+            limit=limit,
+            last_evaluated_key=last_evaluated_key
+        )
 
     def i_get_parent_by_customer(self, customer_id: str,
                                  parent_type: Optional[Union[ParentType, List[ParentType]]] = None,  # noqa
