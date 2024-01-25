@@ -26,13 +26,13 @@ MODULAR_APPLICATIONS_TABLE_NAME = 'Applications'
 
 class CustomerIdTypeIndex(BaseGSI):
     class Meta(BaseMeta):
-        index_name = f"{CUSTOMER_ID}-index"
+        index_name = f"{CUSTOMER_ID}-{TYPE}-index"
         read_capacity_units = 1
         write_capacity_units = 1
         projection = AllProjection()
 
     customer_id = UnicodeAttribute(hash_key=True, attr_name=CUSTOMER_ID)
-    # type = UnicodeAttribute(range_key=True, attr_name=TYPE)
+    type = UnicodeAttribute(range_key=True, attr_name=TYPE)
 
 
 class Application(BaseRoleAccessModel):
