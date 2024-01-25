@@ -62,13 +62,16 @@ class ApplicationService:
         condition = deleted if deleted is None else (
                 Application.is_deleted == deleted
         )
+        rkc = None
         _type: str = default_instance(application_type, str)
 
         if _type:
-            condition &= Application.type == _type
+            rkc = (Application.type == _type)
 
         return Application.customer_id_type_index.query(
-            hash_key=customer_id, filter_condition=condition
+            hash_key=customer_id,
+            range_key_condition=rkc,
+            filter_condition=condition
         )
 
     @staticmethod
@@ -76,16 +79,20 @@ class ApplicationService:
              deleted: Optional[bool] = None,
              limit: Optional[int] = None) -> Iterator[Application]:
         condition = None
+        rkc = None
         if isinstance(deleted, bool):
             condition &= Application.is_deleted == deleted
         if isinstance(_type, str):
-            condition &= Application.type == _type
+            rkc &= (Application.type == _type)
         if customer:
             return Application.customer_id_type_index.query(
                 hash_key=customer,
+                range_key_condition=rkc,
                 filter_condition=condition,
                 limit=limit
             )
+        if rkc is not None:
+            condition &= rkc
         return Application.scan(filter_condition=condition, limit=limit)
 
     @staticmethod
