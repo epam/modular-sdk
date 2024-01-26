@@ -385,8 +385,6 @@ class PynamoDBToPyMongoAdapter:
         last_evaluated_key = last_evaluated_key or 0
 
         cursor = collection.find(_query).limit(limit).skip(last_evaluated_key)
-        page_size = collection.count_documents(_query, limit=limit) \
-            if limit else collection.count_documents(_query)
         if range_key_name:
             cursor = cursor.sort(
                 range_key_name, ASCENDING if scan_index_forward else
@@ -396,7 +394,7 @@ class PynamoDBToPyMongoAdapter:
             result=(model_class.from_json(self.mongodb.decode_keys(i),
                                           attributes_to_get) for i in cursor),
             _evaluated_key=last_evaluated_key,
-            page_size=page_size
+            page_size=collection.count_documents(_query)
         )
 
     def scan(self, model_class, filter_condition=None, limit=None,
@@ -411,13 +409,11 @@ class PynamoDBToPyMongoAdapter:
         last_evaluated_key = last_evaluated_key or 0
 
         cursor = collection.find(_query).limit(limit).skip(last_evaluated_key)
-        page_size = collection.count_documents(_query, limit=limit) \
-            if limit else collection.count_documents(_query)
         return Result(
             result=(model_class.from_json(self.mongodb.decode_keys(i),
                                           attributes_to_get) for i in cursor),
             _evaluated_key=last_evaluated_key,
-            page_size=page_size
+            page_size=collection.count_documents(_query)
         )
 
     def refresh(self, consistent_read):
