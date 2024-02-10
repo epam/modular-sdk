@@ -1,4 +1,4 @@
-import decimal
+import json
 import json
 import re
 from itertools import islice
@@ -8,8 +8,7 @@ from pymongo import DeleteOne, ReplaceOne, DESCENDING, ASCENDING
 from pymongo.collection import Collection, ReturnDocument
 from pymongo.errors import BulkWriteError
 from pynamodb import indexes
-from pynamodb.expressions.condition import \
-    Condition
+from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.operand import Value, Path, _ListAppend
 from pynamodb.expressions.update import SetAction, RemoveAction, Action
 from pynamodb.models import Model
