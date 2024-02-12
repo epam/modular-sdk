@@ -8,7 +8,6 @@ python-dateutil==2.8.2
 simplejson==3.19.1
 six==1.16.0
 urllib3==1.26.16
-boltons==23.0.0
 aws-xray-sdk==2.12.0
 pycparser==2.21
 cffi==1.15.1
