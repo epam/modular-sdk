@@ -6,7 +6,7 @@ from pynamodb.attributes import MapAttribute, UnicodeAttribute, \
     NumberAttribute, BooleanAttribute, ListAttribute
 from pynamodb.constants import ITEM
 
-from test_commons.import_helper import ImportFromSourceContext
+from ..test_commons.import_helper import ImportFromSourceContext
 
 with ImportFromSourceContext():
     from modular_sdk.models.pynamodb_extension.base_safe_update_model import \

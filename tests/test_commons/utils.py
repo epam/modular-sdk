@@ -1,7 +1,7 @@
 import unittest
 from functools import cached_property
 
-from test_commons.import_helper import ImportFromSourceContext
+from .import_helper import ImportFromSourceContext
 
 with ImportFromSourceContext():
     from modular_sdk.commons import dict_without
