@@ -8,17 +8,20 @@ on:
       path:
         description: Where to look for the Python package to inspect.
         required: false
+        type: string
         default: .
     outputs:
       dist:
         description: The location of the built packages.
-        value: ${{ steps.setter.outputs.dist }}
+        value: ${{ jobs.build-package.outputs.dist }}
 
 
 jobs:
   build-package:
     name: Build and Verify package
     runs-on: ubuntu-latest
+    outputs:
+      dist: ${{ steps.setter.outputs.dist }}
 
     steps:
       - uses: actions/checkout@v4
