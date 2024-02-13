@@ -57,9 +57,11 @@ jobs:
         id: setter
         run: echo "dist=/tmp/bavp/dist" >>$GITHUB_OUTPUT
         shell: bash
+        working-directory: ${{ inputs.path }}
 
       - run: ls -l /tmp/bavp/dist
         shell: bash
+        working-directory: ${{ inputs.path }}
 
       - name: Upload built artifacts.
         uses: actions/upload-artifact@v4
@@ -69,9 +71,11 @@ jobs:
 
       - run: /tmp/bavp/bin/check-wheel-contents /tmp/bavp/dist/*.whl
         shell: bash
+        working-directory: ${{ inputs.path }}
 
       - name: Check PyPI README
         shell: bash
+        working-directory: ${{ inputs.path }}
         run: >
           /tmp/bavp/bin/python
           -m twine check
@@ -80,6 +84,7 @@ jobs:
 
       - name: Show wheel and SDist contents hierarchically, including metadata.
         shell: bash
+        working-directory: ${{ inputs.path }}
         run: |
           cd /tmp/bavp/dist
           mkdir -p out/sdist
