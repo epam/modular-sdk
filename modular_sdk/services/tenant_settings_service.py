@@ -55,6 +55,7 @@ class TenantSettingsService:
                 code=RESPONSE_BAD_REQUEST_CODE,
                 content=f'Tenant with name {tenant} is not found'
             )
+        # TODO what is wrong with this method?
 
         return tenant_item[0]
 

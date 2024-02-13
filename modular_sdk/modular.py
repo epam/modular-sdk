@@ -20,9 +20,8 @@ class Modular(metaclass=SingletonMeta):
     __region_service = None
     __tenant_service = None
     __tenant_settings_service = None
+    __customer_settings_service = None
     __sts_service = None
-    __job_tracer_service = None
-    __operation_mode_service = None
     __sqs_service = None
     __lambda_service = None
     __events_service = None
@@ -92,7 +91,7 @@ class Modular(metaclass=SingletonMeta):
         return kwargs
 
     def __str__(self):
-        return id(self)
+        return str(id(self))
 
     def environment_service(self):
         if not self.__environment_service:
@@ -147,6 +146,13 @@ class Modular(metaclass=SingletonMeta):
                 TenantSettingsService
             self.__tenant_settings_service = TenantSettingsService()
         return self.__tenant_settings_service
+
+    def customer_settings_service(self):
+        if not self.__customer_settings_service:
+            from modular_sdk.services.customer_settings_service import \
+                CustomerSettingsService
+            self.__customer_settings_service = CustomerSettingsService()
+        return self.__customer_settings_service
 
     def sts_service(self):
         if not self.__sts_service:
