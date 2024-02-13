@@ -1,3 +1,9 @@
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+[![PyPI - Version](https://img.shields.io/pypi/v/modular-sdk.svg)](https://pypi.org/project/modular-sdk)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/modular-sdk.svg)](https://pypi.org/project/modular-sdk)
+
+
 # Modular SDK
 
 You use Modular SDK to create, configure, and manage common entities, such as:
@@ -9,7 +15,7 @@ You use Modular SDK to create, configure, and manage common entities, such as:
 - Parents;
 
 ### Prerequisites
-- Python 3.8+ required
+- Python 3.10+ required
 
 ### [Building distribution archives](https://packaging.python.org/en/latest/tutorials/packaging-projects/#generating-distribution-archives)
 - Make sure you have the latest version of PyPA’s build installed: `python3 -m pip install --upgrade build`
