@@ -50,7 +50,7 @@ jobs:
       - name: Build package
         run: |
           SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
-          python -m build --outdir /tmp/bavp/dist
+          /tmp/bavp/bin/python -m build --outdir /tmp/bavp/dist
         shell: bash
 
       - name: Set output
