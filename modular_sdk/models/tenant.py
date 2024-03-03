@@ -18,6 +18,7 @@ TENANT_NAME = 'n'
 MANAGEMENT_PARENT_ID = 'mpid'
 DISPLAY_NAME = 'dn'
 ACTIVATION_DATE = 'ad'
+DEACTIVATION_DATE = 'dd'
 
 DNTL_NAME_KEY = 'dntl'
 GENERAL_PROJECT_ID = 'acc'
@@ -115,6 +116,8 @@ class Tenant(BaseRoleAccessModel):
     customer_name = UnicodeAttribute(attr_name=CUSTOMER_NAME)
     cloud = UnicodeAttribute(attr_name=CLOUD)
     activation_date = UnicodeAttribute(attr_name=ACTIVATION_DATE, null=True)
+    deactivation_date = UnicodeAttribute(attr_name=DEACTIVATION_DATE,
+                                         null=True)
     management_parent_id = UnicodeAttribute(attr_name=MANAGEMENT_PARENT_ID,
                                             null=True)
     project = UnicodeAttribute(attr_name=GENERAL_PROJECT_ID, null=True)

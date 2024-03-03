@@ -1,5 +1,6 @@
 from typing import Optional, Iterator, List
 
+from pynamodb.pagination import ResultIterator
 from modular_sdk.commons import RESPONSE_BAD_REQUEST_CODE, \
     RESPONSE_RESOURCE_NOT_FOUND_CODE, generate_id, default_instance
 from modular_sdk.commons.constants import AVAILABLE_APPLICATION_TYPES, \
@@ -57,7 +58,7 @@ class ApplicationService:
     def i_get_application_by_customer(
             customer_id: str, application_type: Optional[str] = None,
             deleted: Optional[bool] = None
-    ) -> Iterator[Application]:
+    ) -> ResultIterator[Application]:
 
         condition = deleted if deleted is None else (
                 Application.is_deleted == deleted
@@ -77,7 +78,9 @@ class ApplicationService:
     @staticmethod
     def list(customer: Optional[str] = None, _type: Optional[str] = None,
              deleted: Optional[bool] = None,
-             limit: Optional[int] = None) -> Iterator[Application]:
+             limit: Optional[int] = None,
+             last_evaluated_key: dict | int | None = None
+             ) -> ResultIterator[Application]:
         condition = None
         rkc = None
         if isinstance(deleted, bool):
@@ -89,11 +92,16 @@ class ApplicationService:
                 hash_key=customer,
                 range_key_condition=rkc,
                 filter_condition=condition,
-                limit=limit
+                limit=limit,
+                last_evaluated_key=last_evaluated_key
             )
         if rkc is not None:
             condition &= rkc
-        return Application.scan(filter_condition=condition, limit=limit)
+        return Application.scan(
+            filter_condition=condition,
+            limit=limit,
+            last_evaluated_key=last_evaluated_key
+        )
 
     @staticmethod
     def save(application: Application):
