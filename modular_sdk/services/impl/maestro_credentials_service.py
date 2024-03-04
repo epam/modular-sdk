@@ -3,6 +3,7 @@ import dataclasses
 import io
 import json
 import tempfile
+import uuid
 from contextlib import contextmanager
 from functools import cached_property
 from pathlib import Path
@@ -148,6 +149,16 @@ class AWSRoleApplicationMeta(DataclassBase):
     """
     roleName: str
     accountNumber: Optional[str] = None
+    uuid: str = dataclasses.field(default_factory=lambda: str(uuid.uuid4()))
+
+
+@dataclasses.dataclass()
+class AWSCredentialsApplicationMeta(DataclassBase):
+    """
+    Application with type 'AWS_CREDENTIALS' meta
+    """
+    accountNumber: str
+    uuid: str = dataclasses.field(default_factory=lambda: str(uuid.uuid4()))
 
 
 @dataclasses.dataclass(repr=False)
@@ -168,6 +179,7 @@ class AZURECredentialsApplicationMeta(DataclassBase):
     """
     clientId: Optional[str] = None
     tenantId: Optional[str] = None
+    uuid: str = dataclasses.field(default_factory=lambda: str(uuid.uuid4()))
 
 
 @dataclasses.dataclass(repr=False)
@@ -187,6 +199,7 @@ class AZURECertificateApplicationMeta(DataclassBase):
     """
     clientId: Optional[str] = None
     tenantId: Optional[str] = None
+    uuid: str = dataclasses.field(default_factory=lambda: str(uuid.uuid4()))
 
 
 @dataclasses.dataclass(repr=False)
@@ -204,6 +217,7 @@ class GCPServiceAccountApplicationMeta(DataclassBase):
     Application with type 'GCP_SERVICE_ACCOUNT', 'GCP_COMPUTE_ACCOUNT' meta
     """
     adminProjectId: Optional[str] = None
+    uuid: str = dataclasses.field(default_factory=lambda: str(uuid.uuid4()))
 
 
 # credentials definitions

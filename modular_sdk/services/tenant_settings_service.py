@@ -55,17 +55,22 @@ class TenantSettingsService:
                 code=RESPONSE_BAD_REQUEST_CODE,
                 content=f'Tenant with name {tenant} is not found'
             )
+        # TODO what is wrong with this method?
 
         return tenant_item[0]
 
     @staticmethod
     def i_get_by_tenant(tenant: str, key: Optional[str] = None,
-                        limit: Optional[int] = None
+                        limit: Optional[int] = None,
+                        last_evaluated_key: Optional[dict] = None,
+                        rate_limit: Optional[int] = None
                         ) -> ResultIterator[TenantSettings]:
         return TenantSettings.query(
             hash_key=tenant,
             limit=limit,
-            range_key_condition=(TenantSettings.key == key) if key else None
+            range_key_condition=(TenantSettings.key == key) if key else None,
+            last_evaluated_key=last_evaluated_key,
+            rate_limit=rate_limit
         )
 
     @staticmethod
@@ -80,3 +85,7 @@ class TenantSettingsService:
             limit=limit,
             filter_condition=fc
         )
+
+    @staticmethod
+    def get_dto(item: TenantSettings) -> dict:
+        return item.get_json()

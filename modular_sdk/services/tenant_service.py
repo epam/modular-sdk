@@ -11,15 +11,11 @@ from modular_sdk.models.parent import Parent
 from modular_sdk.models.pynamodb_extension.pynamodb_to_pymongo_adapter import \
     Result
 from modular_sdk.models.tenant import Tenant
-from modular_sdk.services.customer_service import CustomerService
 
 _LOG = get_logger(__name__)
 
 
 class TenantService:
-    def __init__(self, customer_service: CustomerService):
-        self.customer_service = customer_service
-
     @staticmethod
     def get(tenant_name: str,
             attributes_to_get: Optional[list] = None) -> Optional[Tenant]:
