@@ -17,6 +17,7 @@ class CustomerService:
     @staticmethod
     def i_get_customer(attributes_to_get: Optional[List] = None,
                        is_active: Optional[bool] = None,
+                       name: Optional[str] = None,
                        limit: Optional[int] = None,
                        last_evaluated_key: Optional[dict] = None,
                        rate_limit: Optional[int] = None
@@ -24,11 +25,14 @@ class CustomerService:
         condition = None
         if isinstance(is_active, bool):
             condition &= (Customer.is_active == is_active)
+        if name:
+            condition &= (Customer.name == name)
         return Customer.scan(
             attributes_to_get=attributes_to_get,
             limit=limit,
             last_evaluated_key=last_evaluated_key,
-            rate_limit=rate_limit
+            rate_limit=rate_limit,
+            filter_condition=condition
         )
 
     @staticmethod
