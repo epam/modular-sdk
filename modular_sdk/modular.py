@@ -135,9 +135,7 @@ class Modular(metaclass=SingletonMeta):
     def tenant_service(self):
         if not self.__tenant_service:
             from modular_sdk.services.tenant_service import TenantService
-            self.__tenant_service = TenantService(
-                customer_service=self.customer_service()
-            )
+            self.__tenant_service = TenantService()
         return self.__tenant_service
 
     def tenant_settings_service(self):

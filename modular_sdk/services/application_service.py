@@ -1,4 +1,5 @@
 from typing import Optional, Iterator, List
+from pynamodb.expressions.condition import Condition
 
 from pynamodb.pagination import ResultIterator
 from modular_sdk.commons import RESPONSE_BAD_REQUEST_CODE, \
@@ -73,6 +74,26 @@ class ApplicationService:
             hash_key=customer_id,
             range_key_condition=rkc,
             filter_condition=condition
+        )
+
+    @staticmethod
+    def query_by_customer(customer: str, 
+                          range_key_condition: Optional[Condition] = None,
+                          filter_condition: Optional[Condition] = None,
+                          limit: Optional[int] = None,
+                          last_evaluated_key: Optional[dict | int] = None,
+                          rate_limit: Optional[int] = None
+                          ) -> ResultIterator[Application]:
+        """
+        Allows to specify flexible conditions
+        """
+        return Application.customer_id_type_index.query(
+            hash_key=customer,
+            range_key_condition=range_key_condition,
+            filter_condition=filter_condition,
+            limit=limit,
+            last_evaluated_key=last_evaluated_key,
+            rate_limit=rate_limit
         )
 
     @staticmethod
