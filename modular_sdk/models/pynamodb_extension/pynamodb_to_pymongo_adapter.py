@@ -1,6 +1,7 @@
 import json
 import json
 import re
+import decimal
 from itertools import islice
 from typing import Optional, Dict, List, Union, TypeVar, Iterator
 
@@ -38,11 +39,6 @@ class Result(Iterator[T]):
         return self
 
     def __next__(self) -> T:
-        # try:
-        #     item = self._result_it.__next__()
-        # except StopIteration as e:
-        #     self._evaluated_key = None
-        #     raise e
         item = self._result_it.__next__()
 
         if self._evaluated_key is not None:
@@ -95,6 +91,25 @@ class _PynamoDBExpressionsConverter:
     index_regex: re.Pattern = re.compile('\[\d+\]')
 
     @staticmethod
+    def _preprocess(val: T) -> T:
+        """
+        Convert some values that are not accepted by mongodb:
+        - decimal.Decimal
+        Changes the given collection in place but also returns it
+        """
+        if isinstance(val, dict):
+            for k, v in val.items():
+                val[k] = _PynamoDBExpressionsConverter._preprocess(v)
+            return val
+        if isinstance(val, list):
+            for i, v in enumerate(val):
+                val[i] = _PynamoDBExpressionsConverter._preprocess(v)
+            return val
+        if isinstance(val, decimal.Decimal):
+            return float(val)
+        return val
+
+    @staticmethod
     def value_to_raw(value: Value) -> Union[str, dict, list, int, float]:
         """
         PynamoDB operand Value contains only one element in a list. This
@@ -105,9 +120,8 @@ class _PynamoDBExpressionsConverter:
         val = DynamoDBJsonSerializer.deserializer.deserialize(value.value)
         # now we can return the val, BUT some its values (top-level and nested)
         # can contain decimal.Decimal which is not acceptable by MongoDB.
-        # we should convert them to simple floats. json.dumps is quite an
-        # easy way to do it recursively. These values will not be huge
-        return json.loads(json.dumps(val, default=float))  # get rid of decimal
+        # we should convert them to simple floats.
+        return _PynamoDBExpressionsConverter._preprocess(val)
 
     @classmethod
     def path_to_raw(cls, path: Path) -> str:
