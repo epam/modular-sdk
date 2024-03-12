@@ -4,12 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-# [5.1.2] - 2024-03-08
+
+# [5.1.1] - 2024-03-12
 - add pyright config to pyproject.toml
 - add values preprocessor to pynamodb_to_pymongo_adapter instead of using 
   workaround with dumping-loading json
-
-# [5.1.1] - 2024-03-01
 - added `is_active` to Customer model
 - added `deactivation_date` to Tenant model
 - added some additional parameters to ApplicationService.list method
