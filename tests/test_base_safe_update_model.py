@@ -6,12 +6,9 @@ from pynamodb.attributes import MapAttribute, UnicodeAttribute, \
     NumberAttribute, BooleanAttribute, ListAttribute
 from pynamodb.constants import ITEM
 
-from test_commons.import_helper import ImportFromSourceContext
-
-with ImportFromSourceContext():
-    from modular_sdk.models.pynamodb_extension.base_safe_update_model import \
-        BaseSafeUpdateModel
-    from modular_sdk.commons import DynamoDBJsonSerializer
+from modular_sdk.commons import DynamoDBJsonSerializer
+from modular_sdk.models.pynamodb_extension.base_safe_update_model import \
+    BaseSafeUpdateModel
 
 KEY_NAME = 'k'
 STR_NAME = 's'

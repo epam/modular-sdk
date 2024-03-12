@@ -11,5 +11,6 @@ exclude = [
 pythonVersion = "3.8"
 reportIncompatibleMethodOverride = "warning"
 executionEnvironments = [
+    {root = "tests/", pythonVersion = "3.8", extraPaths = ["modular_sdk/"]}
 ]
 
