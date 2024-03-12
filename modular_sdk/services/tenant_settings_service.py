@@ -2,7 +2,7 @@ from typing import Optional
 
 from pynamodb.pagination import ResultIterator
 
-from modular_sdk.commons import RESPONSE_BAD_REQUEST_CODE
+from modular_sdk.commons import RESPONSE_BAD_REQUEST_CODE, deprecated
 from modular_sdk.commons.exception import ModularException
 from modular_sdk.models.tenant_settings import TenantSettings
 
@@ -43,6 +43,7 @@ class TenantSettingsService:
         tenant_setting.update(actions=actions)
 
     @staticmethod
+    @deprecated
     def get_tenant_by_name(tenant):
         tenants = TenantSettingsService.get_all_tenants(tenant=tenant)
         tenant_item = list(
