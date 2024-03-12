@@ -43,7 +43,7 @@ class TenantSettingsService:
         tenant_setting.update(actions=actions)
 
     @staticmethod
-    @deprecated
+    @deprecated('broken logic')
     def get_tenant_by_name(tenant):
         tenants = TenantSettingsService.get_all_tenants(tenant=tenant)
         tenant_item = list(
