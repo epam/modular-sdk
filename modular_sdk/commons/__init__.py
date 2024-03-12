@@ -96,16 +96,6 @@ def default_instance(value, _type: type, *args, **kwargs):
 
 
 class SingletonMeta(type):
-    """
-    class ServiceProviderForExample(metaclass=SingletonMeta):
-        __s3 = None
-        def s3(self) -> S3Client:
-            if not self.__s3:
-                self.__s3 = S3Client()
-            return self.__s3
-
-    Voila, typing and IDEA hints work :)
-    """
     _instances = {}
 
     def __call__(cls, *args, **kwargs):

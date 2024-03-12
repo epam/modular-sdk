@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+# [5.1.1] - 2024-03-12
+- add pyright config to pyproject.toml
+- add values preprocessor to pynamodb_to_pymongo_adapter instead of using 
+  workaround with dumping-loading json
+- added `is_active` to Customer model
+- added `deactivation_date` to Tenant model
+- added some additional parameters to ApplicationService.list method
+- added some parameters to CustomerService.i_get_customer method
+- added some parameters to TenantService.i_get_by_tenant method
+- fixe the supported Python versions in README.md and setup.cfg files
+
+# [5.1.0] - 2024-02-13
+- Added customer settings and customer settings service
+
+# [5.0.3] - 2024-01-31
+- removed `boltons` from requirements
+
+# [5.0.2] - 2024-01-31
+- add more parameters to `parent_service.i_list_application_parents` method
+
+# [5.0.1] - 2024-01-26
+- fix last_evaluted_key calculating in PynamoTOMondoDBAdapter
+
 # [5.0.0] - 2024-01-25
 - Application: switch to using cid-t-index (customer_id/type) from cid-index (customer_id)
 

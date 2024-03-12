@@ -1,9 +1,8 @@
-from typing import Optional, List, Iterable
+from typing import List, Optional
 
-from modular_sdk.commons.log_helper import get_logger
+from pynamodb.pagination import ResultIterator
+
 from modular_sdk.models.customer import Customer
-
-_LOG = get_logger(__name__)
 
 
 class CustomerService:
@@ -17,11 +16,23 @@ class CustomerService:
 
     @staticmethod
     def i_get_customer(attributes_to_get: Optional[List] = None,
-                       limit: Optional[int] = None
-                       ) -> Iterable[Customer]:
+                       is_active: Optional[bool] = None,
+                       name: Optional[str] = None,
+                       limit: Optional[int] = None,
+                       last_evaluated_key: Optional[dict] = None,
+                       rate_limit: Optional[int] = None
+                       ) -> ResultIterator[Customer]:
+        condition = None
+        if isinstance(is_active, bool):
+            condition &= (Customer.is_active == is_active)
+        if name:
+            condition &= (Customer.name == name)
         return Customer.scan(
             attributes_to_get=attributes_to_get,
-            limit=limit
+            limit=limit,
+            last_evaluated_key=last_evaluated_key,
+            rate_limit=rate_limit,
+            filter_condition=condition
         )
 
     @staticmethod

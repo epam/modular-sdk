@@ -43,19 +43,46 @@ class ParentService:
         ))
 
     @staticmethod
-    def i_list_application_parents(application_id: str, only_active=True,
+    def i_list_application_parents(application_id: str, 
+                                   type_: Optional[ParentType] = None,
+                                   scope: Optional[ParentScope] = None,
+                                   tenant_or_cloud: Optional[str] = None,
+                                   by_prefix: Optional[bool] = False,
+                                   only_active=True,
                                    limit: Optional[int] = None,
-                                   last_evaluated_key: Optional[dict] = None
+                                   last_evaluated_key: Optional[dict] = None,
+                                   rate_limit: Optional[int] = None
                                    ) -> Iterator[Parent]:
-        condition = None
+
+        # can be an empty string is we want to retrieve with literally '' cloud
+        is_tenant_or_cloud = isinstance(tenant_or_cloud, str)
+        if is_tenant_or_cloud and not scope or scope and not type_:
+            raise AssertionError('invalid usage')
+
+        if type_ and scope and is_tenant_or_cloud:
+            key = COMPOUND_KEYS_SEPARATOR.join((type_, scope, tenant_or_cloud))
+            if by_prefix:
+                rkc = Parent.type_scope.startswith(key)
+            else:
+                rkc = (Parent.type_scope == key)
+        elif type_ and scope:
+            rkc = Parent.type_scope.startswith(COMPOUND_KEYS_SEPARATOR.join((
+                type_, scope, ''
+            )))
+        elif type_:
+            rkc = Parent.type_scope.startswith(
+                f'{type_}{COMPOUND_KEYS_SEPARATOR}')
+        else:
+            rkc = None
         if only_active:
-            condition = (Parent.is_deleted == False)
+            rkc &= (Parent.is_deleted == False)
 
         return Parent.application_id_index.query(
             hash_key=application_id,
-            filter_condition=condition,
+            filter_condition=rkc,
             limit=limit,
-            last_evaluated_key=last_evaluated_key
+            last_evaluated_key=last_evaluated_key,
+            rate_limit=rate_limit
         )
 
     def i_get_parent_by_customer(self, customer_id: str,

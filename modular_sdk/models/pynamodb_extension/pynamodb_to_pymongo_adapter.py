@@ -1,6 +1,7 @@
-import decimal
+import json
 import json
 import re
+import decimal
 from itertools import islice
 from typing import Optional, Dict, List, Union, TypeVar, Iterator
 
@@ -8,8 +9,7 @@ from pymongo import DeleteOne, ReplaceOne, DESCENDING, ASCENDING
 from pymongo.collection import Collection, ReturnDocument
 from pymongo.errors import BulkWriteError
 from pynamodb import indexes
-from pynamodb.expressions.condition import \
-    Condition
+from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.operand import Value, Path, _ListAppend
 from pynamodb.expressions.update import SetAction, RemoveAction, Action
 from pynamodb.models import Model
@@ -39,11 +39,6 @@ class Result(Iterator[T]):
         return self
 
     def __next__(self) -> T:
-        # try:
-        #     item = self._result_it.__next__()
-        # except StopIteration as e:
-        #     self._evaluated_key = None
-        #     raise e
         item = self._result_it.__next__()
 
         if self._evaluated_key is not None:
@@ -96,6 +91,25 @@ class _PynamoDBExpressionsConverter:
     index_regex: re.Pattern = re.compile('\[\d+\]')
 
     @staticmethod
+    def _preprocess(val: T) -> T:
+        """
+        Convert some values that are not accepted by mongodb:
+        - decimal.Decimal
+        Changes the given collection in place but also returns it
+        """
+        if isinstance(val, dict):
+            for k, v in val.items():
+                val[k] = _PynamoDBExpressionsConverter._preprocess(v)
+            return val
+        if isinstance(val, list):
+            for i, v in enumerate(val):
+                val[i] = _PynamoDBExpressionsConverter._preprocess(v)
+            return val
+        if isinstance(val, decimal.Decimal):
+            return float(val)
+        return val
+
+    @staticmethod
     def value_to_raw(value: Value) -> Union[str, dict, list, int, float]:
         """
         PynamoDB operand Value contains only one element in a list. This
@@ -106,9 +120,8 @@ class _PynamoDBExpressionsConverter:
         val = DynamoDBJsonSerializer.deserializer.deserialize(value.value)
         # now we can return the val, BUT some its values (top-level and nested)
         # can contain decimal.Decimal which is not acceptable by MongoDB.
-        # we should convert them to simple floats. json.dumps is quite an
-        # easy way to do it recursively. These values will not be huge
-        return json.loads(json.dumps(val, default=float))  # get rid of decimal
+        # we should convert them to simple floats.
+        return _PynamoDBExpressionsConverter._preprocess(val)
 
     @classmethod
     def path_to_raw(cls, path: Path) -> str:
@@ -385,8 +398,6 @@ class PynamoDBToPyMongoAdapter:
         last_evaluated_key = last_evaluated_key or 0
 
         cursor = collection.find(_query).limit(limit).skip(last_evaluated_key)
-        page_size = collection.count_documents(_query, limit=limit) \
-            if limit else collection.count_documents(_query)
         if range_key_name:
             cursor = cursor.sort(
                 range_key_name, ASCENDING if scan_index_forward else
@@ -396,7 +407,7 @@ class PynamoDBToPyMongoAdapter:
             result=(model_class.from_json(self.mongodb.decode_keys(i),
                                           attributes_to_get) for i in cursor),
             _evaluated_key=last_evaluated_key,
-            page_size=page_size
+            page_size=collection.count_documents(_query)
         )
 
     def scan(self, model_class, filter_condition=None, limit=None,
@@ -411,13 +422,11 @@ class PynamoDBToPyMongoAdapter:
         last_evaluated_key = last_evaluated_key or 0
 
         cursor = collection.find(_query).limit(limit).skip(last_evaluated_key)
-        page_size = collection.count_documents(_query, limit=limit) \
-            if limit else collection.count_documents(_query)
         return Result(
             result=(model_class.from_json(self.mongodb.decode_keys(i),
                                           attributes_to_get) for i in cursor),
             _evaluated_key=last_evaluated_key,
-            page_size=page_size
+            page_size=collection.count_documents(_query)
         )
 
     def refresh(self, consistent_read):
