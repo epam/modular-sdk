@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+# [5.1.3] - 2024-06-09
+- added new Application and Parent type: "GCP_CHRONICLE_INSTANCE"
+
+# [5.1.2] - 2024-05-13
+- try to load json from vault str values
+
 # [5.1.1] - 2024-03-12
 - add pyright config to pyproject.toml
 - add values preprocessor to pynamodb_to_pymongo_adapter instead of using 

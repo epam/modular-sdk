@@ -111,7 +111,13 @@ class VaultSSMClient(AbstractSSMClient):
                 path=name, mount_point=self.mount_point) or {}
         except Exception:  # hvac.InvalidPath
             return
-        return response.get('data', {}).get('data', {}).get(self.key)
+        val = response.get('data', {}).get('data', {}).get(self.key)
+        if isinstance(val, str):
+            try:
+                val = json.loads(val)
+            except json.JSONDecodeError:
+                pass
+        return val
 
     def put_parameter(self, name: str, value: SecretValue,
                       _type='SecureString') -> Optional[str]:

@@ -48,6 +48,7 @@ class ParentType(str, Enum):
     RIGHTSIZER_LICENSES_PARENT = 'RIGHTSIZER_LICENSES'
     SIEM_DEFECT_DOJO = 'SIEM_DEFECT_DOJO'
     PLATFORM_K8S = 'PLATFORM_K8S'
+    GCP_CHRONICLE_INSTANCE = 'GCP_CHRONICLE_INSTANCE'
 
     @classmethod
     def iter(cls):
@@ -146,6 +147,7 @@ class ApplicationType(str, Enum):
     RABBITMQ = 'RABBITMQ'
     DEFECT_DOJO = 'DEFECT_DOJO'
     K8S_KUBE_CONFIG = 'K8S_KUBE_CONFIG'
+    GCP_CHRONICLE_INSTANCE = 'GCP_CHRONICLE_INSTANCE'
 
     @classmethod
     def iter(cls):
