@@ -40,6 +40,7 @@ Changelog = "https://github.com/epam/modular-sdk/blob/main/CHANGELOG.md"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["modular_sdk*"]
+exclude = ["tests*", "patch_scripts*"]
 namespaces = false
 
 
