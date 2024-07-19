@@ -46,9 +46,7 @@ namespaces = false
 
 [project.optional-dependencies]
 cryptography = [
-    "cryptography~=41.0.3",
-    "pycparser==2.21",
-    "cffi==1.15.1"
+    "cryptography~=41.0.7"
 ]
 
 [tool.pyright]
