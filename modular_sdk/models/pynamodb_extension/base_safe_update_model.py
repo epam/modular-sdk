@@ -116,7 +116,8 @@ class BaseSafeUpdateModel(BaseModel):
         setattr(instance, cls._additional_data_attr_name, additional_data)
         return instance
 
-    def _get_save_args(self, null_check: bool = True, condition=None):
+    def _get_save_args(self, null_check: bool = True, condition=None,
+                       add_version_condition: bool = True):
         """
         Gets the proper *args, **kwargs for saving and retrieving this object
         :param null_check: If True, then attributes are checked for null
@@ -146,7 +147,7 @@ class BaseSafeUpdateModel(BaseModel):
             kwargs['range_key'] = range_key
         version_condition = self._handle_version_attribute(
             attributes=attribute_values)
-        if version_condition is not None:
+        if add_version_condition and version_condition is not None:
             condition &= version_condition
         kwargs['attributes'] = attribute_values
         kwargs['condition'] = condition
