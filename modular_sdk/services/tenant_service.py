@@ -57,12 +57,12 @@ class TenantService:
                            filter_condition=condition)
 
     @classmethod
-    @deprecated('represented logic is deprecated')
+    @deprecated('Logic is deprecated')
     def get_tenants_by_parent_id(cls, parent_id, only_active=True):
         return list(cls.i_get_tenant_by_parent_id(parent_id, only_active))
 
     @staticmethod
-    @deprecated('represented logic is deprecated')
+    @deprecated('Logic is deprecated')
     def i_get_tenant_by_parent_id(parent_id: str,
                                   active: Optional[bool] = None,
                                   limit: Optional[int] = None,
@@ -139,12 +139,13 @@ class TenantService:
         )
 
     @staticmethod
+    @deprecated('Use i_get_by_acc instead')
     def i_get_by_accN(accN: str, active: Optional[bool] = None,
                       limit: int = None,
                       last_evaluated_key: Union[dict, str] = None,
                       attributes_to_get: List[str] = None):
         fc = None if active is None else (Tenant.is_active == active)
-        return Tenant.accN_index.query(
+        return Tenant.project_index.query(
             hash_key=accN, filter_condition=fc,
             limit=limit, last_evaluated_key=last_evaluated_key,
             attributes_to_get=attributes_to_get
