@@ -32,6 +32,7 @@ class RabbitMqConnection:
 
     def publish(self, message, routing_key, exchange='', headers=None,
                 content_type=None):
+        _LOG.debug(f'Request queue: {routing_key}')
         channel = self._open_channel()
         channel.confirm_delivery()
         response = channel.basic_publish(
@@ -52,7 +53,8 @@ class RabbitMqConnection:
     def publish_sync(self, message, routing_key, correlation_id,
                      callback_queue, exchange='', headers=None,
                      content_type=None):
-
+        _LOG.debug(f'Request queue: {routing_key}; '
+                   f'Response queue: {callback_queue}')
         channel = self._open_channel()
         channel.confirm_delivery()
         response = channel.basic_publish(
