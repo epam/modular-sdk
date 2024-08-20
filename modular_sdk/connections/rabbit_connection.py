@@ -44,7 +44,7 @@ class RabbitMqConnection:
             mandatory=True)
         self._close()
         if not response:
-            message = ('Message was returned. Check RabbitMQ '
+            message = ('Message was not returned. Check RabbitMQ '
                        'configuration: maybe target queue does not exists.')
             _LOG.error(message)
             raise ModularException(code=504, content=message)
@@ -66,7 +66,7 @@ class RabbitMqConnection:
                                             content_type=content_type),
             body=message)
         if not response:
-            message = ('Message was returned. Check RabbitMQ '
+            message = ('Message was not returned. Check RabbitMQ '
                        'configuration: maybe target queue does not exists.')
             _LOG.error(message)
             raise ModularException(code=504, content=message)
