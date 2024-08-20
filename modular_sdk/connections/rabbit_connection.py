@@ -32,6 +32,7 @@ class RabbitMqConnection:
 
     def publish(self, message, routing_key, exchange='', headers=None,
                 content_type=None):
+        _LOG.debug(f'Request queue: {routing_key}')
         channel = self._open_channel()
         channel.confirm_delivery()
         response = channel.basic_publish(
@@ -43,7 +44,7 @@ class RabbitMqConnection:
             mandatory=True)
         self._close()
         if not response:
-            message = ('Message was returned. Check RabbitMQ '
+            message = ('Message was not returned. Check RabbitMQ '
                        'configuration: maybe target queue does not exists.')
             _LOG.error(message)
             raise ModularException(code=504, content=message)
@@ -52,7 +53,8 @@ class RabbitMqConnection:
     def publish_sync(self, message, routing_key, correlation_id,
                      callback_queue, exchange='', headers=None,
                      content_type=None):
-
+        _LOG.debug(f'Request queue: {routing_key}; '
+                   f'Response queue: {callback_queue}')
         channel = self._open_channel()
         channel.confirm_delivery()
         response = channel.basic_publish(
@@ -64,7 +66,7 @@ class RabbitMqConnection:
                                             content_type=content_type),
             body=message)
         if not response:
-            message = ('Message was returned. Check RabbitMQ '
+            message = ('Message was not returned. Check RabbitMQ '
                        'configuration: maybe target queue does not exists.')
             _LOG.error(message)
             raise ModularException(code=504, content=message)
