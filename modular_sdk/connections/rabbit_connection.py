@@ -44,10 +44,12 @@ class RabbitMqConnection:
             mandatory=True)
         self._close()
         if not response:
-            message = ('Message was not returned. Check RabbitMQ '
-                       'configuration: maybe target queue does not exists.')
-            _LOG.error(message)
-            raise ModularException(code=504, content=message)
+            _LOG.error(f'Message was not sent: routing_key={routing_key}, '
+                       f'exchange={exchange}, content_type={content_type}')
+            raise ModularException(
+                code=504,
+                content='Message was not sent. Check RabbitMQ configuration'
+            )
         _LOG.info('Message pushed')
 
     def publish_sync(self, message, routing_key, correlation_id,
@@ -66,10 +68,14 @@ class RabbitMqConnection:
                                             content_type=content_type),
             body=message)
         if not response:
-            message = ('Message was not returned. Check RabbitMQ '
-                       'configuration: maybe target queue does not exists.')
-            _LOG.error(message)
-            raise ModularException(code=504, content=message)
+            _LOG.error(f'Message was not sent: routing_key={routing_key}, '
+                       f'correlation_id={correlation_id}, '
+                       f'callback_queue={callback_queue}'
+                       f'exchange={exchange}, content_type={content_type}')
+            raise ModularException(
+                code=504,
+                content='Message was not sent. Check RabbitMQ configuration'
+            )
         _LOG.info('Message pushed')
 
     def consume_sync(self, queue, correlation_id):
