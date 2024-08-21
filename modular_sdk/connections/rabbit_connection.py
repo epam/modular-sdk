@@ -70,7 +70,7 @@ class RabbitMqConnection:
         if not response:
             _LOG.error(f'Message was not sent: routing_key={routing_key}, '
                        f'correlation_id={correlation_id}, '
-                       f'callback_queue={callback_queue}'
+                       f'callback_queue={callback_queue}, '
                        f'exchange={exchange}, content_type={content_type}')
             raise ModularException(
                 code=504,
