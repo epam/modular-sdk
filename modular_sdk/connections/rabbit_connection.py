@@ -8,8 +8,7 @@ _LOG = get_logger('modular_sdk-rabbit_connection')
 
 
 class RabbitMqConnection:
-    def __init__(self, connection_url,
-                 timeout):
+    def __init__(self, connection_url, timeout):
         self.connection_url = connection_url
         self.timeout = timeout or RABBIT_DEFAULT_RESPONSE_TIMEOUT
         self.responses = {}
@@ -20,63 +19,95 @@ class RabbitMqConnection:
             self.conn = pika.BlockingConnection(parameters)
             return self.conn.channel()
         except pika.exceptions.AMQPConnectionError as e:
-            _LOG.error('Connection to RabbitMQ refused. Bad credentials.')
+            error_msg = str(e) or "Bad credentials"
+            _LOG.error(f'Connection to RabbitMQ refused: {error_msg}')
             raise ModularException(
-                code=502,
-                content='Connection to RabbitMQ refused. Bad credentials.'
+                code=502, content=f'Connection to RabbitMQ refused: {error_msg}'
             )
 
     def _close(self):
         if self.conn.is_open:
             self.conn.close()
 
-    def publish(self, message, routing_key, exchange='', headers=None,
-                content_type=None):
+    def publish(
+            self,
+            message: str,
+            routing_key: str,
+            exchange: str = '',
+            headers: dict = None,
+            content_type: str = None,
+    ):
         _LOG.debug(f'Request queue: {routing_key}')
-        channel = self._open_channel()
-        channel.confirm_delivery()
-        response = channel.basic_publish(
-            exchange=exchange,
-            routing_key=routing_key,
-            properties=pika.BasicProperties(headers=headers,
-                                            content_type=content_type),
-            body=message,
-            mandatory=True)
-        self._close()
-        if not response:
-            _LOG.error(f'Message was not sent: routing_key={routing_key}, '
-                       f'exchange={exchange}, content_type={content_type}')
-            raise ModularException(
-                code=504,
-                content='Message was not sent. Check RabbitMQ configuration'
-            )
-        _LOG.info('Message pushed')
+        with self._open_channel() as channel:
+            channel.confirm_delivery()
+            if not self.__basic_publish(
+                channel=channel,
+                exchange=exchange,
+                routing_key=routing_key,
+                properties=pika.BasicProperties(
+                    headers=headers, content_type=content_type,
+                ),
+                body=message,
+                mandatory=True,
+            ):
+                _LOG.error(
+                    f'Message was not sent: routing_key={routing_key}, '
+                    f'exchange={exchange}, content_type={content_type}'
+                )
+                raise ModularException(
+                    code=504,
+                    content='Message was not sent. Check RabbitMQ configuration'
+                )
+            _LOG.info('Message pushed')
 
-    def publish_sync(self, message, routing_key, correlation_id,
-                     callback_queue, exchange='', headers=None,
-                     content_type=None):
-        _LOG.debug(f'Request queue: {routing_key}; '
-                   f'Response queue: {callback_queue}')
-        channel = self._open_channel()
-        channel.confirm_delivery()
-        response = channel.basic_publish(
-            exchange=exchange,
-            routing_key=routing_key,
-            properties=pika.BasicProperties(headers=headers,
-                                            reply_to=callback_queue,
-                                            correlation_id=correlation_id,
-                                            content_type=content_type),
-            body=message)
-        if not response:
-            _LOG.error(f'Message was not sent: routing_key={routing_key}, '
-                       f'correlation_id={correlation_id}, '
-                       f'callback_queue={callback_queue}, '
-                       f'exchange={exchange}, content_type={content_type}')
-            raise ModularException(
-                code=504,
-                content='Message was not sent. Check RabbitMQ configuration'
+    @staticmethod
+    def __basic_publish(channel, **kwargs):
+        try:
+            channel.basic_publish(**kwargs)
+            return True
+        except (pika.exceptions.NackError, pika.exceptions.UnroutableError):
+            return False
+
+    def publish_sync(
+            self,
+            message: str,
+            routing_key: str,
+            correlation_id: str,
+            callback_queue: str,
+            exchange: str = '',
+            headers: dict = None,
+            content_type: str = None,
+    ):
+        _LOG.debug(
+            f'Request queue: {routing_key}; Response queue: {callback_queue}'
+        )
+        with self._open_channel() as channel:
+            channel.confirm_delivery()
+            properties = pika.BasicProperties(
+                headers=headers,
+                reply_to=callback_queue,
+                correlation_id=correlation_id,
+                content_type=content_type,
             )
-        _LOG.info('Message pushed')
+            if not self.__basic_publish(
+                    channel=channel,
+                    exchange=exchange,
+                    routing_key=routing_key,
+                    properties=properties,
+                    body=message,
+            ):
+                error_msg = (
+                    f"Message was not sent: routing_key={routing_key}, "
+                    f"correlation_id={correlation_id}, "
+                    f"callback_queue={callback_queue}, "
+                    f"exchange={exchange}, content_type={content_type}"
+                )
+                _LOG.error(error_msg)
+                raise ModularException(
+                    code=504,
+                    content='Message was not sent. Check RabbitMQ configuration'
+                )
+            _LOG.info('Message pushed')
 
     def consume_sync(self, queue, correlation_id):
 
@@ -110,8 +141,7 @@ class RabbitMqConnection:
             _LOG.debug('Response received')
             return response
         else:
-            _LOG.error('Response was not received. '
-                       'Timeout: {0} seconds. '
+            _LOG.error('Response was not received. Timeout: {0} seconds. '
                        .format(self.timeout))
             return None
 
