@@ -36,19 +36,20 @@ class RabbitMqConnection:
             exchange: str = '',
             headers: dict = None,
             content_type: str = None,
-    ):
+    ) -> None:
         _LOG.debug(f'Request queue: {routing_key}')
-        with self._open_channel() as channel:
+        channel = self._open_channel()
+        try:
             channel.confirm_delivery()
             if not self.__basic_publish(
-                channel=channel,
-                exchange=exchange,
-                routing_key=routing_key,
-                properties=pika.BasicProperties(
-                    headers=headers, content_type=content_type,
-                ),
-                body=message,
-                mandatory=True,
+                    channel=channel,
+                    exchange=exchange,
+                    routing_key=routing_key,
+                    properties=pika.BasicProperties(
+                        headers=headers, content_type=content_type,
+                    ),
+                    body=message,
+                    mandatory=True,
             ):
                 _LOG.error(
                     f'Message was not sent: routing_key={routing_key}, '
@@ -59,6 +60,8 @@ class RabbitMqConnection:
                     content='Message was not sent. Check RabbitMQ configuration'
                 )
             _LOG.info('Message pushed')
+        finally:
+            self._close()
 
     @staticmethod
     def __basic_publish(channel, **kwargs):
@@ -77,11 +80,12 @@ class RabbitMqConnection:
             exchange: str = '',
             headers: dict = None,
             content_type: str = None,
-    ):
+    ) -> None:
         _LOG.debug(
             f'Request queue: {routing_key}; Response queue: {callback_queue}'
         )
-        with self._open_channel() as channel:
+        channel = self._open_channel()
+        try:
             channel.confirm_delivery()
             properties = pika.BasicProperties(
                 headers=headers,
@@ -108,6 +112,8 @@ class RabbitMqConnection:
                     content='Message was not sent. Check RabbitMQ configuration'
                 )
             _LOG.info('Message pushed')
+        finally:
+            self._close()
 
     def consume_sync(self, queue, correlation_id):
 
