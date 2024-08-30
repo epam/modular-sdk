@@ -69,6 +69,7 @@ class RabbitMqConnection:
             channel.basic_publish(**kwargs)
             return True
         except (pika.exceptions.NackError, pika.exceptions.UnroutableError):
+            _LOG.exception('Pika exception occurred')
             return False
 
     def publish_sync(
