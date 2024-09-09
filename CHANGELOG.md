@@ -4,9 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [6.1.0] - 2024-08-29
+## [6.1.0] - 2024-09-09
 - Update `pika` library from version `1.0.0b1` to `1.3.2`
 - Update `RabbitMqConnection` class to support `pika` version `1.3.2`
+- Replace `uuid1` with `uuid4`
 
 ## [6.0.0] - 2024-08-20
 - Split `SIEM_DEFECT_DOJO` Parent type into:

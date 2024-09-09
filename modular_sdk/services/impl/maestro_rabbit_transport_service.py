@@ -116,7 +116,7 @@ class MaestroRabbitMQTransport(RabbitMQTransport):
 
     @staticmethod
     def _generate_id():
-        return str(uuid.uuid1())
+        return str(uuid.uuid4())
 
     @staticmethod
     def _decrypt(secret_key, data):
