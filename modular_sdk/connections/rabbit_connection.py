@@ -1,4 +1,5 @@
 import pika
+import pika.exceptions
 
 from modular_sdk.commons import ModularException
 from modular_sdk.commons.log_helper import get_logger
@@ -116,20 +117,24 @@ class RabbitMqConnection:
         finally:
             self._close()
 
-    def consume_sync(self, queue, correlation_id):
-
-        def _consumer_callback(ch, method, props, body):
+    def consume_sync(self, queue: str, correlation_id: str) -> bytes | None:
+        def _consumer_callback(
+                ch: pika.adapters.blocking_connection.BlockingChannel,
+                method: pika.spec.Basic.Deliver,
+                props: pika.spec.BasicProperties,
+                body: bytes,
+        ) -> None:
             if props.correlation_id == correlation_id:
                 _LOG.debug(
-                    f'Message retrieved successfully with ID: {props.correlation_id}'
+                    f'Message retrieved successfully with ID: '
+                    f'{props.correlation_id}'
                 )
                 self.responses[props.correlation_id] = body
                 ch.basic_ack(delivery_tag=method.delivery_tag)
-                # stop consume
-                ch.stop_consuming(props.correlation_id)
+                ch.stop_consuming()
             else:
                 _LOG.warning(
-                    f'WARNING!!! Received message with mismatched Correlation ID:'
+                    f'Received message with mismatched Correlation ID:'
                     f'{props.correlation_id} (expected: {correlation_id})'
                 )
                 ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
@@ -139,25 +144,27 @@ class RabbitMqConnection:
             self._close()
 
         channel = self._open_channel()
-        if channel.basic_consume(
+        if not channel:
+            _LOG.error('Failed to open a channel')
+            return None
+
+        try:
+            channel.basic_consume(
                 queue=queue,
                 on_message_callback=_consumer_callback,
                 consumer_tag=correlation_id,
-        ):
+            )
             _LOG.debug(
                 f'Waiting for message. Queue: {queue}, '
                 f'Correlation id: {correlation_id}'
             )
-        else:
-            _LOG.error(f"Failed to consume message from queue '{queue}'")
+            self.conn.call_later(self.timeout, _close_on_timeout)
+            channel.start_consuming()
+        except Exception as e:
+            _LOG.error(f"Error during message consumption: {e}")
             return None
-
-        # stop consume
-        self.conn.call_later(self.timeout, _close_on_timeout)
-
-        # blocking method
-        channel.start_consuming()
-        self._close()
+        finally:
+            self._close()
 
         response = self.responses.pop(correlation_id, None)
         if response:
