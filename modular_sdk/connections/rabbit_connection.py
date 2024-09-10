@@ -129,7 +129,7 @@ class RabbitMqConnection:
                 ch.stop_consuming(props.correlation_id)
             else:
                 _LOG.warning(
-                    f'Received message with mismatched Correlation ID:'
+                    f'WARNING!!! Received message with mismatched Correlation ID:'
                     f'{props.correlation_id} (expected: {correlation_id})'
                 )
                 ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
