@@ -119,17 +119,20 @@ class RabbitMqConnection:
     def consume_sync(self, queue, correlation_id):
 
         def _consumer_callback(ch, method, props, body):
-            if props.correlation_id != correlation_id:
+            if props.correlation_id == correlation_id:
+                _LOG.debug(
+                    f'Message retrieved successfully with ID: {props.correlation_id}'
+                )
+                self.responses[props.correlation_id] = body
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                # stop consume
+                ch.stop_consuming(props.correlation_id)
+            else:
                 _LOG.warning(
                     f'Received message with mismatched Correlation ID:'
                     f'{props.correlation_id} (expected: {correlation_id})'
                 )
-            _LOG.debug(
-                f'Message retrieved successfully with ID: {props.correlation_id}'
-            )
-            self.responses[props.correlation_id] = body
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-            ch.stop_consuming(props.correlation_id)
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
         def _close_on_timeout():
             _LOG.warning('Timeout exceeded. Close connection')
@@ -149,6 +152,7 @@ class RabbitMqConnection:
             _LOG.error(f"Failed to consume message from queue '{queue}'")
             return None
 
+        # stop consume
         self.conn.call_later(self.timeout, _close_on_timeout)
 
         # blocking method
