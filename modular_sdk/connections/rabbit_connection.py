@@ -85,6 +85,7 @@ class RabbitMqConnection:
                 props: pika.spec.BasicProperties,
                 body: bytes,
         ) -> None:
+
             if props.correlation_id == correlation_id:
                 _LOG.debug(
                     f'Message retrieved successfully with ID: '
