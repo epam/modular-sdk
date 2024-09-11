@@ -78,12 +78,28 @@ class RabbitMqConnection:
             )
         _LOG.info('Message pushed')
 
-    def consume_sync(self, queue, correlation_id):
+    def consume_sync(self, queue: str, correlation_id: str) -> bytes | None:
 
-        def _consumer_callback(ch, method, props, body):
-            self.responses[props.correlation_id] = body
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-            ch.stop_consuming(props.correlation_id)
+        def _consumer_callback(
+                ch: pika.adapters.blocking_connection.BlockingChannel,
+                method: pika.spec.Basic.Deliver,
+                props: pika.spec.BasicProperties,
+                body: bytes,
+        ) -> None:
+            if props.correlation_id == correlation_id:
+                _LOG.debug(
+                    f'Message retrieved successfully with ID: '
+                    f'{props.correlation_id}'
+                )
+                self.responses[props.correlation_id] = body
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                ch.stop_consuming()
+            else:
+                _LOG.warning(
+                    f'Received message with mismatched Correlation ID:'
+                    f'{props.correlation_id} (expected: {correlation_id})'
+                )
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
         def _close_on_timeout():
             _LOG.warn('Timeout exceeded. Close connection')

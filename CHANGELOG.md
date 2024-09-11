@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.0.1b1] - 2024-09-11
+- fix rabbitmq bug when a wrong message was consumed aster pushing
+
 ## [6.0.0] - 2024-08-20
 - Split `SIEM_DEFECT_DOJO` Parent type into:
   - CUSTODIAN_SIEM_DEFECT_DOJO
