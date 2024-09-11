@@ -78,42 +78,61 @@ class RabbitMqConnection:
             )
         _LOG.info('Message pushed')
 
-    def consume_sync(self, queue, correlation_id):
-
-        def _consumer_callback(ch, method, props, body):
-            self.responses[props.correlation_id] = body
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-            ch.stop_consuming(props.correlation_id)
+    def consume_sync(self, queue: str, correlation_id: str) -> bytes | None:
+        def _consumer_callback(
+                ch: pika.adapters.blocking_connection.BlockingChannel,
+                method: pika.spec.Basic.Deliver,
+                props: pika.spec.BasicProperties,
+                body: bytes,
+        ) -> None:
+            if props.correlation_id == correlation_id:
+                _LOG.debug(
+                    f'Message retrieved successfully with ID: '
+                    f'{props.correlation_id}'
+                )
+                self.responses[props.correlation_id] = body
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                ch.stop_consuming()
+            else:
+                _LOG.warning(
+                    f'Received message with mismatched Correlation ID:'
+                    f'{props.correlation_id} (expected: {correlation_id})'
+                )
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
         def _close_on_timeout():
-            _LOG.warn('Timeout exceeded. Close connection')
-            self.conn.close()
+            _LOG.warning('Timeout exceeded. Close connection')
+            self._close()
 
         channel = self._open_channel()
-        if channel.basic_consume(queue=queue,
-                                 on_message_callback=_consumer_callback,
-                                 consumer_tag=correlation_id):
-            _LOG.debug('Waiting for message. Queue: {0}, Correlation id: {1}'
-                       .format(queue, correlation_id))
-        else:
-            _LOG.error('Failed to consume. Queue: {0}'.format(queue))
+        if not channel:
+            _LOG.error('Failed to open a channel')
             return None
 
-        self.conn.add_timeout(self.timeout, _close_on_timeout)
+        try:
+            channel.basic_consume(
+                queue=queue,
+                on_message_callback=_consumer_callback,
+                consumer_tag=correlation_id,
+            )
+            _LOG.debug(
+                f'Waiting for message. Queue: {queue}, '
+                f'Correlation id: {correlation_id}'
+            )
+            self.conn.add_timeout(self.timeout, _close_on_timeout)
+            channel.start_consuming()
+        except Exception as e:
+            _LOG.error(f"Error during message consumption: {e}")
+            return None
+        finally:
+            self._close()
 
-        # blocking method
-        channel.start_consuming()
-        self._close()
-
-        if correlation_id in list(self.responses.keys()):
-            response = self.responses.pop(correlation_id)
-            _LOG.debug('Response received')
+        response = self.responses.pop(correlation_id, None)
+        if response:
+            _LOG.debug('Response successfully received and processed')
             return response
-        else:
-            _LOG.error('Response was not received. '
-                       'Timeout: {0} seconds. '
-                       .format(self.timeout))
-            return None
+        _LOG.error(f"Response wasn't received. Timeout: {self.timeout} seconds")
+        return None
 
     def check_queue_exists(self, queue_name):
         channel = self._open_channel()
