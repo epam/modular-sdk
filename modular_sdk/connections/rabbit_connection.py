@@ -79,13 +79,13 @@ class RabbitMqConnection:
         _LOG.info('Message pushed')
 
     def consume_sync(self, queue: str, correlation_id: str) -> bytes | None:
+
         def _consumer_callback(
                 ch: pika.adapters.blocking_connection.BlockingChannel,
                 method: pika.spec.Basic.Deliver,
                 props: pika.spec.BasicProperties,
                 body: bytes,
         ) -> None:
-
             if props.correlation_id == correlation_id:
                 _LOG.debug(
                     f'Message retrieved successfully with ID: '
