@@ -101,38 +101,34 @@ class RabbitMqConnection:
                 ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
         def _close_on_timeout():
-            _LOG.warning('Timeout exceeded. Close connection')
-            self._close()
+            _LOG.warn('Timeout exceeded. Close connection')
+            self.conn.close()
 
         channel = self._open_channel()
-        if not channel:
-            _LOG.error('Failed to open a channel')
+        if channel.basic_consume(queue=queue,
+                                 on_message_callback=_consumer_callback,
+                                 consumer_tag=correlation_id):
+            _LOG.debug('Waiting for message. Queue: {0}, Correlation id: {1}'
+                       .format(queue, correlation_id))
+        else:
+            _LOG.error('Failed to consume. Queue: {0}'.format(queue))
             return None
 
-        try:
-            channel.basic_consume(
-                queue=queue,
-                on_message_callback=_consumer_callback,
-                consumer_tag=correlation_id,
-            )
-            _LOG.debug(
-                f'Waiting for message. Queue: {queue}, '
-                f'Correlation id: {correlation_id}'
-            )
-            self.conn.add_timeout(self.timeout, _close_on_timeout)
-            channel.start_consuming()
-        except Exception as e:
-            _LOG.error(f"Error during message consumption: {e}")
-            return None
-        finally:
-            self._close()
+        self.conn.add_timeout(self.timeout, _close_on_timeout)
 
-        response = self.responses.pop(correlation_id, None)
-        if response:
-            _LOG.debug('Response successfully received and processed')
+        # blocking method
+        channel.start_consuming()
+        self._close()
+
+        if correlation_id in list(self.responses.keys()):
+            response = self.responses.pop(correlation_id)
+            _LOG.debug('Response received')
             return response
-        _LOG.error(f"Response wasn't received. Timeout: {self.timeout} seconds")
-        return None
+        else:
+            _LOG.error('Response was not received. '
+                       'Timeout: {0} seconds. '
+                       .format(self.timeout))
+            return None
 
     def check_queue_exists(self, queue_name):
         channel = self._open_channel()
