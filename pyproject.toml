@@ -46,7 +46,7 @@ namespaces = false
 
 [project.optional-dependencies]
 cryptography = [
-    "cryptography~=41.0.7",
+    "cryptography~=41.0.7"
 ]
 
 [tool.pyright]
