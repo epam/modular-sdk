@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.0.1b2] - 2024-09-12
+- Dump lib version to `pynamodb==5.3.2` and `dynamodb-json~=1.3`
+
 ## [6.0.1b1] - 2024-09-11
 - fix rabbitmq bug when a wrong message was consumed aster pushing
 
