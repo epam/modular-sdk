@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update `pika` library from version `1.0.0b1` to `1.3.2`
 - Update `RabbitMqConnection` class to support `pika` version `1.3.2`
 - Replace `uuid1` with `uuid4`
-- Up lib version to `pynamodb==5.5.1` and `dynamodb-json==1.4.2`
+- Up lib version to `pynamodb==5.5.1` and `dynamodb-json~=1.4.2`
 
 ## [6.0.1b2] - 2024-09-12
 - Dump lib version to `pynamodb==5.3.2` and `dynamodb-json~=1.3`
