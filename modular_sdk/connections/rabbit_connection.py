@@ -1,5 +1,3 @@
-from typing import Any
-
 import pika
 import pika.exceptions
 
@@ -72,7 +70,7 @@ class RabbitMqConnection:
     @staticmethod
     def __basic_publish(
             channel: pika.adapters.blocking_connection.BlockingChannel,
-            **kwargs: Any,
+            **kwargs,
     ) -> bool:
         try:
             channel.basic_publish(**kwargs)
