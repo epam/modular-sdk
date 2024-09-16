@@ -1,3 +1,5 @@
+from typing import Any
+
 import pika
 import pika.exceptions
 
@@ -9,7 +11,7 @@ _LOG = get_logger('modular_sdk-rabbit_connection')
 
 
 class RabbitMqConnection:
-    def __init__(self, connection_url, timeout):
+    def __init__(self, connection_url: str, timeout: int):
         self.connection_url = connection_url
         self.timeout = timeout or RABBIT_DEFAULT_RESPONSE_TIMEOUT
         self.responses = {}
@@ -27,8 +29,11 @@ class RabbitMqConnection:
             )
 
     def _close(self):
-        if self.conn.is_open:
-            self.conn.close()
+        try:
+            if self.conn.is_open:
+                self.conn.close()
+        except Exception as e:
+            _LOG.error(f"Failed to close RabbitMQ connection: {e}")
 
     def publish(
             self,
@@ -65,7 +70,10 @@ class RabbitMqConnection:
             self._close()
 
     @staticmethod
-    def __basic_publish(channel, **kwargs):
+    def __basic_publish(
+            channel: pika.adapters.blocking_connection.BlockingChannel,
+            **kwargs: Any,
+    ) -> bool:
         try:
             channel.basic_publish(**kwargs)
             return True
@@ -171,7 +179,7 @@ class RabbitMqConnection:
         _LOG.error(f"Response wasn't received. Timeout: {self.timeout} seconds")
         return None
 
-    def check_queue_exists(self, queue_name):
+    def check_queue_exists(self, queue_name: str) -> bool:
         channel = self._open_channel()
         try:
             channel.queue_declare(queue=queue_name, durable=True, passive=True)
@@ -181,7 +189,7 @@ class RabbitMqConnection:
         self._close()
         return True
 
-    def declare_queue(self, queue_name):
+    def declare_queue(self, queue_name: str) -> None:
         channel = self._open_channel()
         declare_resp = channel.queue_declare(queue=queue_name, durable=True)
         _LOG.info('Queue declaration response: {0}'.format(declare_resp))
