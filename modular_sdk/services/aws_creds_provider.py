@@ -3,8 +3,10 @@ from typing import Optional
 import boto3
 from botocore.client import BaseClient
 from datetime import datetime, timedelta
+from botocore.config import Config
 
 from modular_sdk.modular import Modular
+from modular_sdk.commons.constants import Env
 from modular_sdk.commons.time_helper import utc_datetime
 from functools import cached_property
 
@@ -29,6 +31,21 @@ class AWSCredentialsProvider:  # client provider
         self._aws_secret_access_key = aws_secret_access_key
         self._aws_session_token = aws_session_token
 
+    @staticmethod
+    def build_default_config() -> Optional[Config]:
+        """
+        Default config for boto3 clients that respects modular proxy env
+        variables
+        """
+        proxy = {}
+        if url := Env.HTTP_PROXY.get():
+            proxy['http'] = url
+        if url := Env.HTTPS_PROXY.get():
+            proxy['https'] = url
+        if proxy:
+            return Config(proxies=proxy)
+        return
+
     @cached_property
     def client(self) -> BaseClient:
         _LOG.info(f'Initializing {self._service_name} boto3 client')
@@ -37,7 +54,8 @@ class AWSCredentialsProvider:  # client provider
             region_name=self._region_name,
             aws_access_key_id=self._aws_access_key_id,
             aws_secret_access_key=self._aws_secret_access_key,
-            aws_session_token=self._aws_session_token
+            aws_session_token=self._aws_session_token,
+            config=self.build_default_config()
         )
 
 
@@ -59,7 +77,7 @@ class ModularAssumeRoleClient:
 
     def __init__(self, service_name: str,
                  region_name: Optional[str] = None):
-        # TODO add role_name to input params
+        # TODO add role_arn to input params
         self._service_name = service_name
         self._region_name = region_name
         self._client: Optional[BaseClient] = None
@@ -113,6 +131,7 @@ class ModularAssumeRoleClient:
                       f'ModularAssumeRoleClient descriptor for region {r}')
             self._client = self.get_session().client(
                 service_name=self._service_name,
-                region_name=r
+                region_name=r,
+                config=AWSCredentialsProvider.build_default_config()
             )
         return self._client

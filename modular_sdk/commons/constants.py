@@ -1,4 +1,5 @@
 from enum import Enum
+import os
 
 HTTP_ATTR, HTTPS_ATTR = 'HTTP', 'HTTPS'
 
@@ -9,22 +10,92 @@ MODULAR_AWS_SECRET_ACCESS_KEY_ENV = 'modular_aws_secret_access_key'
 MODULAR_AWS_SESSION_TOKEN_ENV = 'modular_aws_session_token'
 MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV = 'modular_aws_credentials_expiration'
 
-REGION_ENV = 'AWS_REGION'
-DEFAULT_REGION_ENV = 'AWS_DEFAULT_REGION'
-MODULAR_REGION_ENV = 'MODULAR_AWS_REGION'
+_SENTINEL = object()
 
-MODULAR_SERVICE_MODE_ENV = 'modular_service_mode'
+
+class Env(str, Enum):
+    """
+    Abstract enumeration class for holding environment variables
+    """
+    default: str | None
+
+    def __new__(cls, value: str, default: str | None = None):
+        """
+        All environment variables and optionally their default values.
+        Since envs always have string type the default value also should be
+        of string type and then converted to the necessary type in code.
+        There is no default value if not specified (default equal to unset)
+        """
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+
+        obj.default = default
+        return obj
+
+    def get(self, default=_SENTINEL) -> str | None:
+        if default is _SENTINEL:
+            default = self.default
+        if default is not None:
+            default = str(default)
+        return os.environ.get(self.value, default)
+
+    def set(self, val: str | None):
+        if val is None:
+            os.environ.pop(self.value, None)
+        else:
+            os.environ[self.value] = str(val)
+
+    # OLD ones
+    OLD_SERVICE_MODE = 'modular_service_mode'
+    OLD_MONGO_USER = 'modular_mongo_user'
+    OLD_MONGO_PASSWORD = 'modular_mongo_password'
+    OLD_MONGO_URL = 'modular_mongo_url'
+    OLD_MONGO_DB_NAME = 'modular_mongo_db_name'
+    OLD_ASSUME_ROLE_ARN = 'modular_assume_role_arn'  # may be multiple split by ,
+
+    OLD_MODULAR_AWS_REGION = 'MODULAR_AWS_REGION'  # used for cross account models access
+    OLD_INNER_CACHE_TTL_SECONDS = 'INNER_CACHE_TTL_SECONDS', '600'
+
+    # TODO they are NOT used currently. We should add their support to
+    #  code but make a gradual transition from the old ones so that both
+    #  old and new are supported for some time.
+    # NEW ones
+    SERVICE_MODE = 'MODULAR_SDK_SERVICE_MODE'
+    MONGO_USER = 'MODULAR_SDK_MONGO_USER'
+    MONGO_PASSWORD = 'MODULAR_SDK_MONGO_PASSWORD'
+    MONGO_URL = 'MODULAR_SDK_MONGO_URL'
+    MONGO_DB_NAME = 'MODULAR_SDK_MONGO_DB_NAME'
+    ASSUME_ROLE_ARN = 'MODULAR_SDK_ASSUME_ROLE_ARN'
+    ASSUME_ROLE_REGION = 'MODULAR_SDK_ASSUME_ROLE_REGION'
+    INNER_CACHE_TTL_SECONDS = 'MODULAR_SDK_INNER_CACHE_TTL_SECONDS', '300'
+
+    # these below are used
+
+    # proxies, impacts only our boto3 clients. Boto inside Pynamodb is NOT
+    # routed via these proxies
+    HTTP_PROXY = 'MODULAR_SDK_HTTP_PROXY'
+    HTTPS_PROXY = 'MODULAR_SDK_HTTPS_PROXY'
+
+    AWS_REGION = 'AWS_REGION'
+    AWS_DEFAULT_REGION = 'AWS_DEFAULT_REGION'
+
+
+REGION_ENV = Env.AWS_REGION.value
+DEFAULT_REGION_ENV = Env.AWS_DEFAULT_REGION.value
+MODULAR_REGION_ENV = Env.OLD_MODULAR_AWS_REGION.value
+
+MODULAR_SERVICE_MODE_ENV = Env.OLD_SERVICE_MODE.value
 SERVICE_MODE_DOCKER = 'docker'
 SERVICE_MODE_SAAS = 'saas'
 
-PARAM_MONGO_USER = 'modular_mongo_user'
-PARAM_MONGO_PASSWORD = 'modular_mongo_password'
-PARAM_MONGO_URL = 'modular_mongo_url'
-PARAM_MONGO_DB_NAME = 'modular_mongo_db_name'
-PARAM_ASSUME_ROLE_ARN = 'modular_assume_role_arn'
+PARAM_MONGO_USER = Env.OLD_MONGO_USER.value
+PARAM_MONGO_PASSWORD = Env.OLD_MONGO_PASSWORD.value
+PARAM_MONGO_URL = Env.OLD_MONGO_URL.value
+PARAM_MONGO_DB_NAME = Env.OLD_MONGO_DB_NAME.value
+PARAM_ASSUME_ROLE_ARN = Env.OLD_ASSUME_ROLE_ARN.value
 
-ENV_INNER_CACHE_TTL_SECONDS = 'INNER_CACHE_TTL_SECONDS'
-DEFAULT_INNER_CACHE_TTL_SECONDS: int = 600
+ENV_INNER_CACHE_TTL_SECONDS = Env.OLD_INNER_CACHE_TTL_SECONDS.value
+DEFAULT_INNER_CACHE_TTL_SECONDS: int = int(Env.OLD_INNER_CACHE_TTL_SECONDS.default)
 
 
 class ParentType(str, Enum):

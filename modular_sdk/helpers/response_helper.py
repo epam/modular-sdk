@@ -4,6 +4,7 @@ from abc import abstractmethod, ABC
 from modular_sdk.commons.error_helper import RESPONSE_OK_CODE, ERROR_MESSAGE_MAP
 
 
+# TODO remove in next major release
 class AbstractResponseHelper(ABC):
     exception = None
 
