@@ -3,8 +3,7 @@ import uuid
 from datetime import datetime, timedelta
 from functools import cached_property
 from time import time
-from typing import Optional, TypedDict, List, Tuple, Iterable, Generator
-import boto3
+from typing import Optional, TypedDict, List, Tuple, Generator
 
 from botocore.exceptions import ClientError
 
@@ -117,12 +116,13 @@ class StsService(AWSCredentialsProvider):
                 error_message = f'Error while assuming {arn} from chain'
                 _LOG.error(f'{error_message}: {e}')
                 raise ConnectionAbortedError(error_message) from e
-            _sts = boto3.client(
-                'sts',
+            _sts = AWSCredentialsProvider(
+                service_name='sts',
+                aws_region=self._region_name,
                 aws_access_key_id=creds['AccessKeyId'],
                 aws_secret_access_key=creds['SecretAccessKey'],
                 aws_session_token=creds['SessionToken'],
-            )
+            ).client
         # creds variable will exist, ignore warning
         return {
             'aws_access_key_id': creds.get('AccessKeyId'),
