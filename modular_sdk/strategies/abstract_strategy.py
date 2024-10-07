@@ -18,11 +18,9 @@ _LOG = get_logger(__name__)
 
 class AbstractStrategy(ABC):
     def __init__(self, access_key: str, secret_key: str, user: str):
-        self.access_key = access_key or os.getenv("SDK_ACCESS_KEY")
-        self.secret_key = secret_key or os.getenv("SDK_SECRET_KEY")
-        self.user = user or os.getenv("MAESTRO_USER")
-        if not all([self.access_key, self.secret_key, self.user]):
-            raise ValueError("Missing required SDK credential variables")
+        self.access_key = access_key
+        self.secret_key = secret_key
+        self.user = user
 
     @abstractmethod
     def post_process_request(self, response):
@@ -45,7 +43,7 @@ class AbstractStrategy(ABC):
 
     @staticmethod
     def _get_signed_headers(
-            access_key: (str, int),
+            access_key,
             secret_key: str,
             user: str,
             async_request: bool = False,
@@ -83,7 +81,7 @@ class AbstractStrategy(ABC):
         return headers
 
     @staticmethod
-    def _encrypt(secret_key:str, data: list[dict]) -> bytes:
+    def _encrypt(secret_key: str, data) -> bytes:
         """
         Encrypt data, add initialization vector ("iv") at beginning of encrypted
         message and encode entire data in Base64 format
@@ -107,7 +105,7 @@ class AbstractStrategy(ABC):
         return base64_request
 
     @staticmethod
-    def _decrypt(secret_key: str, data: str) -> bytes:
+    def _decrypt(secret_key: str, data) -> bytes:
         """
         Decode received message from Base64 format, cut initialization
         vector ("iv") from beginning of the message, decrypt message
@@ -165,7 +163,7 @@ class AbstractStrategy(ABC):
             id: str,
             command_name: str,
             parameters_to_secure: dict,
-            secure_parameters: list | None = None,
+            secure_parameters=None,
             is_flat_request: bool = False,
     ):
         if not secure_parameters:

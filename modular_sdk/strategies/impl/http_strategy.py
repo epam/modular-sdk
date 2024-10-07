@@ -14,15 +14,11 @@ _LOG = get_logger(__name__)
 class HTTPStrategy(AbstractStrategy):
     def __init__(
             self,
-            sdk_access_key: str = None,
-            sdk_secret_key: str = None,
-            maestro_user: str = None,
-            api_link: str = None,
+            sdk_access_key: str,
+            sdk_secret_key: str,
+            maestro_user: str,
+            api_link: str,
     ):
-        api_link = api_link or os.getenv('API_LINK')
-        if not api_link:
-            raise ValueError("Missing 'api_link' parameter")
-
         super().__init__(
             access_key=sdk_access_key,
             secret_key=sdk_secret_key,
