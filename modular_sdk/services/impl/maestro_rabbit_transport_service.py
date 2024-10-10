@@ -9,18 +9,13 @@ import uuid
 from datetime import datetime
 
 from modular_sdk.commons import ModularException
+from modular_sdk.commons.constants import SUCCESS_STATUS
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.connections.rabbit_connection import RabbitMqConnection
 from modular_sdk.services.rabbit_transport_service import RabbitMQTransport, \
     RabbitConfig
 
 _LOG = get_logger('rabbit_transport_service')
-
-PLAIN_CONTENT_TYPE = 'text/plain'
-SUCCESS_STATUS = 'SUCCESS'
-ERROR_STATUS = 'FAILED'
-RESULTS = 'results'
-DATA = 'data'
 
 
 class MaestroRabbitConfig(RabbitConfig):

@@ -1,16 +1,11 @@
 from abc import abstractmethod
 import uuid
 from modular_sdk.commons import ModularException
+from modular_sdk.commons.constants import PLAIN_CONTENT_TYPE
 from modular_sdk.commons.log_helper import get_logger
 from pika import exceptions
 
 _LOG = get_logger('RemoteExecutionService')
-
-PLAIN_CONTENT_TYPE = 'text/plain'
-SUCCESS_STATUS = 'SUCCESS'
-ERROR_STATUS = 'FAILED'
-RESULTS = 'results'
-DATA = 'data'
 
 
 class RabbitConfig:
