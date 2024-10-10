@@ -45,13 +45,14 @@ class HTTPStrategy(AbstractStrategy):
             413: get_json_message('Payload Too Large'),
             500: f'Error during executing request.{reason}',
         }
+        _LOG.debug(f'Response status code: {status_code}, reason: {reason}')
         if status_code == 200:
+            _LOG.debug('Successfully received response')
             return response.content
 
-        raise ModularException(
-            code=status_code or 204,
-            content=error_messages.get(status_code, f'Message: {response.text}'),
-        )
+        error_message = error_messages.get(status_code, f'Message: {response.text}')
+        _LOG.error(f'Error with status code {status_code}: {error_message}')
+        raise ModularException(code=status_code or 204, content=error_message)
 
     def publish(
             self,
@@ -59,6 +60,7 @@ class HTTPStrategy(AbstractStrategy):
             message: bytes,
             headers: dict,
     ) -> bytes:
+        _LOG.debug(f'Publishing message with request_id: {request_id}')
         response = requests.post(
             url=self.api_link, headers=headers, data=message.decode('utf-8'),
         )
