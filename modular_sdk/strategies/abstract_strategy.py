@@ -1,16 +1,18 @@
 import base64
+import binascii
 import gzip
 import hashlib
 import hmac
 import json
 import os
-import uuid
+from typing import Iterable, Any
 from abc import ABC, abstractmethod
 from datetime import datetime
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-from modular_sdk.commons import ModularException
+from modular_sdk.commons import ModularException, generate_id
+from modular_sdk.commons.constants import SUCCESS_STATUS
 from modular_sdk.commons.log_helper import get_logger
 
 _LOG = get_logger(__name__)
@@ -22,24 +24,46 @@ class AbstractStrategy(ABC):
         self.secret_key = secret_key
         self.user = user
 
-    @abstractmethod
-    def post_process_request(self, response):
-        pass
+    @property
+    def http(self):
+        return False
 
     @abstractmethod
+    def publish(
+            self,
+            request_id: str,
+            message: bytes,
+            headers: dict,
+    ) -> bytes:
+        pass
+
     def execute(
             self,
             command_name: str,
             request_data: dict,
-            secure_parameters,
-            is_flat_request: bool,
+            secure_parameters: Iterable | None = None,
+            is_flat_request: bool = False,
+            compressed: bool = False,
             **kwargs,
     ):
-        pass
-
-    @staticmethod
-    def _generate_id() -> str:
-        return str(uuid.uuid4())
+        request_id, headers, encrypted_body = self._pre_process_request(
+            command_name=command_name,
+            parameters=request_data,
+            secure_parameters=secure_parameters,
+            is_flat_request=is_flat_request,
+            async_request=False,
+            compressed=compressed,
+            http=self.http,
+        )
+        _LOG.debug(
+            f'Going to send post request to maestro server with '
+            f'request_id: {request_id}, encrypted_body: {encrypted_body}'
+        )
+        response = self.publish(
+            request_id=request_id, message=encrypted_body, headers=headers,
+        )
+        _LOG.debug('Going to verify and process server response')
+        return self._post_process_request(response=response)
 
     @staticmethod
     def _get_signed_headers(
@@ -81,7 +105,7 @@ class AbstractStrategy(ABC):
         return headers
 
     @staticmethod
-    def _encrypt(secret_key: str, data) -> bytes:
+    def _encrypt(secret_key: str, data: Any) -> bytes:
         """
         Encrypt data, add initialization vector ("iv") at beginning of encrypted
         message and encode entire data in Base64 format
@@ -105,7 +129,7 @@ class AbstractStrategy(ABC):
         return base64_request
 
     @staticmethod
-    def _decrypt(secret_key: str, data) -> bytes:
+    def _decrypt(secret_key: str, data: str | bytes) -> bytes:
         """
         Decode received message from Base64 format, cut initialization
         vector ("iv") from beginning of the message, decrypt message
@@ -118,40 +142,48 @@ class AbstractStrategy(ABC):
             modes.GCM(initialization_vector=iv),
         ).decryptor()
         origin_data_with_iv = cipher.update(encrypted_data)
+        # Due to Initialization vector in encrypting method
+        # there is need to split useful and useless parts of the
+        # server response.
         response = origin_data_with_iv[:-16]
         return response
 
     @staticmethod
     def _build_payload(
-            id: str,
+            request_id: str,
             command_name: str,
             parameters: dict,
             is_flat_request: bool,
-    ) -> list:
+    ) -> list[dict]:
         if is_flat_request:
             parameters.update({'type': command_name})
-            result = [{'id': id, 'type': None, 'params': parameters}]
+            result = [{'id': request_id, 'type': None, 'params': parameters}]
         else:
-            result = [{'id': id, 'type': command_name,'params': parameters}]
+            result = [
+                {'id': request_id, 'type': command_name,'params': parameters}
+            ]
         return result
 
     def _build_message(
             self,
-            id: str,
+            request_id: str,
             command_name: str,
-            parameters: dict,
+            parameters: list[dict] | dict,
             is_flat_request: bool = False,
             compressed: bool = False,
-    ) -> list | str:
+    ) -> list[dict] | str:
         if isinstance(parameters, list):
             result = []
             for payload in parameters:
                 result.extend(
-                    self._build_payload(id, command_name, payload, is_flat_request)
+                    self._build_payload(
+                        request_id, command_name, payload, is_flat_request,
+                    )
                 )
         else:
-            result = self \
-                ._build_payload(id, command_name, parameters, is_flat_request)
+            result = self._build_payload(
+                request_id, command_name, parameters, is_flat_request,
+            )
         if compressed:
             return base64.b64encode(
                 gzip.compress(json.dumps(result).encode('UTF-8'))
@@ -160,12 +192,12 @@ class AbstractStrategy(ABC):
 
     def _build_secure_message(
             self,
-            id: str,
+            request_id: str,
             command_name: str,
             parameters_to_secure: dict,
-            secure_parameters=None,
+            secure_parameters: Iterable | None = None,
             is_flat_request: bool = False,
-    ):
+    ) -> list[dict] | str:
         if not secure_parameters:
             secure_parameters = []
         secured_parameters = {
@@ -173,8 +205,94 @@ class AbstractStrategy(ABC):
             for k, v in parameters_to_secure.items()
         }
         return self._build_message(
-            id=id,
+            request_id=request_id,
             command_name=command_name,
             parameters=secured_parameters,
             is_flat_request=is_flat_request,
         )
+
+    def _pre_process_request(
+            self,
+            command_name: str,
+            parameters,
+            secure_parameters: Iterable | None = None,
+            is_flat_request: bool = False,
+            async_request: bool = False,
+            compressed: bool = False,
+            http: bool = False,
+    ) -> tuple:
+        _LOG.debug('Generating request_id')
+        request_id = generate_id()
+        _LOG.debug('Signing HTTP headers')
+        headers = self._get_signed_headers(
+            access_key=self.access_key,
+            secret_key=self.secret_key,
+            user=self.user,
+            async_request=async_request,
+            compressed=compressed,
+            http=http,
+        )
+        _LOG.debug('Going to pre-process request')
+        message = self._build_message(
+            command_name=command_name,
+            parameters=parameters,
+            request_id=request_id,
+            is_flat_request=is_flat_request,
+            compressed=compressed,
+        )
+        secure_message = message
+        if not compressed:
+            secure_message = self._build_secure_message(
+                command_name=command_name,
+                parameters_to_secure=parameters,
+                secure_parameters=secure_parameters,
+                request_id=request_id,
+                is_flat_request=is_flat_request
+            )
+        _LOG.debug(
+            f'Prepared command: {command_name}\nCommand format: {secure_message}'
+        )
+        encrypted_body = self._encrypt(secret_key=self.secret_key, data=message)
+        _LOG.debug('Message encrypted')
+        return request_id, headers, encrypted_body
+
+    def _post_process_request(self, response: str | bytes):
+        try:
+            response_item = self._decrypt(
+                secret_key=self.secret_key,
+                data=response,
+            )
+            _LOG.debug('Message from M3-server successfully decrypted')
+        except binascii.Error:
+            response_item = response.decode('utf-8')
+        try:
+            _LOG.debug(f'Raw decrypted message from server: {response_item}')
+            response_json = json.loads(response_item).get('results')[0]
+        except json.decoder.JSONDecodeError:
+            _LOG.error('Response cannot be decoded - invalid JSON string')
+            raise ModularException(code=502, content="Response can't be decoded")
+        status = response_json.get('status')
+        status_code = response_json.get('statusCode')
+        warnings = response_json.get('warnings')
+        if status == SUCCESS_STATUS:
+            data = response_json.get('data')
+        else:
+            data = response_json.get('error') or response_json.get('readableError')
+        try:
+            data = json.loads(data)
+        except json.decoder.JSONDecodeError:
+            data = data
+        response = {'status': status,'status_code': status_code}
+        if isinstance(data, str):
+            response.update({'message': data})
+        if isinstance(data, dict):
+            data = [data]
+        if isinstance(data, list):
+            response.update({'items': data})
+        if items := response_json.get('items'):
+            response.update({'items': items})
+        if table_title := response_json.get('tableTitle'):
+            response.update({'table_title': table_title})
+        if warnings:
+            response.update({'warnings': warnings})
+        return response
