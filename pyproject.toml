@@ -54,9 +54,9 @@ include = ["modular_sdk/"]
 exclude = [
     "**/__pycache__",
 ]
-pythonVersion = "3.8"
+pythonVersion = "3.10"
 reportIncompatibleMethodOverride = "warning"
 executionEnvironments = [
-    {root = "tests/", pythonVersion = "3.8", extraPaths = ["modular_sdk/"]}
+    {root = "tests/", pythonVersion = "3.10", extraPaths = ["modular_sdk/"]}
 ]
 

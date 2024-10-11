@@ -5,13 +5,14 @@ from modular_sdk.commons import ModularException
 from modular_sdk.commons.log_helper import get_logger
 
 RABBIT_DEFAULT_RESPONSE_TIMEOUT = 30
-_LOG = get_logger('modular_sdk-rabbit_connection')
+_LOG = get_logger(__name__)
 
 
 class RabbitMqConnection:
-    def __init__(self, connection_url: str, timeout: int):
+    def __init__(self, connection_url: str,
+                 timeout: int = RABBIT_DEFAULT_RESPONSE_TIMEOUT):
         self.connection_url = connection_url
-        self.timeout = timeout or RABBIT_DEFAULT_RESPONSE_TIMEOUT
+        self.timeout = timeout
         self.responses = {}
 
     def _open_channel(self):
@@ -26,7 +27,7 @@ class RabbitMqConnection:
                 code=502, content=f'Connection to RabbitMQ refused: {error_msg}'
             )
 
-    def _close(self):
+    def _close(self) -> None:
         try:
             if self.conn.is_open:
                 self.conn.close()
@@ -38,8 +39,8 @@ class RabbitMqConnection:
             message: str,
             routing_key: str,
             exchange: str = '',
-            headers: dict = None,
-            content_type: str = None,
+            headers: dict | None = None,
+            content_type: str | None = None,
     ) -> None:
         _LOG.debug(f'Request queue: {routing_key}')
         channel = self._open_channel()
@@ -81,7 +82,7 @@ class RabbitMqConnection:
 
     def publish_sync(
             self,
-            message: str,
+            message: str | bytes,
             routing_key: str,
             correlation_id: str,
             callback_queue: str,
