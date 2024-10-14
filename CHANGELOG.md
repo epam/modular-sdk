@@ -4,9 +4,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [6.2.0b1] - 2024-10-04
-- Add `HTTPStrategy` and `AbstractStrategy` to expand communication handling capabilities
-and open new integration opportunities
+## [6.2.0] - 2024-10-04
+- Add `HTTPConnectiion` open new integration opportunities
 
 ## [6.1.1] - 2024-10-04
 - added `MODULAR_SDK_HTTP_PROXY` and `MODULAR_SDK_HTTPS_PROXY` envs
