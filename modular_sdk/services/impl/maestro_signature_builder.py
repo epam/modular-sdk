@@ -4,10 +4,6 @@ import hmac
 import json
 import os
 import time
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives.ciphers import (
-    Cipher, algorithms, modes,
-)
 
 
 class MaestroSignatureBuilder:
@@ -23,6 +19,9 @@ class MaestroSignatureBuilder:
         Decode received message from Base64 format, cut initialization
         vector ("iv") from beginning of the message, decrypt message
         """
+        from cryptography.hazmat.primitives.ciphers import (
+            Cipher, algorithms, modes,
+        )
         decoded_data = base64.b64decode(data)
         iv = decoded_data[:12]
         encrypted_data = decoded_data[12:]
@@ -42,6 +41,7 @@ class MaestroSignatureBuilder:
         Encrypt data, add initialization vector ("iv") at beginning of encrypted
         message and encode entire data in Base64 format
         """
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
         iv = os.urandom(12)
         plain_text = data if isinstance(data, str) else json.dumps(
             data,
