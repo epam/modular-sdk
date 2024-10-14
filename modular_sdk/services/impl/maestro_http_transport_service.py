@@ -99,15 +99,30 @@ class MaestroHTTPTransport(HTTPTransport):
             _LOG.debug(f'Raw decrypted message from server: {response_item}')
             response_json = json.loads(response_item).get('results')[0]
         except json.decoder.JSONDecodeError:
-            _LOG.error('Response can not be decoded - invalid Json string')
-            raise ModularException(
-                code=502, content='Response can not be decoded'
-            )
+            _LOG.error('Response cannot be decoded - invalid JSON string')
+            raise ModularException(code=502, content="Response can't be decoded")
         status = response_json.get('status')
-        code = response_json.get('statusCode')
+        status_code = response_json.get('statusCode')
+        warnings = response_json.get('warnings')
         if status == SUCCESS_STATUS:
             data = response_json.get('data')
-            return code, status, data
         else:
-            data = response_json.get('readableError')
-            return code, status, data
+            data = response_json.get('error') or response_json.get('readableError')
+        try:
+            data = json.loads(data)
+        except json.decoder.JSONDecodeError:
+            data = data
+        response = {'status': status,'status_code': status_code}
+        if isinstance(data, str):
+            response.update({'message': data})
+        if isinstance(data, dict):
+            data = [data]
+        if isinstance(data, list):
+            response.update({'items': data})
+        if items := response_json.get('items'):
+            response.update({'items': items})
+        if table_title := response_json.get('tableTitle'):
+            response.update({'table_title': table_title})
+        if warnings:
+            response.update({'warnings': warnings})
+        return status_code, status, response

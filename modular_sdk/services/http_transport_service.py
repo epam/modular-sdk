@@ -23,6 +23,7 @@ class HTTPConfig:
 class HTTPTransport:
     def __init__(self, config: HTTPConfig):
         self.api_link = config.api_link
+        self.timeout = config.timeout
 
     @abstractmethod
     def pre_process_request(self, *args, **kwargs) -> tuple[str | bytes, dict]:
@@ -34,18 +35,15 @@ class HTTPTransport:
         # sign check, decrypt
         pass
 
-    def __resolve_http_option(self, api_link) -> str:
-        api_link = api_link or self.api_link
-        return api_link
-
     @staticmethod
     def _verify_response(response) -> bytes:
+        content = response.read()
         status_code = response.getcode()
         reason = response.reason or 'No specific reason provided'
 
         def get_json_message(default):
             try:
-                response_json = json.loads(response.read().decode())
+                response_json = json.loads(content.decode())
                 return response_json.get('message', default)
             except ValueError:  # Includes JSONDecodeError
                 return default
@@ -60,49 +58,28 @@ class HTTPTransport:
         _LOG.debug(f'Response status code: {status_code}, reason: {reason}')
         if status_code == 200:
             _LOG.debug('Successfully received response')
-            return response.read()
+            return content
 
         error_message = error_messages.get(
-            status_code, f'Message: {response.read().decode()}'
+            status_code, f'Message: {content.decode()}'
         )
         _LOG.error(f'Error with status code {status_code}: {error_message}')
         raise ModularException(code=status_code or 204, content=error_message)
 
     def send_sync(self, *args, **kwargs) -> tuple[int, str, Any]:
         message, headers = self.pre_process_request(*args, **kwargs)
-        http_config = kwargs.get('config')
-        api_link = self.__resolve_http_option(
-            api_link=http_config.api_link if http_config else None,
-        )
         req = urllib.request.Request(
-            url=api_link,
+            url=self.api_link,
             headers=headers,
             data=message,
-            # data=message.decode('utf-8').encode('utf-8'),
             method='POST',
         )
-        response = urllib.request.urlopen(req, timeout=http_config.timeout)
-        # TODO: investigate it, to tests
+        response = urllib.request.urlopen(req, timeout=self.timeout)
         if not response:
             raise ModularException(
                 code=502,
                 content=f'Response was not received. '
-                        f'Timeout: {http_config.timeout} seconds.'
+                        f'Timeout: {self.timeout} seconds.'
             )
         response_item = self._verify_response(response)
         return self.post_process_request(response=response_item)
-
-    # def send_async(self, *args, **kwargs) -> None:
-    #     message, headers = self.pre_process_request(*args, **kwargs)
-    #     http_config = kwargs.get('config')
-    #     request_queue, exchange, response_queue = \
-    #         self.__resolve_http_option(
-    #             api_link=http_config.api_link if http_config else None,
-    #         )
-    #
-    #     return self.rabbit.publish(
-    #         routing_key=request_queue,
-    #         exchange=exchange,
-    #         message=message,
-    #         headers=headers,
-    #         content_type=PLAIN_CONTENT_TYPE)

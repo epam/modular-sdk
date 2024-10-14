@@ -4,6 +4,7 @@ import hmac
 import json
 import os
 import time
+from modular_sdk.commons.constants import PLAIN_CONTENT_TYPE
 
 
 class MaestroSignatureBuilder:
@@ -83,6 +84,6 @@ class MaestroSignatureBuilder:
             "maestro-accesskey": str(self._access_key),
             "maestro-sdk-version": "3.2.80",
             "maestro-sdk-async": 'true' if async_request else 'false',
-            "compressed": True if compressed else False
-            # todo, is there difference True bool or str
+            "compressed": 'true' if compressed else 'false',
+            "Content-Type": PLAIN_CONTENT_TYPE,
         }
