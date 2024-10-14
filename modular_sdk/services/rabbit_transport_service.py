@@ -1,10 +1,7 @@
-import uuid
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Any
-
 from pika import exceptions
-
-from modular_sdk.commons import ModularException
+from modular_sdk.commons import ModularException, generate_id_hex
 from modular_sdk.commons.constants import PLAIN_CONTENT_TYPE
 from modular_sdk.commons.log_helper import get_logger
 
@@ -64,17 +61,18 @@ class RabbitMQTransport:
                 response_queue=rabbit_config.response_queue if rabbit_config else None
             )
 
-        request_id = uuid.uuid4().hex
+        correlation_id = generate_id_hex()
         self.rabbit.publish_sync(routing_key=request_queue,
                                  exchange=exchange,
                                  callback_queue=response_queue,
-                                 correlation_id=request_id,
+                                 correlation_id=correlation_id,
                                  message=message,
                                  headers=headers,
                                  content_type=PLAIN_CONTENT_TYPE)
         try:
-            response_item = self.rabbit.consume_sync(queue=response_queue,
-                                                     correlation_id=request_id)
+            response_item = self.rabbit.consume_sync(
+                queue=response_queue, correlation_id=correlation_id,
+            )
         except exceptions.ConnectionWrongStateError as e:
             raise ModularException(code=502, content=str(e))
 
@@ -102,4 +100,3 @@ class RabbitMQTransport:
             message=message,
             headers=headers,
             content_type=PLAIN_CONTENT_TYPE)
-
