@@ -1,41 +1,45 @@
 import binascii
 import json
+import urllib.request
+import urllib.parse
+import urllib.error
 from typing import Iterable, Any
 from modular_sdk.commons import (
     ModularException, generate_id, build_secure_message, build_message,
 )
 from modular_sdk.commons.constants import SUCCESS_STATUS
 from modular_sdk.commons.log_helper import get_logger
-from modular_sdk.services.http_transport_service import (
-    HTTPConfig, HTTPTransport,
-)
 from modular_sdk.services.impl.maestro_signature_builder import (
     MaestroSignatureBuilder,
 )
 
+HTTP_DEFAULT_RESPONSE_TIMEOUT = 30
 _LOG = get_logger(__name__)
 
 
-class MaestroHTTPConfig(HTTPConfig):
+class MaestroHTTPConfig:
     def __init__(
             self,
-            api_link: str,
             sdk_access_key: str,
             sdk_secret_key: str,
             maestro_user: str,
+            api_link: str,
+            timeout: int = HTTP_DEFAULT_RESPONSE_TIMEOUT,
     ):
-        super(MaestroHTTPConfig, self).__init__(api_link=api_link)
         self.sdk_access_key = sdk_access_key
         self.sdk_secret_key = sdk_secret_key
         self.maestro_user = maestro_user
+        self.api_link = api_link
+        self.timeout = timeout
 
 
-class MaestroHTTPTransport(HTTPTransport):
+class MaestroHTTPTransport:
     def __init__(self, config: MaestroHTTPConfig):
-        super().__init__(config=config)
         self.access_key = config.sdk_access_key
         self.secret_key = config.sdk_secret_key
         self.user = config.maestro_user
+        self.api_link = config.api_link
+        self.timeout = config.timeout
 
     def pre_process_request(
             self,
@@ -126,3 +130,35 @@ class MaestroHTTPTransport(HTTPTransport):
         if warnings:
             response.update({'warnings': warnings})
         return status_code, status, response
+
+    @staticmethod
+    def _verify_response(response) -> bytes:
+        content = response.read()
+        status_code = response.getcode()
+        reason = response.reason or 'No specific reason provided'
+        _LOG.debug(f'Response status code: {status_code}, reason: {reason}')
+        if 200 <= status_code < 300:
+            _LOG.debug('Successfully received response')
+            return content
+        _LOG.error(f'Error with status code {status_code}: {content}')
+        raise ModularException(code=status_code, content=content)
+
+    def send_sync(self, *args, **kwargs) -> tuple[int, str, Any]:
+        message, headers = self.pre_process_request(*args, **kwargs)
+        req = urllib.request.Request(
+            url=self.api_link, headers=headers, data=message, method='POST',
+        )
+        with urllib.request.urlopen(req, timeout=self.timeout) as response:
+            response_content = self._verify_response(response)
+        return self.post_process_request(response=response_content)
+
+    def send_async(self, *args, **kwargs) -> None:
+        try:
+            message, headers = self.pre_process_request(*args, **kwargs)
+            req = urllib.request.Request(
+                url=self.api_link, headers=headers, data=message, method='POST',
+            )
+            with urllib.request.urlopen(req, timeout=self.timeout):
+                _LOG.info('Async request sent. No response will be processed')
+        except Exception as e:
+            _LOG.error(f'Error sending request: {e}')
