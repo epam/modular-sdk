@@ -17,7 +17,7 @@ HTTP_DEFAULT_RESPONSE_TIMEOUT = 30
 _LOG = get_logger(__name__)
 
 
-class MaestroHTTPConfig:
+class MaestroHTTPTransport:
     def __init__(
             self,
             sdk_access_key: str,
@@ -26,20 +26,11 @@ class MaestroHTTPConfig:
             api_link: str,
             timeout: int = HTTP_DEFAULT_RESPONSE_TIMEOUT,
     ):
-        self.sdk_access_key = sdk_access_key
-        self.sdk_secret_key = sdk_secret_key
-        self.maestro_user = maestro_user
+        self.access_key = sdk_access_key
+        self.secret_key = sdk_secret_key
+        self.user = maestro_user
         self.api_link = api_link
         self.timeout = timeout
-
-
-class MaestroHTTPTransport:
-    def __init__(self, config: MaestroHTTPConfig):
-        self.access_key = config.sdk_access_key
-        self.secret_key = config.sdk_secret_key
-        self.user = config.maestro_user
-        self.api_link = config.api_link
-        self.timeout = config.timeout
 
     def pre_process_request(
             self,
@@ -49,7 +40,6 @@ class MaestroHTTPTransport:
             is_flat_request: bool = False,
             async_request: bool = False,
             compressed: bool = False,
-            config: MaestroHTTPConfig | None = None,
     ) -> tuple[bytes, dict]:
         request_id = generate_id()
         _LOG.debug('Going to pre-process HTTP request')
@@ -73,9 +63,9 @@ class MaestroHTTPTransport:
             f'Prepared command: {command_name}\nCommand format: {secure_message}'
         )
         signer = MaestroSignatureBuilder(
-            access_key=config.sdk_access_key if config and config.sdk_access_key else self.access_key,
-            secret_key=config.sdk_secret_key if config and config.sdk_secret_key else self.secret_key,
-            user=config.maestro_user if config and config.maestro_user else self.user,
+            access_key=self.access_key,
+            secret_key=self.secret_key,
+            user=self.user,
         )
         encrypted_body = signer.encrypt(data=message)
 
