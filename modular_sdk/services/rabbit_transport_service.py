@@ -17,6 +17,16 @@ if TYPE_CHECKING:
 _LOG = get_logger(__name__)
 
 
+class AbstractTransport:
+    def send_sync(self, *args, **kwargs) -> tuple[int, str, Any]:
+        """
+        Can raise ModularException
+        """
+
+    def send_async(self, *args, **kwargs) -> None:
+        pass
+
+
 class RabbitConfig:
     def __init__(self, request_queue: str, response_queue: str,
                  rabbit_exchange: str):
@@ -25,7 +35,7 @@ class RabbitConfig:
         self.rabbit_exchange = rabbit_exchange
 
 
-class RabbitMQTransport:
+class RabbitMQTransport(AbstractTransport):
     def __init__(self, rabbit_connection: 'RabbitMqConnection',
                  config: RabbitConfig):
         self.rabbit = rabbit_connection

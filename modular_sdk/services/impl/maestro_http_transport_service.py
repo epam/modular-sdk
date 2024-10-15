@@ -1,9 +1,10 @@
 import binascii
 import json
 import urllib.request
+import threading
 import urllib.parse
 import urllib.error
-from typing import Iterable, Any
+from typing import Any
 from modular_sdk.commons import (
     ModularException, generate_id, build_secure_message, build_message,
 )
@@ -12,12 +13,13 @@ from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.services.impl.maestro_signature_builder import (
     MaestroSignatureBuilder,
 )
+from modular_sdk.services.rabbit_transport_service import AbstractTransport
 
 HTTP_DEFAULT_RESPONSE_TIMEOUT = 30
 _LOG = get_logger(__name__)
 
 
-class MaestroHTTPTransport:
+class MaestroHTTPTransport(AbstractTransport):
     def __init__(
             self,
             sdk_access_key: str,
@@ -32,15 +34,12 @@ class MaestroHTTPTransport:
         self.api_link = api_link
         self.timeout = timeout
 
-    def pre_process_request(
-            self,
-            command_name: str,
-            parameters: list[dict] | dict,
-            secure_parameters: Iterable | None = None,
-            is_flat_request: bool = False,
-            async_request: bool = False,
-            compressed: bool = False,
-    ) -> tuple[bytes, dict]:
+    def pre_process_request(self, command_name: str, parameters: list[dict] | dict,
+                            secure_parameters: list | None = None,
+                            is_flat_request: bool = False,
+                            async_request: bool = False,
+                            compressed: bool = False, config=None
+                            ) -> tuple[bytes, dict]:
         request_id = generate_id()
         _LOG.debug('Going to pre-process HTTP request')
         message = build_message(
@@ -51,6 +50,8 @@ class MaestroHTTPTransport:
             compressed=compressed,
         )
         secure_message = message
+        # todo that is strange because why uncompressed data
+        #  should lack parameters?
         if not compressed:
             secure_message = build_secure_message(
                 command_name=command_name,
@@ -63,9 +64,9 @@ class MaestroHTTPTransport:
             f'Prepared command: {command_name}\nCommand format: {secure_message}'
         )
         signer = MaestroSignatureBuilder(
-            access_key=self.access_key,
-            secret_key=self.secret_key,
-            user=self.user,
+            access_key=config.sdk_access_key if config and config.sdk_access_key else self.access_key,
+            secret_key=config.sdk_secret_key if config and config.sdk_secret_key else self.secret_key,
+            user=config.maestro_user if config and config.maestro_user else self.user,
         )
         encrypted_body = signer.encrypt(data=message)
 
@@ -120,34 +121,44 @@ class MaestroHTTPTransport:
             response.update({'warnings': warnings})
         return status_code, status, response
 
-    @staticmethod
-    def _verify_response(response) -> bytes:
-        content = response.read()
-        status_code = response.getcode()
-        reason = response.reason or 'No specific reason provided'
-        _LOG.debug(f'Response status code: {status_code}, reason: {reason}')
-        if 200 <= status_code < 300:
-            _LOG.debug('Successfully received response')
-            return content
-        _LOG.error(f'Error with status code {status_code}: {content}')
-        raise ModularException(code=status_code, content=content)
+    def send_sync(self, command_name: str, parameters: list[dict] | dict,
+                  secure_parameters: list | None = None,
+                  is_flat_request: bool = False, async_request: bool = False,
+                  compressed: bool = False, config=None
+                  ) -> tuple[int, str, Any]:
+        _LOG.debug('Making sync http request ')
+        message, headers = self.pre_process_request(
+            command_name=command_name,
+            parameters=parameters,
+            secure_parameters=secure_parameters,
+            is_flat_request=is_flat_request,
+            async_request=async_request,
+            compressed=compressed,
+            config=config
+        )
+        req = urllib.request.Request(
+            url=self.api_link, headers=headers, data=message, method='POST',
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as response:
+                _LOG.debug(
+                    f'Response status code: {response.getcode()}, reason: {response.reason}')
+                return self.post_process_request(response.read())
+        except urllib.error.HTTPError as e:
+            raise ModularException(code=e.getcode(), content=e.read().decode())
+        except urllib.error.URLError as e:
+            _LOG.exception('Cannot make a request')
+            raise ModularException(code=502,
+                                   content='Could not make the request')
 
-    def send_sync(self, *args, **kwargs) -> tuple[int, str, Any]:
+    def send_async(self, *args, **kwargs) -> None:
         message, headers = self.pre_process_request(*args, **kwargs)
         req = urllib.request.Request(
             url=self.api_link, headers=headers, data=message, method='POST',
         )
-        with urllib.request.urlopen(req, timeout=self.timeout) as response:
-            response_content = self._verify_response(response)
-        return self.post_process_request(response=response_content)
 
-    def send_async(self, *args, **kwargs) -> None:
-        try:
-            message, headers = self.pre_process_request(*args, **kwargs)
-            req = urllib.request.Request(
-                url=self.api_link, headers=headers, data=message, method='POST',
-            )
-            with urllib.request.urlopen(req, timeout=self.timeout):
+        def _send(r, t):
+            with urllib.request.urlopen(r, timeout=t) as resp:
                 _LOG.info('Async request sent. No response will be processed')
-        except Exception as e:
-            _LOG.error(f'Error sending request: {e}')
+
+        threading.Thread(target=_send, args=(req, self.timeout)).start()
