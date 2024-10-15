@@ -5,7 +5,6 @@ import gzip
 import json
 import warnings
 from functools import partial
-from typing import Iterable
 from uuid import uuid4
 
 from boto3.dynamodb.types import TypeDeserializer, TypeSerializer
@@ -103,7 +102,7 @@ def build_secure_message(
         request_id: str,
         command_name: str,
         parameters_to_secure: dict,
-        secure_parameters: Iterable | None = None,
+        secure_parameters: list[str] | None = None,
         is_flat_request: bool = False,
 ) -> list[dict] | str:
     if not secure_parameters:
@@ -138,7 +137,7 @@ def build_message(
             build_payload(request_id, command_name, parameters, is_flat_request)
     if compressed:
         return base64 \
-            .b64encode(gzip.compress(json.dumps(result).encode('UTF-8'))).decode()
+            .b64encode(gzip.compress(json.dumps(result, separators=(',', ':')).encode('UTF-8'))).decode()
     return result
 
 
