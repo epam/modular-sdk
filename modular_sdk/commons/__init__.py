@@ -38,6 +38,7 @@ def deprecated(message):
     return deprecated_decorator
 
 
+# todo remove with major release
 @deprecated('not a part of the lib')
 def build_response(content, code=200):
     if code == RESPONSE_OK_CODE:
