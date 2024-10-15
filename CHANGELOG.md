@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [6.2.0] - 2024-10-04
-- Add `MaestroHTTPTransport` and `HTTPTransport` classes to open new integration opportunities
+- added `MaestroHTTPTransport` to allow to interact with maestro using https protocol
 
 ## [6.1.1] - 2024-10-04
 - added `MODULAR_SDK_HTTP_PROXY` and `MODULAR_SDK_HTTPS_PROXY` envs
