@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.2.0] - 2024-10-04
+- added `MaestroHTTPTransport` to allow to interact with maestro using https protocol
+
 ## [6.1.1] - 2024-10-04
 - added `MODULAR_SDK_HTTP_PROXY` and `MODULAR_SDK_HTTPS_PROXY` envs
 
@@ -17,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dump lib version to `pynamodb==5.3.2` and `dynamodb-json~=1.3`
 
 ## [6.0.1b1] - 2024-09-11
-- fix rabbitmq bug when a wrong message was consumed aster pushing
+- fix rabbitmq bug when a wrong message was consumed after pushing
 
 ## [6.0.0] - 2024-08-20
 - Split `SIEM_DEFECT_DOJO` Parent type into:

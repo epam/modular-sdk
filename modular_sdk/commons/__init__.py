@@ -1,5 +1,8 @@
+import base64
 import copy
 import dataclasses
+import gzip
+import json
 import warnings
 from functools import partial
 from uuid import uuid4
@@ -35,6 +38,7 @@ def deprecated(message):
     return deprecated_decorator
 
 
+# todo remove with major release
 @deprecated('not a part of the lib')
 def build_response(content, code=200):
     if code == RESPONSE_OK_CODE:
@@ -89,6 +93,67 @@ def validate_params(event, required_params_list):
 
 def generate_id():
     return str(uuid4())
+
+
+def generate_id_hex():
+    return str(uuid4().hex)
+
+
+def build_secure_message(
+        request_id: str,
+        command_name: str,
+        parameters_to_secure: dict,
+        secure_parameters: list[str] | None = None,
+        is_flat_request: bool = False,
+) -> list[dict] | str:
+    if not secure_parameters:
+        secure_parameters = []
+    secured_parameters = {
+        k: (v if k not in secure_parameters else '*****')
+        for k, v in parameters_to_secure.items()
+    }
+    return build_message(
+        request_id=request_id,
+        command_name=command_name,
+        parameters=secured_parameters,
+        is_flat_request=is_flat_request,
+    )
+
+
+def build_message(
+        request_id: str,
+        command_name: str,
+        parameters: list[dict] | dict,
+        is_flat_request: bool = False,
+        compressed: bool = False,
+) -> list[dict] | str:
+    if isinstance(parameters, list):
+        result = []
+        for payload in parameters:
+            result.extend(
+                build_payload(request_id, command_name, payload, is_flat_request)
+            )
+    else:
+        result = \
+            build_payload(request_id, command_name, parameters, is_flat_request)
+    if compressed:
+        return base64 \
+            .b64encode(gzip.compress(json.dumps(result, separators=(',', ':')).encode('UTF-8'))).decode()
+    return result
+
+
+def build_payload(
+        request_id: str,
+        command_name: str,
+        parameters: dict,
+        is_flat_request: bool,
+) -> list[dict]:
+    if is_flat_request:
+        parameters.update({'type': command_name})
+        result = [{'id': request_id, 'type': None, 'params': parameters}]
+    else:
+        result = [{'id': request_id, 'type': command_name,'params': parameters}]
+    return result
 
 
 def default_instance(value, _type: type, *args, **kwargs):
