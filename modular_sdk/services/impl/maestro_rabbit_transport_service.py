@@ -4,7 +4,13 @@ from typing import Any
 from modular_sdk.commons import (
     ModularException, generate_id, build_secure_message, build_message,
 )
-from modular_sdk.commons.constants import SUCCESS_STATUS
+from modular_sdk.commons.constants import (
+    PLAIN_CONTENT_TYPE,
+    SUCCESS_STATUS,
+    ERROR_STATUS,
+    RESULTS,
+    DATA
+)  # todo remove these imports with major release. They can be used from outside
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.connections.rabbit_connection import RabbitMqConnection
 from modular_sdk.services.impl.maestro_signature_builder import (
