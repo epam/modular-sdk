@@ -35,7 +35,7 @@ class MaestroHTTPTransport:
     def pre_process_request(
             self,
             command_name: str,
-            parameters,
+            parameters: list[dict] | dict,
             secure_parameters: Iterable | None = None,
             is_flat_request: bool = False,
             async_request: bool = False,
@@ -72,8 +72,7 @@ class MaestroHTTPTransport:
         _LOG.debug('Message encrypted')
         # sign headers
         headers = signer.get_signed_headers(
-            async_request=async_request,
-            compressed=compressed,
+            async_request=async_request, compressed=compressed,
         )
         _LOG.debug('Signed headers prepared')
         return encrypted_body, headers
