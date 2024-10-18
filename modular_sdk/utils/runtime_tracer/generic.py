@@ -1,6 +1,7 @@
 import json
 import re
 from datetime import datetime
+from modular_sdk.commons import generate_id_hex
 from modular_sdk.services.environment_service import EnvironmentService
 from modular_sdk.services.events_service import EventsService
 from modular_sdk.services.lambda_service import LambdaService
@@ -43,8 +44,7 @@ class SegmentTracer(AbstractSegmentTracer):
         self.processed_traces = []
 
     def start(self):
-        import uuid
-        name = uuid.uuid4().hex
+        name = generate_id_hex()
         segment = Segment(
             name=name,
             tracer=self
