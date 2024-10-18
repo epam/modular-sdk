@@ -105,14 +105,11 @@ class MaestroRabbitMQTransport(RabbitMQTransport):
             response_json = json.loads(response_item).get('results')[0]
         except json.decoder.JSONDecodeError:
             _LOG.error('Response can not be decoded - invalid Json string')
-            raise ModularException(
-                code=502, content='Response can not be decoded'
-            )
+            raise ModularException(code=502, content="Response can't be decoded")
         status = response_json.get('status')
         code = response_json.get('statusCode')
         if status == SUCCESS_STATUS:
             data = response_json.get('data')
-            return code, status, data
         else:
-            data = response_json.get('readableError')
-            return code, status, data
+            data = response_json.get('readableError') or response_json.get('error')
+        return code, status, data
