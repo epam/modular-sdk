@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [6.2.1] - 2024-10-18
 - Update `Modular` and `MaestroHTTPTransport` classes
 - Add `MaestroHTTPConfig` class
+- Improved logging
 
 ## [6.2.0] - 2024-10-04
 - added `MaestroHTTPTransport` to allow to interact with maestro using https protocol
