@@ -17,7 +17,7 @@ class ThreadLocalStorageService:
         return self.__storage.value
 
     def set(self, key: str, value):
-        _LOG.debug(f'Setting {key}:{value} to storage')
+        _LOG.debug(f'Setting {key} to storage')
         self.storage[key] = value
 
     def get(self, key):
