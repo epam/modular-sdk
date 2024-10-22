@@ -31,21 +31,6 @@ class AWSCredentialsProvider:  # client provider
         self._aws_secret_access_key = aws_secret_access_key
         self._aws_session_token = aws_session_token
 
-    @staticmethod
-    def build_default_config() -> Optional[Config]:
-        """
-        Default config for boto3 clients that respects modular proxy env
-        variables
-        """
-        proxy = {}
-        if url := Env.HTTP_PROXY.get():
-            proxy['http'] = url
-        if url := Env.HTTPS_PROXY.get():
-            proxy['https'] = url
-        if proxy:
-            return Config(proxies=proxy)
-        return
-
     @cached_property
     def client(self) -> BaseClient:
         _LOG.info(f'Initializing {self._service_name} boto3 client')
@@ -55,7 +40,6 @@ class AWSCredentialsProvider:  # client provider
             aws_access_key_id=self._aws_access_key_id,
             aws_secret_access_key=self._aws_secret_access_key,
             aws_session_token=self._aws_session_token,
-            config=self.build_default_config()
         )
 
 
@@ -132,6 +116,5 @@ class ModularAssumeRoleClient:
             self._client = self.get_session().client(
                 service_name=self._service_name,
                 region_name=r,
-                config=AWSCredentialsProvider.build_default_config()
             )
         return self._client

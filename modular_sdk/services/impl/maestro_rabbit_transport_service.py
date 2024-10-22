@@ -69,8 +69,6 @@ class MaestroRabbitMQTransport(RabbitMQTransport):
                 request_id=request_id,
                 is_flat_request=is_flat_request
             )
-        _LOG.debug('Prepared command: {0}\nCommand format: {1}'
-                   .format(command_name, secure_message))
 
         signer = MaestroSignatureBuilder(
             access_key=config.sdk_access_key if config and config.sdk_access_key else self.access_key,
@@ -101,18 +99,15 @@ class MaestroRabbitMQTransport(RabbitMQTransport):
         except binascii.Error:
             response_item = response.decode('utf-8')
         try:
-            _LOG.debug(f'Raw decrypted message from server: {response_item}')
+            _LOG.debug('Received and decrypted message from server')
             response_json = json.loads(response_item).get('results')[0]
         except json.decoder.JSONDecodeError:
             _LOG.error('Response can not be decoded - invalid Json string')
-            raise ModularException(
-                code=502, content='Response can not be decoded'
-            )
+            raise ModularException(code=502, content="Response can't be decoded")
         status = response_json.get('status')
         code = response_json.get('statusCode')
         if status == SUCCESS_STATUS:
             data = response_json.get('data')
-            return code, status, data
         else:
-            data = response_json.get('readableError')
-            return code, status, data
+            data = response_json.get('readableError') or response_json.get('error')
+        return code, status, data

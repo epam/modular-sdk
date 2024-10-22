@@ -19,20 +19,30 @@ HTTP_DEFAULT_RESPONSE_TIMEOUT = 30
 _LOG = get_logger(__name__)
 
 
-class MaestroHTTPTransport(AbstractTransport):
+class MaestroHTTPConfig:
     def __init__(
             self,
             sdk_access_key: str,
             sdk_secret_key: str,
             maestro_user: str,
-            api_link: str,
-            timeout: int = HTTP_DEFAULT_RESPONSE_TIMEOUT,
     ):
-        self.access_key = sdk_access_key
-        self.secret_key = sdk_secret_key
-        self.user = maestro_user
+        self.sdk_access_key = sdk_access_key
+        self.sdk_secret_key = sdk_secret_key
+        self.maestro_user = maestro_user
+
+
+class MaestroHTTPTransport(AbstractTransport):
+    def __init__(
+            self,
+            config: MaestroHTTPConfig,
+            api_link: str,
+            timeout: int | None = HTTP_DEFAULT_RESPONSE_TIMEOUT,
+    ):
+        self.access_key = config.sdk_access_key
+        self.secret_key = config.sdk_secret_key
+        self.user = config.maestro_user
         self.api_link = api_link
-        self.timeout = timeout
+        self.timeout = timeout or HTTP_DEFAULT_RESPONSE_TIMEOUT
 
     def pre_process_request(self, command_name: str, parameters: list[dict] | dict,
                             secure_parameters: list | None = None,
@@ -96,30 +106,12 @@ class MaestroHTTPTransport(AbstractTransport):
             _LOG.error('Response cannot be decoded - invalid JSON string')
             raise ModularException(code=502, content="Response can't be decoded")
         status = response_json.get('status')
-        status_code = response_json.get('statusCode')
-        warnings = response_json.get('warnings')
+        code = response_json.get('statusCode')
         if status == SUCCESS_STATUS:
             data = response_json.get('data')
         else:
-            data = response_json.get('error') or response_json.get('readableError')
-        try:
-            data = json.loads(data)
-        except json.decoder.JSONDecodeError:
-            data = data
-        response = {'status': status,'status_code': status_code}
-        if isinstance(data, str):
-            response.update({'message': data})
-        if isinstance(data, dict):
-            data = [data]
-        if isinstance(data, list):
-            response.update({'items': data})
-        if items := response_json.get('items'):
-            response.update({'items': items})
-        if table_title := response_json.get('tableTitle'):
-            response.update({'table_title': table_title})
-        if warnings:
-            response.update({'warnings': warnings})
-        return status_code, status, response
+            data = response_json.get('readableError') or response_json.get('error')
+        return code, status, data
 
     def send_sync(self, command_name: str, parameters: list[dict] | dict,
                   secure_parameters: list | None = None,

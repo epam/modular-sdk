@@ -10,6 +10,11 @@ from uuid import uuid4
 from boto3.dynamodb.types import TypeDeserializer, TypeSerializer
 
 from modular_sdk.commons.exception import ModularException
+from modular_sdk.commons.log_helper import get_logger
+
+
+_LOG = get_logger(__name__)
+
 
 RESPONSE_BAD_REQUEST_CODE = 400
 RESPONSE_UNAUTHORIZED = 401

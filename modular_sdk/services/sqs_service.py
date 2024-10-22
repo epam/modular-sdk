@@ -6,7 +6,7 @@ from modular_sdk.services.aws_creds_provider import AWSCredentialsProvider
 from modular_sdk.services.environment_service import EnvironmentService
 
 
-_LOG = get_logger('modular_sdk-sqs-service')
+_LOG = get_logger(__name__)
 
 
 class SQSService(AWSCredentialsProvider):
