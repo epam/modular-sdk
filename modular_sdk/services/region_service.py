@@ -15,11 +15,11 @@ REGION_ID = 'rId'
 VIRT_PROFILE_ERROR_PATTERN = 'There is no virt profiles in region {0}'
 SHAPE_MAPPING_ERROR_PATTERN = 'There is no shape mapping in region {0}'
 
-_LOG = get_logger('modular_sdk-region-service')
+_LOG = get_logger(__name__)
 
 
 def _extract_region_fields(region_item):
-    _LOG = get_logger('_extract_region_fields')
+    _log = _LOG.getChild('_extract_region_fields')
     region_fields = region_item.fields
     if not region_fields:
         _LOG.error('There are no fields in region item')

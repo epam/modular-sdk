@@ -12,7 +12,7 @@ from modular_sdk.utils.operation_mode.generic import \
     ModularOperationModeManagerService
 from modular_sdk.utils.job_tracer.abstract import AbstractJobTracer
 
-_LOG = get_logger('modular_sdk-job-tracer')
+_LOG = get_logger(__name__)
 
 
 class ModularJobTracer(AbstractJobTracer):

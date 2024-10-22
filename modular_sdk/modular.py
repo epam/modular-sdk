@@ -8,6 +8,8 @@ from modular_sdk.commons.constants import SERVICE_MODE_DOCKER, \
     ASSUMES_ROLE_SESSION_NAME, MODULAR_AWS_ACCESS_KEY_ID_ENV, \
     MODULAR_AWS_SECRET_ACCESS_KEY_ENV, MODULAR_AWS_SESSION_TOKEN_ENV, \
     MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV
+from modular_sdk.services.impl.maestro_http_transport_service import \
+    MaestroHTTPConfig
 
 
 class Modular(metaclass=SingletonMeta):
@@ -26,6 +28,7 @@ class Modular(metaclass=SingletonMeta):
     __lambda_service = None
     __events_service = None
     __rabbit_transport_service = None
+    __http_transport_service = None
     __settings_service = None
     __instantiated_setting_group = []
     __credentials_service = None
@@ -208,6 +211,20 @@ class Modular(metaclass=SingletonMeta):
                 config=config
             )
         return self.__rabbit_transport_service
+
+    def http_transport_service(
+            self,
+            api_link: str,
+            config: MaestroHTTPConfig,
+            timeout: int | None = None,
+    ):
+        if not self.__http_transport_service:
+            from modular_sdk.services.impl.maestro_http_transport_service import \
+                MaestroHTTPTransport
+            self.__http_transport_service = MaestroHTTPTransport(
+                config=config, api_link=api_link, timeout=timeout,
+            )
+        return self.__http_transport_service
 
     def settings_service(self, group_name):
         if not self.__settings_service or \

@@ -70,14 +70,9 @@ class Env(str, Enum):
     INNER_CACHE_TTL_SECONDS = 'MODULAR_SDK_INNER_CACHE_TTL_SECONDS', '300'
 
     # these below are used
-
-    # proxies, impacts only our boto3 clients. Boto inside Pynamodb is NOT
-    # routed via these proxies
-    HTTP_PROXY = 'MODULAR_SDK_HTTP_PROXY'
-    HTTPS_PROXY = 'MODULAR_SDK_HTTPS_PROXY'
-
     AWS_REGION = 'AWS_REGION'
     AWS_DEFAULT_REGION = 'AWS_DEFAULT_REGION'
+    LOG_LEVEL = 'MODULAR_SDK_LOG_LEVEL', 'INFO'
 
 
 REGION_ENV = Env.AWS_REGION.value
