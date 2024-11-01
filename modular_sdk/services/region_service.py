@@ -19,7 +19,6 @@ _LOG = get_logger(__name__)
 
 
 def _extract_region_fields(region_item):
-    _log = _LOG.getChild('_extract_region_fields')
     region_fields = region_item.fields
     if not region_fields:
         _LOG.error('There are no fields in region item')

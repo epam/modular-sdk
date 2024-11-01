@@ -1,5 +1,4 @@
 import json
-import json
 import re
 import decimal
 from itertools import islice
@@ -13,7 +12,6 @@ from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.operand import Value, Path, _ListAppend
 from pynamodb.expressions.update import SetAction, RemoveAction, Action
 from pynamodb.models import Model
-from pynamodb.settings import OperationSettings
 
 from modular_sdk.commons import DynamoDBJsonSerializer
 from modular_sdk.connections.mongodb_connection import MongoDBConnection
@@ -328,9 +326,12 @@ class PynamoDBToPyMongoAdapter:
         collection.replace_one(model_instance.get_keys(),
                                encoded_document, upsert=True)
 
-    def update(self, model_instance, actions: List[Action],
-               condition: Optional[Condition] = None,
-               settings: OperationSettings = OperationSettings.default):
+    def update(
+            self,
+            model_instance,
+            actions: List[Action],
+            condition: Optional[Condition] = None,
+    ):
         collection = self._collection_from_model(model_instance)
         _update = {}
         for dct in [UpdateExpressionConverter.convert(a) for a in actions]:
@@ -375,16 +376,25 @@ class PynamoDBToPyMongoAdapter:
             raw_item = self.mongodb.decode_keys(raw_item)
             return model_class.from_json(raw_item)
 
-    def query(self, model_class, hash_key, range_key_condition=None,
-              filter_condition=None, limit=None, last_evaluated_key=None,
-              attributes_to_get=None, scan_index_forward=True):
+    def query(
+            self,
+            model_class,
+            hash_key,
+            range_key_condition=None,
+            filter_condition=None,
+            limit=None,
+            last_evaluated_key=None,
+            attributes_to_get=None,
+            scan_index_forward=True,
+    ):
         # works both for Model and Index
         hash_key_name = getattr(model_class._hash_key_attribute(),
                                 'attr_name', None)
         range_key_name = getattr(model_class._range_key_attribute(),
                                  'attr_name', None)
-        if issubclass(model_class, indexes.Index):
-            model_class = model_class.Meta.model
+        # TODO: improve it
+        # if issubclass(model_class, indexes.Index):
+        model_class = model_class._model
 
         collection = self._collection_from_model(model_class)
         _query = {hash_key_name: hash_key}

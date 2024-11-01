@@ -21,7 +21,6 @@ from pynamodb.expressions.update import Action
 from pynamodb.indexes import _M
 from pynamodb.models import _T, _KeyType, BatchWrite
 from pynamodb.pagination import ResultIterator
-from pynamodb.settings import OperationSettings
 
 from modular_sdk.commons.constants import MODULAR_SERVICE_MODE_ENV, \
     SERVICE_MODE_DOCKER, PARAM_MONGO_USER, PARAM_MONGO_PASSWORD, \
@@ -242,12 +241,17 @@ class RawBaseModel(models.Model):
                        f'range_key={range_key}: {e.msg}')
             return
 
-    def save(self, condition: Optional[Condition] = None,
-             settings: OperationSettings = OperationSettings.default
-             ) -> Dict[str, Any]:
+    def save(
+            self,
+            condition: Optional[Condition] = None,
+            add_version_condition: bool = True,
+    ) -> Dict[str, Any]:
         if self.is_docker:
             return self.mongodb_handler().save(model_instance=self)
-        return super().save(condition, settings)
+        return super().save(
+            condition=condition,
+            add_version_condition=add_version_condition,
+        )
 
     @classmethod
     def batch_get(
@@ -255,45 +259,59 @@ class RawBaseModel(models.Model):
             items: Iterable[Union[_KeyType, Iterable[_KeyType]]],
             consistent_read: Optional[bool] = None,
             attributes_to_get: Optional[Sequence[str]] = None,
-            settings: OperationSettings = OperationSettings.default
     ) -> Iterator[_T]:
         if cls.is_docker:
             return cls.mongodb_handler().batch_get(
                 model_class=cls,
                 items=items,
-                attributes_to_get=attributes_to_get)
-        return super().batch_get(items, consistent_read, attributes_to_get,
-                                 settings)
+                attributes_to_get=attributes_to_get,
+            )
+        return super().batch_get(
+            items=items,
+            consistent_read=consistent_read,
+            attributes_to_get=attributes_to_get,
+        )
 
     @classmethod
-    def batch_write(cls: Type[_T], auto_commit: bool = True,
-                    settings: OperationSettings = OperationSettings.default
-                    ) -> BatchWrite[_T]:
+    def batch_write(cls: Type[_T], auto_commit: bool = True) -> BatchWrite[_T]:
         if cls.is_docker:
             return cls.mongodb_handler().batch_write(model_class=cls)
-        return super().batch_write(auto_commit, settings)
+        return super().batch_write(auto_commit=auto_commit)
 
-    def delete(self, condition: Optional[Condition] = None,
-               settings: OperationSettings = OperationSettings.default) -> Any:
+    def delete(
+            self,
+            condition: Optional[Condition] = None,
+            add_version_condition: bool = True,
+    ) -> Any:
         if self.is_docker:
             return self.mongodb_handler().delete(model_instance=self)
-        return super().delete(condition, settings)
+        return super().delete(
+            condition=condition,
+            add_version_condition=add_version_condition,
+        )
 
-    def update(self, actions: List[Action],
-               condition: Optional[Condition] = None,
-               settings: OperationSettings = OperationSettings.default) -> Any:
+    def update(
+            self,
+            actions: List[Action],
+            condition: Optional[Condition] = None,
+            add_version_condition: bool = True,
+    ) -> Any:
         if self.is_docker:
-            return self.mongodb_handler().update(self, actions, condition,
-                                                 settings)
-        return super().update(actions, condition, settings)
+            return self.mongodb_handler().update(
+                model_instance=self,
+                actions=actions,
+                condition=condition,
+            )
+        return super().update(
+            actions=actions,
+            condition=condition,
+            add_version_condition=add_version_condition,
+        )
 
-    def refresh(self, consistent_read: bool = False,
-                settings: OperationSettings = OperationSettings.default
-                ) -> None:
+    def refresh(self, consistent_read: bool = False) -> None:
         if self.is_docker:
-            return self.mongodb_handler().refresh(
-                consistent_read=consistent_read)
-        return super().refresh(consistent_read, settings)
+            return self.mongodb_handler().refresh(consistent_read=consistent_read)
+        return super().refresh(consistent_read=consistent_read)
 
     @classmethod
     def get(
@@ -302,13 +320,19 @@ class RawBaseModel(models.Model):
             range_key: Optional[_KeyType] = None,
             consistent_read: bool = False,
             attributes_to_get: Optional[Sequence[Text]] = None,
-            settings: OperationSettings = OperationSettings.default
     ) -> _T:
         if cls.is_docker:
             return cls.mongodb_handler().get(
-                model_class=cls, hash_key=hash_key, range_key=range_key)
-        return super().get(hash_key, range_key, consistent_read,
-                           attributes_to_get, settings)
+                model_class=cls,
+                hash_key=hash_key,
+                range_key=range_key,
+            )
+        return super().get(
+            hash_key=hash_key,
+            range_key=range_key,
+            consistent_read=consistent_read,
+            attributes_to_get=attributes_to_get,
+        )
 
     @classmethod
     def count(
@@ -320,7 +344,6 @@ class RawBaseModel(models.Model):
             index_name: Optional[str] = None,
             limit: Optional[int] = None,
             rate_limit: Optional[float] = None,
-            settings: OperationSettings = OperationSettings.default,
     ) -> int:
         if cls.is_docker:
             return cls.mongodb_handler().count(
@@ -329,15 +352,20 @@ class RawBaseModel(models.Model):
                 range_key_condition=range_key_condition,
                 filter_condition=filter_condition,
                 index_name=index_name,
-                limit=limit
+                limit=limit,
             )
-        return super().count(hash_key, range_key_condition, filter_condition,
-                             consistent_read, index_name, limit, rate_limit,
-                             settings)
+        return super().count(
+            hash_key=hash_key,
+            range_key_condition=range_key_condition,
+            filter_condition=filter_condition,
+            consistent_read=consistent_read,
+            index_name=index_name,
+            limit=limit,
+            rate_limit=rate_limit,
+        )
 
-    @classmethod
     def query(
-            cls: Type[_T],
+            self: _T,
             hash_key: _KeyType,
             range_key_condition: Optional[Condition] = None,
             filter_condition: Optional[Condition] = None,
@@ -349,23 +377,31 @@ class RawBaseModel(models.Model):
             attributes_to_get: Optional[Iterable[str]] = None,
             page_size: Optional[int] = None,
             rate_limit: Optional[float] = None,
-            settings: OperationSettings = OperationSettings.default,
     ) -> ResultIterator[_T]:
-        if cls.is_docker:
-            return cls.mongodb_handler().query(
-                model_class=cls,
+        if self.is_docker:
+            return self.mongodb_handler().query(
+                model_class=self,
                 hash_key=hash_key,
                 filter_condition=filter_condition,
                 range_key_condition=range_key_condition,
                 limit=limit,
                 last_evaluated_key=last_evaluated_key,
                 attributes_to_get=attributes_to_get,
-                scan_index_forward=scan_index_forward
+                scan_index_forward=scan_index_forward,
             )
-        return super().query(hash_key, range_key_condition, filter_condition,
-                             consistent_read, index_name, scan_index_forward,
-                             limit, last_evaluated_key, attributes_to_get,
-                             page_size, rate_limit, settings)
+        return super().query(
+            hash_key=hash_key,
+            range_key_condition=range_key_condition,
+            filter_condition=filter_condition,
+            consistent_read=consistent_read,
+            index_name=index_name,
+            scan_index_forward=scan_index_forward,
+            limit=limit,
+            last_evaluated_key=last_evaluated_key,
+            attributes_to_get=attributes_to_get,
+            page_size=page_size,
+            rate_limit=rate_limit,
+        )
 
     @classmethod
     def scan(
@@ -380,7 +416,6 @@ class RawBaseModel(models.Model):
             index_name: Optional[str] = None,
             rate_limit: Optional[float] = None,
             attributes_to_get: Optional[Sequence[str]] = None,
-            settings: OperationSettings = OperationSettings.default,
     ) -> ResultIterator[_T]:
         if cls.is_docker:
             return cls.mongodb_handler().scan(
@@ -388,12 +423,20 @@ class RawBaseModel(models.Model):
                 filter_condition=filter_condition,
                 limit=limit,
                 last_evaluated_key=last_evaluated_key,
-                attributes_to_get=attributes_to_get
+                attributes_to_get=attributes_to_get,
             )
-        return super().scan(filter_condition, segment, total_segments, limit,
-                            last_evaluated_key, page_size, consistent_read,
-                            index_name, rate_limit, attributes_to_get,
-                            settings)
+        return super().scan(
+            filter_condition=filter_condition,
+            segment=segment,
+            total_segments=total_segments,
+            limit=limit,
+            last_evaluated_key=last_evaluated_key,
+            page_size=page_size,
+            consistent_read=consistent_read,
+            index_name=index_name,
+            rate_limit=rate_limit,
+            attributes_to_get=attributes_to_get,
+        )
 
     def get_json(self) -> dict:
         """
@@ -404,6 +447,7 @@ class RawBaseModel(models.Model):
         return json.loads(json.dumps(self, cls=ModelEncoder))
 
     def dynamodb_model(self):
+        # TODO: investigate it
         model = self.__unmap_map_attribute(item=self)
         result = self.__model_to_dict(model)
         if hasattr(self, 'mongo_id'):
@@ -508,32 +552,42 @@ class RawBaseGSI(indexes.GlobalSecondaryIndex):
             ' define your own base class with implemented `mongodb_handler` '
             'class method')
 
-    @classmethod
-    def query(cls, hash_key: _KeyType,
-              range_key_condition: Optional[Condition] = None,
-              filter_condition: Optional[Condition] = None,
-              consistent_read: Optional[bool] = False,
-              scan_index_forward: Optional[bool] = None,
-              limit: Optional[int] = None,
-              last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = None,
-              attributes_to_get: Optional[List[str]] = None,
-              page_size: Optional[int] = None,
-              rate_limit: Optional[float] = None) -> ResultIterator[_M]:
-        if cls.is_docker:
-            return cls.mongodb_handler().query(
-                model_class=cls,
+    def query(
+            self,
+            hash_key: _KeyType,
+            range_key_condition: Optional[Condition] = None,
+            filter_condition: Optional[Condition] = None,
+            consistent_read: Optional[bool] = False,
+            scan_index_forward: Optional[bool] = None,
+            limit: Optional[int] = None,
+            last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = None,
+            attributes_to_get: Optional[List[str]] = None,
+            page_size: Optional[int] = None,
+            rate_limit: Optional[float] = None,
+    ) -> ResultIterator[_M]:
+        if self.is_docker:
+            return self.mongodb_handler().query(
+                model_class=self,
                 hash_key=hash_key,
                 filter_condition=filter_condition,
                 range_key_condition=range_key_condition,
                 limit=limit,
                 last_evaluated_key=last_evaluated_key,
                 attributes_to_get=attributes_to_get,
-                scan_index_forward=scan_index_forward
+                scan_index_forward=scan_index_forward,
             )
-        return super().query(hash_key, range_key_condition, filter_condition,
-                             consistent_read, scan_index_forward, limit,
-                             last_evaluated_key, attributes_to_get, page_size,
-                             rate_limit)
+        return super().query(
+            hash_key=hash_key,
+            range_key_condition=range_key_condition,
+            filter_condition=filter_condition,
+            consistent_read=consistent_read,
+            scan_index_forward=scan_index_forward,
+            limit=limit,
+            last_evaluated_key=last_evaluated_key,
+            attributes_to_get=attributes_to_get,
+            page_size=page_size,
+            rate_limit=rate_limit,
+        )
 
 
 class BaseModel(ModularMongoDBHandlerMixin, RawBaseModel):
