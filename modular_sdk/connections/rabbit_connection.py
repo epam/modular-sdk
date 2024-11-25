@@ -10,9 +10,13 @@ _LOG = get_logger(__name__)
 
 class RabbitMqConnection:
     def __init__(self, connection_url: str,
-                 timeout: int = RABBIT_DEFAULT_RESPONSE_TIMEOUT):
+                 timeout: int | None = RABBIT_DEFAULT_RESPONSE_TIMEOUT):
         self.connection_url = connection_url
-        self.timeout = timeout
+        if timeout is None:
+            # fix of None timeout. There is some code that passes None here
+            self.timeout = RABBIT_DEFAULT_RESPONSE_TIMEOUT
+        else:
+            self.timeout = timeout
         self.responses = {}
 
     def _open_channel(self):

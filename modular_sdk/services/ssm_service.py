@@ -121,9 +121,14 @@ class VaultSSMClient(AbstractSSMClient):
 
     def put_parameter(self, name: str, value: SecretValue,
                       _type='SecureString') -> Optional[str]:
+        if isinstance(value, str):
+            # probably Maestro does not dump string to json.
+            to_save = value
+        else:
+            to_save = json.dumps(value, separators=(',', ':'), sort_keys=True)
         self.client.secrets.kv.v2.create_or_update_secret(
             path=name,
-            secret={self.key: value},
+            secret={self.key: to_save},
             mount_point=self.mount_point
         )
         return name
