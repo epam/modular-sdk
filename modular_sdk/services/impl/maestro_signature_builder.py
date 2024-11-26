@@ -76,7 +76,6 @@ class MaestroSignatureBuilder:
         resolved_signature = ''
         for each in [signature[i:i + n] for i in range(0, len(signature), n)]:
             resolved_signature += '1' + each
-
         return {
             "maestro-authentication": resolved_signature,
             "maestro-request-identifier": "api-server",
