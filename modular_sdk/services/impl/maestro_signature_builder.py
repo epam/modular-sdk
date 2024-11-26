@@ -86,3 +86,12 @@ class MaestroSignatureBuilder:
             "maestro-sdk-async": 'true' if async_request else 'false',
             "compressed": True if compressed else False,
         }
+
+    def get_http_signed_headers(self, async_request: bool = False, 
+                                compressed: bool = False) -> dict:
+        base = self.get_signed_headers(async_request=async_request, 
+                                       compressed=compressed)
+        base['compressed'] = 'true' if base['compressed'] else 'false'
+        base['Content-Type'] = PLAIN_CONTENT_TYPE
+        return base
+
