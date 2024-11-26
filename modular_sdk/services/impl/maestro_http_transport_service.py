@@ -82,10 +82,8 @@ class MaestroHTTPTransport(AbstractTransport):
 
         _LOG.debug('Message encrypted')
         # sign headers
-        headers = signer.get_signed_headers(
-            async_request=async_request,
-            compressed=compressed,
-            http=True,
+        headers = signer.get_http_signed_headers(
+            async_request=async_request, compressed=compressed,
         )
         _LOG.debug('Signed headers prepared')
         return encrypted_body, headers

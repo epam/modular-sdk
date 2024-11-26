@@ -69,3 +69,24 @@ def test_get_headers():
             'maestro-accesskey': 'access_key', 'maestro-sdk-version': '3.2.80',
             'maestro-sdk-async': 'true', 'compressed': True
         }
+
+def test_get_http_headers():
+    signer = MaestroSignatureBuilder(
+        access_key='access_key',
+        secret_key='1234567890123456',
+        user='user'
+    )
+    with patch('time.time', lambda: 1728655109.171027):
+        headers = signer.get_http_signed_headers(
+            async_request=True,
+            compressed=True
+        )
+        assert headers == {
+            'maestro-authentication': '19a1e711211517d16a1d015910a1141191a111111f12b16714714a1b41941111001c319b13e10114b1d412417b1f21e9',
+            'maestro-request-identifier': 'api-server',
+            'maestro-user-identifier': 'user', 'maestro-date': '1728655109171',
+            'maestro-accesskey': 'access_key', 'maestro-sdk-version': '3.2.80',
+            'maestro-sdk-async': 'true', 'compressed': 'true', 
+            'Content-Type': 'text/plain'
+
+        }

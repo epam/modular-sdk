@@ -58,12 +58,8 @@ class MaestroSignatureBuilder:
         encrypted_data_with_iv = bytes(iv) + encrypted_data
         return base64.b64encode(encrypted_data_with_iv)
 
-    def get_signed_headers(
-            self,
-            async_request: bool = False,
-            compressed: bool = False,
-            http: bool = False,
-    ) -> dict:
+    def get_signed_headers(self, async_request: bool = False,
+                           compressed: bool = False) -> dict:
         """
         Create and sign necessary headers for interaction with Maestro API
         """
@@ -81,7 +77,7 @@ class MaestroSignatureBuilder:
         for each in [signature[i:i + n] for i in range(0, len(signature), n)]:
             resolved_signature += '1' + each
 
-        headers = {
+        return {
             "maestro-authentication": resolved_signature,
             "maestro-request-identifier": "api-server",
             "maestro-user-identifier": self._user,
@@ -91,8 +87,10 @@ class MaestroSignatureBuilder:
             "maestro-sdk-async": 'true' if async_request else 'false',
             "compressed": True if compressed else False,
         }
-        if http:
-            headers["compressed"] = 'true' if compressed else 'false'
-            headers["Content-Type"] = PLAIN_CONTENT_TYPE
 
-        return headers
+    def get_http_signed_headers(self, async_request: bool = False, compressed: bool = False):
+        base = self.get_signed_headers(async_request=async_request, compressed=compressed)
+        base['compressed'] = 'true' if base['compressed'] else 'false'
+        base['Content-Type'] = PLAIN_CONTENT_TYPE
+        return base
+
