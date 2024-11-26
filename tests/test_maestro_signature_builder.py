@@ -88,5 +88,4 @@ def test_get_http_headers():
             'maestro-accesskey': 'access_key', 'maestro-sdk-version': '3.2.80',
             'maestro-sdk-async': 'true', 'compressed': 'true', 
             'Content-Type': 'text/plain'
-
         }
