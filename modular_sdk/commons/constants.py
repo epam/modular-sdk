@@ -216,6 +216,7 @@ class ApplicationType(str, Enum):
     DEFECT_DOJO = 'DEFECT_DOJO'
     K8S_KUBE_CONFIG = 'K8S_KUBE_CONFIG'
     GCP_CHRONICLE_INSTANCE = 'GCP_CHRONICLE_INSTANCE'
+    SEP_SANDBOX_AWS = 'SEP_SANDBOX_AWS'
 
     @classmethod
     def iter(cls):
@@ -239,6 +240,7 @@ RIGHTSIZER_TYPE = ApplicationType.RIGHTSIZER.value
 RIGHTSIZER_LICENSES_TYPE = ApplicationType.RIGHTSIZER_LICENSES.value
 RABBITMQ_TYPE = ApplicationType.RABBITMQ.value
 DEFECT_DOJO_TYPE = ApplicationType.DEFECT_DOJO.value
+SEP_SANDBOX_AWS_TYPE = ApplicationType.SEP_SANDBOX_AWS.value
 
 AVAILABLE_APPLICATION_TYPES = list(ApplicationType.iter())
 
