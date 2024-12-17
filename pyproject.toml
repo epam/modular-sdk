@@ -60,3 +60,12 @@ executionEnvironments = [
     {root = "tests/", pythonVersion = "3.10", extraPaths = ["modular_sdk/"]}
 ]
 
+[tool.ruff]
+line-length = 79
+src = ["modular_sdk", "tests"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+skip-magic-trailing-comma = true
+
