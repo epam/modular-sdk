@@ -1,10 +1,11 @@
 import json
 from datetime import datetime, timezone
 from typing import Any
+from enum import Enum
 
 from pynamodb.attributes import (
     Attribute,
-    BinaryAttribute,
+    BinaryAttribute as PynamoDBBinaryAttribute,
     BinarySetAttribute,
     BooleanAttribute,
     ListAttribute,
@@ -34,16 +35,6 @@ class MongoUTCDateTimeAttribute(Attribute[datetime]):
     def deserialize(self, value: datetime) -> datetime:
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
-        return value
-
-
-class MongoBinaryAttribute(Attribute[bytes]):
-    attr_type = BINARY
-
-    def serialize(self, value: bytes) -> bytes:
-        return value
-
-    def deserialize(self, value: bytes) -> bytes:
         return value
 
 
@@ -78,6 +69,20 @@ class MongoUnicodeSetAttribute(Attribute[set[str]]):
 
     def deserialize(self, value: list[dict]) -> set[str]:
         return {v[STRING] for v in value}
+
+
+# Attributes below can be used for DynamoDB
+class BinaryAttribute(Attribute[bytes]):
+    # NOTE: PynamoDB's BinaryAttribute encodes values to base64 twice. This
+    # implementation fixes that. Not backward-compatible
+
+    attr_type = BINARY
+
+    def serialize(self, value: bytes) -> bytes:
+        return value
+
+    def deserialize(self, value: bytes) -> bytes:
+        return value
 
 
 class DynamicAttribute(Attribute[Any]):
@@ -118,13 +123,36 @@ class DynamicAttribute(Attribute[Any]):
         return attr_value
 
 
+class EnumUnicodeAttribute(Attribute[Enum | str]):
+    attr_type = STRING
+
+    def __init__(self, enum: type[Enum], /, **kwargs):
+        self._enum = enum
+        super().__init__(**kwargs)
+
+    def serialize(self, value: Enum | str) -> str:
+        if not isinstance(value, Enum):
+            value = self._enum(value)  # user must provide valid values
+        else:  # enum value
+            if not isinstance(value, self._enum):
+                raise TypeError(f'{value} has invalid type: {value.__class__}. '
+                                f'Expected type if {self._enum}')
+        return str(value.value)
+
+    def deserialize(self, value: Any) -> Enum:
+        try:
+            return self._enum(value)
+        except ValueError:
+            raise AttributeDeserializationError(self.attr_name, self.attr_type)
+
+
 # NOTE: seems like NullAttribute also can be patched to return True when
 # deserialized. The existing behaviour seems broken because currently
 # it returns None when deserialized and then if you try to save the
 # instance it will be omitted.
 MONGO_ATTRIBUTE_PATCH_MAPPING = {
     UTCDateTimeAttribute: MongoUTCDateTimeAttribute,
-    BinaryAttribute: MongoBinaryAttribute,
+    PynamoDBBinaryAttribute: BinaryAttribute,
     BinarySetAttribute: MongoBinarySetAttribute,
     NumberSetAttribute: MongoNumberSetAttribute,
     UnicodeSetAttribute: MongoUnicodeSetAttribute,
