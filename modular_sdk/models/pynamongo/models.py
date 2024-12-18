@@ -1,346 +1,316 @@
-from typing import TYPE_CHECKING, Generator, Iterator, TypeVar
-
-from pymongo import ASCENDING, DESCENDING, DeleteOne, ReplaceOne
-from pymongo.collection import ReturnDocument
-from pynamodb.models import Model as _Model
-
-from modular_sdk.models.pynamongo.convertors import (
-    PynamoDBModelToMongoDictSerializer,
-    convert_attributes_to_get,
-    convert_condition_expression,
-    convert_update_expression,
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Text,
+    Union,
 )
 
-if TYPE_CHECKING:
-    from pymongo.collection import Collection
-    from pymongo.cursor import Cursor
-    from pynamodb.expressions.update import Action
+from pynamodb.exceptions import DoesNotExist
+from pynamodb.expressions.condition import Condition
+from pynamodb.expressions.update import Action
+from pynamodb.models import _T, BatchWrite, _KeyType
+from pynamodb.models import Model as _Model
+from pynamodb.pagination import ResultIterator
+from pynamodb.settings import OperationSettings
 
-_MT = TypeVar('_MT', bound=_Model)
-
-
-class ResultIterator(Iterator[_MT]):
-    __slots__ = '_cursor', '_model', '_serializer', '_skip'
-
-    def __init__(
-        self,
-        cursor: 'Cursor',
-        model: type[_MT],
-        serializer: PynamoDBModelToMongoDictSerializer,
-        skip: int = 0,
-    ):
-        self._cursor = cursor
-        self._model = model
-        self._serializer = serializer
-        self._skip = skip
-
-    def __iter__(self) -> 'ResultIterator':
-        return self
-
-    def __next__(self) -> _MT:
-        item = self._cursor.__next__()
-        self._skip += 1
-        return self._serializer.deserialize(self._model, item)
-
-    def next(self) -> _MT:
-        return self.__next__()
-
-    @property
-    def last_evaluated_key(self):
-        return self._skip
-
-    @property
-    def total_count(self) -> int:
-        return self._cursor.retrieved
-
-
-class BatchWrite:
-    __slots__ = '_ser', '_collection', '_req'
-
-    def __init__(
-        self,
-        serializer: PynamoDBModelToMongoDictSerializer,
-        collection: 'Collection',
-    ):
-        self._ser = serializer
-        self._collection = collection
-        self._req = []
-
-    def save(self, put_item: _Model) -> None:
-        if _id := self._ser.get_mongo_id(put_item):
-            q = {'_id': _id}
-        else:
-            q = self._ser.instance_serialized_keys(put_item)
-        self._req.append(
-            ReplaceOne(
-                filter=q,
-                replacement=self._ser.serialize(put_item),
-                upsert=True,
-            )
-        )
-
-    def delete(self, del_item: _Model) -> None:
-        if _id := self._ser.get_mongo_id(del_item):
-            q = {'_id': _id}
-        else:
-            q = self._ser.instance_serialized_keys(del_item)
-        self._req.append(DeleteOne(q))
-
-    def __enter__(self):
-        self._req.clear()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        return self.commit()
-
-    def commit(self) -> None:
-        if not self._req:
-            return
-        self._collection.bulk_write(self._req)
-
-
-class PynamoDBToPymongoAdapter:
-    __slots__ = ('_db',)
-    _ser = PynamoDBModelToMongoDictSerializer()
-
-    def __init__(self, db: 'Database | None' = None):
-        self._db = db
-
-    def get_collection(self, model: type[_Model] | _Model) -> 'Collection':
-        collection = getattr(model.Meta, 'mongo_collection', None)
-        if collection is not None:
-            return collection
-
-        db = getattr(model.Meta, 'mongo_database', self._db)
-        assert db is not None, ('Mongo database must be set either to model`s '
-                                'Meta or to PynamoDBToPymongoAdapter')
-        col = db.get_collection(model.Meta.table_name)
-        setattr(model.Meta, 'mongo_collection', col)
-        return col
-
-    def get(
-        self,
-        model: type[_MT],
-        hash_key,
-        range_key=None,
-        attributes_to_get=None,
-    ) -> _MT:
-        hash_key_name, range_key_name = self._ser.model_keys_names(model)
-        hash_key, range_key = self._ser.serialize_keys(
-            model, hash_key, range_key
-        )
-        query = {hash_key_name: hash_key}
-        if range_key_name and range_key:
-            query[range_key_name] = range_key
-
-        item = self._get_collection(model).find_one(
-            query, projection=convert_attributes_to_get(attributes_to_get)
-        )
-        if not item:
-            raise model.DoesNotExist()
-        return self._ser.deserialize(model, item)
-
-    def save(self, instance: _Model) -> None:
-        collection = self._get_collection(instance)
-        # TODO: save by mongo_id if exists
-        if _id := self._ser.get_mongo_id(instance):
-            q = {'_id': _id}
-        else:
-            q = self._ser.instance_serialized_keys(instance)
-        collection.replace_one(
-            filter=q, replacement=self._ser.serialize(instance), upsert=True
-        )
-
-    def update(self, instance: _Model, actions: list['Action']) -> None:
-        _update = {}
-        for dct in map(convert_update_expression, actions):
-            for action, query in dct.items():
-                _update.setdefault(action, {}).update(query)
-        if _id := self._ser.get_mongo_id(instance):
-            q = {'_id': _id}
-        else:
-            q = self._ser.instance_serialized_keys(instance)
-        res = self._get_collection(instance).find_one_and_update(
-            filter=q,
-            update=_update,
-            upsert=True,
-            return_document=ReturnDocument.AFTER,
-        )
-        if res:
-            self._ser.deserialize_to(instance, res)
-
-    def delete(self, instance: _Model) -> None:
-        if _id := self._ser.get_mongo_id(instance):
-            q = {'_id': _id}
-        else:
-            q = self._ser.instance_serialized_keys(instance)
-
-        self._get_collection(instance).delete_one(q)
-
-    def refresh(self, instance: _Model) -> None:
-        if _id := self._ser.get_mongo_id(instance):
-            q = {'_id': _id}
-        else:
-            q = self._ser.instance_serialized_keys(instance)
-        item = self._get_collection(instance).find_one(q)
-        if not item:
-            raise instance.DoesNotExist()
-        self._ser.deserialize_to(instance, item)
-
-    def exists(self, model: type[_Model]) -> bool:
-        db = self._get_collection(model).database
-        return model.Meta.table_name in db.list_collection_names()
-
-    def delete_table(self, model: type[_Model]) -> None:
-        self._get_collection(model).drop()
-
-    def create_table(self, model: type[_Model]) -> None:
-        """
-        Mongo table is created automatically
-        """
-        # db = self._get_db(model)
-        # db.create_collection()
-
-    def count(
-        self,
-        model: type[_Model],
-        hash_key=None,
-        range_key_condition=None,
-        filter_condition=None,
-        index_name=None,
-        limit=None,
-    ) -> int:
-        query = {}
-
-        if hash_key:
-            if index_name:
-                index = self._ser.model_indexes(model).get(index_name)
-                assert index is not None, 'Index must exist'
-
-                h_attr, _ = self._ser.index_keys(index)
-                query[h_attr.attr_name] = h_attr.serialize(hash_key)
-            else:
-                hash_key_name, _ = self._ser.model_keys_names(model)
-                hash_key, _ = self._ser.serialize_keys(model, hash_key, None)
-                query[hash_key_name] = hash_key
-
-        if range_key_condition is not None:
-            query.update(convert_condition_expression(range_key_condition))
-        if filter_condition is not None:
-            query.update(convert_condition_expression(filter_condition))
-        collection = self._get_collection(model)
-
-        if limit:
-            return collection.count_documents(query, limit=limit)
-        return collection.count_documents(query)
-
-    def query(
-        self,
-        model: type[_MT],
-        hash_key,
-        range_key_condition=None,
-        filter_condition=None,
-        index_name: str | None = None,
-        scan_index_forward=True,
-        limit=None,
-        last_evaluated_key=None,
-        attributes_to_get=None,
-        page_size=None,
-    ) -> ResultIterator[_MT]:
-        if index_name:
-            index = self._ser.model_indexes(model).get(index_name)
-            assert index is not None, 'Index must exist'
-            h_attr, r_attr = self._ser.index_keys(index)
-            hash_key_name = h_attr.attr_name
-            range_key_name = r_attr.attr_name if r_attr is not None else None
-            hash_key = h_attr.serialize(hash_key)
-        else:
-            hash_key_name, range_key_name = self._ser.model_keys_names(model)
-            hash_key, _ = self._ser.serialize_keys(model, hash_key, None)
-
-        q = {hash_key_name: hash_key}
-        if range_key_condition is not None:
-            q.update(convert_condition_expression(range_key_condition))
-        if filter_condition is not None:
-            q.update(convert_condition_expression(filter_condition))
-        last_evaluated_key = last_evaluated_key or 0
-
-        cursor = self._get_collection(model).find(
-            q,
-            projection=convert_attributes_to_get(attributes_to_get),
-            skip=last_evaluated_key,
-            limit=limit or 0,
-            batch_size=page_size or 0,
-        )
-        if range_key_name:
-            cursor = cursor.sort(
-                range_key_name, ASCENDING if scan_index_forward else DESCENDING
-            )
-        return ResultIterator(
-            cursor=cursor,
-            model=model,
-            serializer=self._ser,
-            skip=last_evaluated_key,
-        )
-
-    def scan(
-        self,
-        model: type[_MT],
-        filter_condition=None,
-        limit=None,
-        last_evaluated_key=None,
-        page_size=None,
-        index_name: str | None = None,
-        attributes_to_get=None,
-    ) -> ResultIterator[_MT]:
-        query = {}
-        if filter_condition is not None:
-            query.update(convert_condition_expression(filter_condition))
-        last_evaluated_key = last_evaluated_key or 0
-
-        # TODO: scan a specific index
-        cursor = self._get_collection(model).find(
-            query,
-            projection=convert_attributes_to_get(attributes_to_get),
-            skip=last_evaluated_key,
-            limit=limit or 0,
-            batch_size=page_size or 0,
-        )
-        return ResultIterator(
-            cursor=cursor,
-            model=model,
-            serializer=self._ser,
-            skip=last_evaluated_key,
-        )
-
-    def batch_get(
-        self, model: type[_MT], keys: list[tuple], attributes_to_get=None
-    ) -> Generator[_MT, None, None]:
-        """
-        Seems like bulk read is not supported.
-        Order not guaranteed
-        """
-        ors = []
-
-        hash_key_name, range_key_name = self._ser.model_keys_names(model)
-        for key in keys:
-            hash_key, range_key = self._ser.serialize_keys(model, *key)
-            q = {hash_key_name: hash_key}
-            if range_key_name and range_key:
-                q[range_key_name] = range_key
-            ors.append(q)
-        cursor = self._get_collection(model).find(
-            {'$or': ors},
-            projection=convert_attributes_to_get(attributes_to_get),
-        )
-        for item in cursor:
-            yield self._ser.deserialize(model, item)
-
-    def batch_write(self, model: type[_Model]) -> BatchWrite:
-        return BatchWrite(
-            serializer=self._ser, collection=self._get_collection(model)
-        )
+from modular_sdk.models.pynamongo.adapter import PynamoDBToPymongoAdapter
 
 
 class Model(_Model):
-    pass
+    mongo_adapter = PynamoDBToPymongoAdapter()
+
+    @classmethod
+    def is_mongo_model(cls) -> bool:
+        return (
+            getattr(cls.Meta, 'mongo_database', None) is not None
+            or getattr(cls.Meta, 'mongo_collection', None) is not None
+        )
+
+    @classmethod
+    def batch_get(
+        cls,
+        items: Iterable[Union[_KeyType, Iterable[_KeyType]]],
+        consistent_read: Optional[bool] = None,
+        attributes_to_get: Optional[Sequence[str]] = None,
+        settings: OperationSettings = OperationSettings.default,
+    ) -> Iterator[_T]:
+        if cls.is_mongo_model():
+            return cls.mongo_adapter.batch_get(
+                model=cls, items=items, attributes_to_get=attributes_to_get
+            )
+        return super().batch_get(
+            items=items,
+            consistent_read=consistent_read,
+            attributes_to_get=attributes_to_get,
+            settings=settings,
+        )
+
+    @classmethod
+    def batch_write(
+        cls,
+        auto_commit: bool = True,
+        settings: OperationSettings = OperationSettings.default,
+    ) -> BatchWrite[_T]:
+        if cls.is_mongo_model():
+            return cls.mongo_adapter.batch_write(model=cls)
+        return super().batch_write(auto_commit=auto_commit, settings=settings)
+
+    def delete(
+        self,
+        condition: Optional[Condition] = None,
+        settings: OperationSettings = OperationSettings.default,
+        *,
+        add_version_condition: bool = True,
+    ) -> Any:
+        if self.is_mongo_model():
+            return self.mongo_adapter.delete(instance=self)
+        return super().delete(
+            condition=condition,
+            settings=settings,
+            add_version_condition=add_version_condition,
+        )
+
+    def update(
+        self,
+        actions: List[Action],
+        condition: Optional[Condition] = None,
+        settings: OperationSettings = OperationSettings.default,
+        *,
+        add_version_condition: bool = True,
+    ) -> Any:
+        if self.is_mongo_model():
+            return self.mongo_adapter.update(instance=self, actions=actions)
+        return super().update(
+            actions=actions,
+            condition=condition,
+            settings=settings,
+            add_version_condition=add_version_condition,
+        )
+
+    def save(
+        self,
+        condition: Optional[Condition] = None,
+        settings: OperationSettings = OperationSettings.default,
+        *,
+        add_version_condition: bool = True,
+    ) -> Dict[str, Any]:
+        if self.is_mongo_model():
+            return self.mongo_adapter.save(instance=self)
+        # TODO: correct result
+        return super().save(
+            condition=condition,
+            settings=settings,
+            add_version_condition=add_version_condition,
+        )
+
+    def refresh(
+        self,
+        consistent_read: bool = False,
+        settings: OperationSettings = OperationSettings.default,
+    ) -> None:
+        if self.is_mongo_model():
+            return self.mongo_adapter.refresh(instance=self)
+        return super().refresh(
+            consistent_read=consistent_read, settings=settings
+        )
+
+    @classmethod
+    def get(
+        cls,
+        hash_key: _KeyType,
+        range_key: Optional[_KeyType] = None,
+        consistent_read: bool = False,
+        attributes_to_get: Optional[Sequence[Text]] = None,
+        settings: OperationSettings = OperationSettings.default,
+    ) -> _T:
+        if cls.is_mongo_model():
+            return cls.mongo_adapter.get(
+                model=cls,
+                hash_key=hash_key,
+                range_key=range_key,
+                attributes_to_get=attributes_to_get,
+            )
+        return super().get(
+            hash_key=hash_key,
+            range_key=range_key,
+            consistent_read=consistent_read,
+            attributes_to_get=attributes_to_get,
+            settings=settings,
+        )
+
+    @classmethod
+    def get_nullable(
+        cls,
+        hash_key: _KeyType,
+        range_key: Optional[_KeyType] = None,
+        consistent_read: bool = False,
+        attributes_to_get: Optional[Sequence[Text]] = None,
+        settings: OperationSettings = OperationSettings.default,
+    ) -> _T | None:
+        try:
+            return cls.get(
+                hash_key=hash_key,
+                range_key=range_key,
+                consistent_read=consistent_read,
+                attributes_to_get=attributes_to_get,
+                settings=settings,
+            )
+        except DoesNotExist:
+            return
+
+    @classmethod
+    def count(
+        cls,
+        hash_key: Optional[_KeyType] = None,
+        range_key_condition: Optional[Condition] = None,
+        filter_condition: Optional[Condition] = None,
+        consistent_read: bool = False,
+        index_name: Optional[str] = None,
+        limit: Optional[int] = None,
+        rate_limit: Optional[float] = None,
+        settings: OperationSettings = OperationSettings.default,
+    ) -> int:
+        if cls.is_mongo_model():
+            return cls.mongo_adapter.count(
+                model=cls,
+                hash_key=hash_key,
+                range_key_condition=range_key_condition,
+                filter_condition=filter_condition,
+                index_name=index_name,
+                limit=limit,
+            )
+        return super().count(
+            hash_key=hash_key,
+            range_key_condition=range_key_condition,
+            filter_condition=filter_condition,
+            consistent_read=consistent_read,
+            index_name=index_name,
+            limit=limit,
+            rate_limit=rate_limit,
+            settings=settings,
+        )
+
+    @classmethod
+    def query(
+        cls,
+        hash_key: _KeyType,
+        range_key_condition: Optional[Condition] = None,
+        filter_condition: Optional[Condition] = None,
+        consistent_read: bool = False,
+        index_name: Optional[str] = None,
+        scan_index_forward: Optional[bool] = None,
+        limit: Optional[int] = None,
+        last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = None,
+        attributes_to_get: Optional[Iterable[str]] = None,
+        page_size: Optional[int] = None,
+        rate_limit: Optional[float] = None,
+        settings: OperationSettings = OperationSettings.default,
+    ) -> ResultIterator[_T]:
+        if cls.is_mongo_model():
+            return cls.mongo_adapter.query(
+                model=cls,
+                hash_key=hash_key,
+                range_key_condition=range_key_condition,
+                filter_condition=filter_condition,
+                index_name=index_name,
+                scan_index_forward=scan_index_forward,
+                limit=limit,
+                last_evaluated_key=last_evaluated_key,
+                attributes_to_get=attributes_to_get,
+                page_size=page_size,
+            )
+        return super().query(
+            hash_key=hash_key,
+            range_key_condition=range_key_condition,
+            filter_condition=filter_condition,
+            consistent_read=consistent_read,
+            index_name=index_name,
+            scan_index_forward=scan_index_forward,
+            limit=limit,
+            last_evaluated_key=last_evaluated_key,
+            attributes_to_get=attributes_to_get,
+            page_size=page_size,
+            rate_limit=rate_limit,
+            settings=settings,
+        )
+
+    @classmethod
+    def scan(
+        cls,
+        filter_condition: Optional[Condition] = None,
+        segment: Optional[int] = None,
+        total_segments: Optional[int] = None,
+        limit: Optional[int] = None,
+        last_evaluated_key: Optional[Dict[str, Dict[str, Any]]] = None,
+        page_size: Optional[int] = None,
+        consistent_read: Optional[bool] = None,
+        index_name: Optional[str] = None,
+        rate_limit: Optional[float] = None,
+        attributes_to_get: Optional[Sequence[str]] = None,
+        settings: OperationSettings = OperationSettings.default,
+    ) -> ResultIterator[_T]:
+        if cls.is_mongo_model():
+            return cls.mongo_adapter.scan(
+                model=cls,
+                filter_condition=filter_condition,
+                limit=limit,
+                last_evaluated_key=last_evaluated_key,
+                page_size=page_size,
+                index_name=index_name,
+                attributes_to_get=attributes_to_get,
+            )
+        return super().scan(
+            filter_condition=filter_condition,
+            segment=segment,
+            total_segments=total_segments,
+            limit=limit,
+            last_evaluated_key=last_evaluated_key,
+            page_size=page_size,
+            consistent_read=consistent_read,
+            index_name=index_name,
+            rate_limit=rate_limit,
+            attributes_to_get=attributes_to_get,
+            settings=settings,
+        )
+
+    @classmethod
+    def exists(cls) -> bool:
+        if cls.is_mongo_model():
+            return cls.mongo_adapter.exists(cls)
+        return super().exists()
+
+    @classmethod
+    def delete_table(cls) -> Any:
+        if cls.is_mongo_model():
+            return cls.mongo_adapter.delete_table(cls)
+        return super().delete_table()
+
+    @classmethod
+    def describe_table(cls) -> Any:
+        if cls.is_mongo_model():
+            raise NotImplementedError('Describe not implemented for mongo')
+        return super().describe_table()
+
+    @classmethod
+    def create_table(
+        cls,
+        wait: bool = False,
+        read_capacity_units: Optional[int] = None,
+        write_capacity_units: Optional[int] = None,
+        billing_mode: Optional[str] = None,
+        ignore_update_ttl_errors: bool = False,
+    ) -> Any:
+        if cls.is_mongo_model():
+            return cls.mongo_adapter.create_table(cls)
+        return super().create_table(
+            wait=wait,
+            read_capacity_units=read_capacity_units,
+            write_capacity_units=write_capacity_units,
+            billing_mode=billing_mode,
+            ignore_update_ttl_errors=ignore_update_ttl_errors,
+        )

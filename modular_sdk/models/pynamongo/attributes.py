@@ -16,7 +16,7 @@ from pynamodb.attributes import (
     UnicodeSetAttribute,
     UTCDateTimeAttribute,
 )
-from pynamodb.constants import BINARY, LIST, NUMBER, STRING
+from pynamodb.constants import BINARY, LIST, NUMBER, STRING, BOOLEAN
 from pynamodb.exceptions import AttributeDeserializationError
 
 # Ephemeral attribute type for Mongo to proxy python object to Pymongo
@@ -164,6 +164,16 @@ class EnumUnicodeAttribute(Attribute[Enum | str]):
             return self._enum(value)
         except ValueError:
             raise AttributeDeserializationError(self.attr_name, self.attr_type)
+
+
+class M3BooleanAttribute(BooleanAttribute):
+
+    def get_value(self, value: dict[str, Any]) -> Any:
+        if BOOLEAN not in value and NUMBER not in value:
+            raise AttributeDeserializationError(self.attr_name, self.attr_type)
+        if value.get(BOOLEAN) is not None:
+            return value[BOOLEAN]
+        return int(value.get(NUMBER))
 
 
 # NOTE: seems like NullAttribute also can be patched to return True when
