@@ -63,7 +63,7 @@ class PynamoDBModelToMongoDictSerializer:
         # TODO: dynamicAttributes has bug: attribute_values is always
         #  preserved for some reason
         if _id := dct.pop('_id', None):
-            instance.__mongo_id__ = _id
+            self.set_mongo_id(instance, _id)
         instance.deserialize({k: self._from_mongo(v) for k, v in dct.items()})
 
     def deserialize(
@@ -71,13 +71,17 @@ class PynamoDBModelToMongoDictSerializer:
     ) -> 'Model':
         instance = model()
         if _id := dct.pop('_id', None):
-            instance.__mongo_id__ = _id
+            self.set_mongo_id(instance, _id)
         instance.deserialize({k: self._from_mongo(v) for k, v in dct.items()})
         return instance
 
     @staticmethod
-    def get_mongo_id(instance: 'Model') -> ObjectId | None:
+    def get_mongo_id(instance: 'Model') -> 'ObjectId | None':
         return getattr(instance, '__mongo_id__', None)
+
+    @staticmethod
+    def set_mongo_id(instance: 'Model', _id: 'ObjectId'):
+        setattr(instance, '__mongo_id__', _id)
 
     # all methods that use private members of PynamoDB are below
     @staticmethod
