@@ -4,17 +4,16 @@ from pymongo import ASCENDING, DESCENDING, DeleteOne, ReplaceOne
 from pymongo.collection import ReturnDocument
 from pynamodb.models import Model as _Model
 
-from .convertors import (
-    AttributesToGetToProjectionConvertor,
-    ConditionConverter,
+from modular_sdk.models.pynamongo.convertors import (
     PynamoDBModelToMongoDictSerializer,
-    UpdateExpressionConverter,
+    convert_attributes_to_get,
+    convert_condition_expression,
+    convert_update_expression,
 )
 
 if TYPE_CHECKING:
     from pymongo.collection import Collection
     from pymongo.cursor import Cursor
-    from pymongo.database import Database
     from pynamodb.expressions.update import Action
 
 _MT = TypeVar('_MT', bound=_Model)
@@ -67,7 +66,7 @@ class BatchWrite:
         self._collection = collection
         self._req = []
 
-    def save(self, put_item: _MT) -> None:
+    def save(self, put_item: _Model) -> None:
         if _id := self._ser.get_mongo_id(put_item):
             q = {'_id': _id}
         else:
@@ -80,7 +79,7 @@ class BatchWrite:
             )
         )
 
-    def delete(self, del_item: _MT) -> None:
+    def delete(self, del_item: _Model) -> None:
         if _id := self._ser.get_mongo_id(del_item):
             q = {'_id': _id}
         else:
@@ -101,32 +100,31 @@ class BatchWrite:
 
 
 class PynamoDBToPymongoAdapter:
-    __slots__ = '_db',
+    __slots__ = ('_db',)
     _ser = PynamoDBModelToMongoDictSerializer()
 
     def __init__(self, db: 'Database | None' = None):
         self._db = db
 
-    def _get_db(self, model: type[_MT] | _MT) -> 'Database':
-        db = getattr(model.Meta, 'mongo_db', None)
-        if db is not None:
-            return db
-        assert self._db is not None, \
-            ('Adapter must own an instance of Mongo Database if you want to '
-             'use models without their own DB')
-        return self._db
+    def _get_collection(self, model: type[_Model] | _Model) -> 'Collection':
+        collection = getattr(model.Meta, 'mongo_collection', None)
+        if collection is not None:
+            return collection
 
-    def _get_collection(self, model: type[_MT] | _MT) -> 'Collection':
-        db = self._get_db(model)
-        return db.get_collection(model.Meta.table_name)
+        db = getattr(model.Meta, 'mongo_database', self._db)
+        assert db is not None, ('Mongo database must be set either to model`s '
+                                'Meta or to PynamoDBToPymongoAdapter')
+        col = db.get_collection(model.Meta.table_name)
+        setattr(model.Meta, 'mongo_collection', col)
+        return col
 
     def get(
         self,
-        model: type[_Model],
+        model: type[_MT],
         hash_key,
         range_key=None,
         attributes_to_get=None,
-    ):
+    ) -> _MT:
         hash_key_name, range_key_name = self._ser.model_keys_names(model)
         hash_key, range_key = self._ser.serialize_keys(
             model, hash_key, range_key
@@ -136,16 +134,13 @@ class PynamoDBToPymongoAdapter:
             query[range_key_name] = range_key
 
         item = self._get_collection(model).find_one(
-            query,
-            projection=AttributesToGetToProjectionConvertor.convert(
-                attributes_to_get
-            ),
+            query, projection=convert_attributes_to_get(attributes_to_get)
         )
         if not item:
             raise model.DoesNotExist()
         return self._ser.deserialize(model, item)
 
-    def save(self, instance: _Model):
+    def save(self, instance: _Model) -> None:
         collection = self._get_collection(instance)
         # TODO: save by mongo_id if exists
         if _id := self._ser.get_mongo_id(instance):
@@ -153,14 +148,12 @@ class PynamoDBToPymongoAdapter:
         else:
             q = self._ser.instance_serialized_keys(instance)
         collection.replace_one(
-            filter=q,
-            replacement=self._ser.serialize(instance),
-            upsert=True,
+            filter=q, replacement=self._ser.serialize(instance), upsert=True
         )
 
-    def update(self, instance: _Model, actions: list['Action']):
+    def update(self, instance: _Model, actions: list['Action']) -> None:
         _update = {}
-        for dct in map(UpdateExpressionConverter.convert, actions):
+        for dct in map(convert_update_expression, actions):
             for action, query in dct.items():
                 _update.setdefault(action, {}).update(query)
         if _id := self._ser.get_mongo_id(instance):
@@ -176,7 +169,7 @@ class PynamoDBToPymongoAdapter:
         if res:
             self._ser.deserialize_to(instance, res)
 
-    def delete(self, instance: _Model):
+    def delete(self, instance: _Model) -> None:
         if _id := self._ser.get_mongo_id(instance):
             q = {'_id': _id}
         else:
@@ -184,7 +177,7 @@ class PynamoDBToPymongoAdapter:
 
         self._get_collection(instance).delete_one(q)
 
-    def refresh(self, instance: _Model):
+    def refresh(self, instance: _Model) -> None:
         if _id := self._ser.get_mongo_id(instance):
             q = {'_id': _id}
         else:
@@ -195,14 +188,13 @@ class PynamoDBToPymongoAdapter:
         self._ser.deserialize_to(instance, item)
 
     def exists(self, model: type[_Model]) -> bool:
-        db = self._get_db(model)
+        db = self._get_collection(model).database
         return model.Meta.table_name in db.list_collection_names()
 
-    def delete_table(self, model: type[_Model]):
-        db = self._get_db(model)
-        db.drop_collection(model.Meta.table_name)
+    def delete_table(self, model: type[_Model]) -> None:
+        self._get_collection(model).drop()
 
-    def create_table(self, model: type[_Model]):
+    def create_table(self, model: type[_Model]) -> None:
         """
         Mongo table is created automatically
         """
@@ -233,9 +225,9 @@ class PynamoDBToPymongoAdapter:
                 query[hash_key_name] = hash_key
 
         if range_key_condition is not None:
-            query.update(ConditionConverter.convert(range_key_condition))
+            query.update(convert_condition_expression(range_key_condition))
         if filter_condition is not None:
-            query.update(ConditionConverter.convert(filter_condition))
+            query.update(convert_condition_expression(filter_condition))
         collection = self._get_collection(model)
 
         if limit:
@@ -244,7 +236,7 @@ class PynamoDBToPymongoAdapter:
 
     def query(
         self,
-        model: type[_Model],
+        model: type[_MT],
         hash_key,
         range_key_condition=None,
         filter_condition=None,
@@ -254,7 +246,7 @@ class PynamoDBToPymongoAdapter:
         last_evaluated_key=None,
         attributes_to_get=None,
         page_size=None,
-    ):
+    ) -> ResultIterator[_MT]:
         if index_name:
             index = self._ser.model_indexes(model).get(index_name)
             assert index is not None, 'Index must exist'
@@ -268,16 +260,14 @@ class PynamoDBToPymongoAdapter:
 
         q = {hash_key_name: hash_key}
         if range_key_condition is not None:
-            q.update(ConditionConverter.convert(range_key_condition))
+            q.update(convert_condition_expression(range_key_condition))
         if filter_condition is not None:
-            q.update(ConditionConverter.convert(filter_condition))
+            q.update(convert_condition_expression(filter_condition))
         last_evaluated_key = last_evaluated_key or 0
 
         cursor = self._get_collection(model).find(
             q,
-            projection=AttributesToGetToProjectionConvertor.convert(
-                attributes_to_get
-            ),
+            projection=convert_attributes_to_get(attributes_to_get),
             skip=last_evaluated_key,
             limit=limit or 0,
             batch_size=page_size or 0,
@@ -305,15 +295,13 @@ class PynamoDBToPymongoAdapter:
     ) -> ResultIterator[_MT]:
         query = {}
         if filter_condition is not None:
-            query.update(ConditionConverter.convert(filter_condition))
+            query.update(convert_condition_expression(filter_condition))
         last_evaluated_key = last_evaluated_key or 0
 
         # TODO: scan a specific index
         cursor = self._get_collection(model).find(
             query,
-            projection=AttributesToGetToProjectionConvertor.convert(
-                attributes_to_get
-            ),
+            projection=convert_attributes_to_get(attributes_to_get),
             skip=last_evaluated_key,
             limit=limit or 0,
             batch_size=page_size or 0,
@@ -343,14 +331,12 @@ class PynamoDBToPymongoAdapter:
             ors.append(q)
         cursor = self._get_collection(model).find(
             {'$or': ors},
-            projection=AttributesToGetToProjectionConvertor.convert(
-                attributes_to_get
-            ),
+            projection=convert_attributes_to_get(attributes_to_get),
         )
         for item in cursor:
             yield self._ser.deserialize(model, item)
 
-    def batch_write(self, model: type[_MT]) -> BatchWrite:
+    def batch_write(self, model: type[_Model]) -> BatchWrite:
         return BatchWrite(
             serializer=self._ser, collection=self._get_collection(model)
         )
