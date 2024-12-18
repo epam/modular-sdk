@@ -25,6 +25,26 @@ AS_IS = 'AS_IS'
 
 
 class MongoUTCDateTimeAttribute(Attribute[datetime]):
+    """
+    Be careful: if you pass a tz-unaware datetime object here, its actual value
+    will be considered already converted to UTC. It means that if your local
+    timezone is, say, +2 hours and you do something like:
+
+        model.datetime_attr = datetime(2024, 12, 10, 15)
+        model.save()
+
+    DB will have such value: "2024-12-10T15:00:00.000+00:00" (+2 hours
+    local padding is missing).
+    So pass tz-unaware objects only if you 100% sure your timezone is UTC. Or
+    better always pass tz-aware objects:
+
+        model.datetime_attr = datetime.now(timezone.utc)
+
+    or:
+        dt = datetime(2024, 12, 10, 15).astimezone(timezone.utc)
+        model.datetime_attr = dt
+
+    """
     attr_type = AS_IS
 
     def serialize(self, value):

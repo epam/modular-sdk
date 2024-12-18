@@ -5,9 +5,9 @@ from pymongo import ASCENDING, DESCENDING
 from pymongo.operations import IndexModel
 
 from modular_sdk.commons.log_helper import get_logger
+from modular_sdk.models.pynamongo.models import PynamoDBToPymongoAdapter
 
 if TYPE_CHECKING:
-    from pymongo.database import Database
     from pynamodb.models import Model
 
 _LOG = get_logger(__name__)
@@ -18,18 +18,17 @@ class IndexesCreator:
     Creates MongoDB indexes that correspond to declared PynamoDB indexes
     """
 
-    __slots__ = '_db', '_main_index_name', '_ignore', '_ho', '_ro'
+    __slots__ = '_adapter', '_main_index_name', '_ignore', '_ho', '_ro'
 
     def __init__(
         self,
-        db: 'Database',
-        *,
+        db: 'Database | None' = None,
         main_index_name: str = 'main',
         ignore_indexes: tuple[str, ...] = (),
         hash_key_order=ASCENDING,
         range_key_order=DESCENDING,
     ):
-        self._db = db
+        self._adapter = PynamoDBToPymongoAdapter(db)
         self._main_index_name = main_index_name
         self._ignore = ignore_indexes
         self._ho = hash_key_order
@@ -74,7 +73,7 @@ class IndexesCreator:
     def sync(self, model: type['Model']) -> None:
         table_name = model.Meta.table_name
         _LOG.info(f'Going to check indexes for {table_name}')
-        collection = self._db.get_collection(table_name)
+        collection = self._adapter.get_collection(model)
         existing = collection.index_information()
         for name in self._ignore:
             existing.pop(name, None)

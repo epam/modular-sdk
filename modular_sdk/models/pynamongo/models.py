@@ -106,7 +106,7 @@ class PynamoDBToPymongoAdapter:
     def __init__(self, db: 'Database | None' = None):
         self._db = db
 
-    def _get_collection(self, model: type[_Model] | _Model) -> 'Collection':
+    def get_collection(self, model: type[_Model] | _Model) -> 'Collection':
         collection = getattr(model.Meta, 'mongo_collection', None)
         if collection is not None:
             return collection
