@@ -126,7 +126,7 @@ class DynamicAttribute(Attribute[Any]):
 class EnumUnicodeAttribute(Attribute[Enum | str]):
     attr_type = STRING
 
-    def __init__(self, enum: type[Enum], /, **kwargs):
+    def __init__(self, enum: type[Enum], **kwargs):
         self._enum = enum
         super().__init__(**kwargs)
 

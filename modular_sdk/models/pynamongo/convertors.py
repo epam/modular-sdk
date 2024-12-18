@@ -60,8 +60,8 @@ class PynamoDBModelToMongoDictSerializer:
         return {k: self._to_mongo(v) for k, v in instance.serialize().items()}
 
     def deserialize_to(self, instance: 'Model', dct: dict[str, Any]) -> None:
-        # TODO: dynamicAttributes has bug: attribute_values is always
-        #  preserved for some reason
+        # TODO: DynamicMapAttribute has a bug: attribute_values always
+        #  appear inside a dynamic map for some reason
         if _id := dct.pop('_id', None):
             self.set_mongo_id(instance, _id)
         instance.deserialize({k: self._from_mongo(v) for k, v in dct.items()})
