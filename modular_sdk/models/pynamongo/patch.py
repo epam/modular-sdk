@@ -6,7 +6,7 @@ from .attributes import MONGO_ATTRIBUTE_PATCH_MAPPING
 def _patched__new__(cls, name, bases, namespace, discriminator=None):
     meta = namespace.get('Meta')
     # TODO: patch based on something agnostic across MapAttributes and Models
-    if meta and getattr(meta, 'mongo', False) is True:
+    if meta and getattr(meta, 'mongo_attributes', False) is True:
         for k, v in namespace.items():
             if patched := MONGO_ATTRIBUTE_PATCH_MAPPING.get(v.__class__):
                 namespace[k] = patched(

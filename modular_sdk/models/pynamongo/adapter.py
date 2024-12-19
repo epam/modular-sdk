@@ -150,9 +150,11 @@ class PynamoDBToPymongoAdapter:
             q = {'_id': _id}
         else:
             q = self._ser.instance_serialized_keys(instance)
-        collection.replace_one(
+        res = collection.replace_one(
             filter=q, replacement=self._ser.serialize(instance), upsert=True
         )
+        if _id := res.upserted_id:
+            self._ser.set_mongo_id(instance, _id)
         return {
             'ConsumedCapacity': {
                 'CapacityUnits': 1.0,
