@@ -48,6 +48,16 @@ namespaces = false
 cryptography = [
     "cryptography~=41.0.7"
 ]
+test = [
+    "pytest>=8.3.2",
+    "mongomock>=4",
+]
+
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
 
 [tool.pyright]
 include = ["modular_sdk/"]

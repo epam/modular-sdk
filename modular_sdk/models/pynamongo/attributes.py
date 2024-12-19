@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 from enum import Enum
+from uuid import UUID
 
 from pynamodb.attributes import (
     Attribute,
@@ -119,6 +120,7 @@ class DynamicAttribute(Attribute[Any]):
         float: NumberAttribute(),
         list: ListAttribute(),
         tuple: ListAttribute(),
+        bytes: BinaryAttribute()
     }
     _dynamo_typ_attr = {attr.attr_type: attr for attr in _type_attr.values()}
 
@@ -174,6 +176,22 @@ class M3BooleanAttribute(BooleanAttribute):
         if value.get(BOOLEAN) is not None:
             return value[BOOLEAN]
         return int(value.get(NUMBER))
+
+
+class UUIDAttribute(Attribute[UUID]):
+    attr_type = STRING
+
+    def __init__(self, without_dashes: bool = False, **kwargs):
+        super().__init__(**kwargs)
+        self._without_dashes = without_dashes
+
+    def serialize(self, value: UUID) -> str:
+        if self._without_dashes:
+            return value.hex
+        return str(value)
+
+    def deserialize(self, value: str) -> UUID:
+        return UUID(value)
 
 
 # NOTE: seems like NullAttribute also can be patched to return True when
