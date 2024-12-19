@@ -1,12 +1,12 @@
 import json
 import re
-from itertools import islice
-from typing import TYPE_CHECKING, Any
+from itertools import islice, chain
+from typing import TYPE_CHECKING, Any, Iterable
 
 from pynamodb.attributes import Attribute
 from pynamodb.constants import BINARY, BOOLEAN, LIST, MAP, NULL, NUMBER, STRING
 from pynamodb.expressions.condition import Condition
-from pynamodb.expressions.operand import Path, Value, _ListAppend
+from pynamodb.expressions.operand import Path, Value, _ListAppend, _Increment, _Decrement
 from pynamodb.expressions.update import Action, RemoveAction, SetAction, AddAction
 
 from modular_sdk.models.pynamongo.attributes import AS_IS
@@ -141,6 +141,7 @@ class PynamoDBModelToMongoDictSerializer:
 
 # Looks for [1], [2], [12], etc in a string
 INDEX_REGEX = re.compile(r'\[\d+\]')
+LAST_NUMBER_REGEX = re.compile(r'\.(\d+)$')
 COMPARISON_MAP = {
     '>': '$gt',
     '<': '$lt',
@@ -244,35 +245,11 @@ def convert_condition_expression(condition: Condition) -> dict:
     raise NotImplementedError(f'Operator: {op} is not supported')
 
 
-def convert_update_expression(action: Action) -> dict:
-    """
-    Currently just SetAction and RemoveAction, ListAppend, ListPrepend
-    are supported, you can implement increment and decrement
-    Working:
-    - set for Any
-    - remove for Any
-    - add for Number
-    - append for List
-    - prepend for List
-
-    Somewhat working:
-    - remove for Element of list: sets to null instead of removing
-
-    Not working:
-    - add for Set
-    - delete for Set
-    - add that depends on another attribute: "Model.a.set(Model.b + 2)" and
-      other recursive stuff
-    - set if not exists
-    - increment
-    - decrement
-    """
+def convert_update_expression(action: Action) -> dict | list[dict]:
     if isinstance(action, SetAction):
         path, value = action.values
         if isinstance(value, Value):
             return {'$set': {path_to_raw(path): value_to_raw(value)}}
-        # appending from one list to another is not supported.
-        # However, Dynamo seems to support it
         if isinstance(value, _ListAppend):
             if isinstance(value.values[0], Path):  # append
                 return {
@@ -291,36 +268,87 @@ def convert_update_expression(action: Action) -> dict:
                         }
                     }
                 }
-        # does not work, but seems like the idea is correct.
-        # Only need to make right mongo query
-        # if isinstance(value, _Increment):
-        #     return {
-        #         '$set': {path_to_raw(path): {
-        #             '$add': [f'${path_to_raw(value.values[0])}', int(value_to_raw(value.values[1]))]  # make sure it's int, it is your responsibility
-        #         }}
-        #     }
-        # if isinstance(value, _Decrement):
-        #     return {
-        #         '$set': {path_to_raw(path): {
-        #             '$add': [f'${path_to_raw(value.values[0])}', -int(value_to_raw(value.values[1]))]  # make sure it's int, it is your responsibility
-        #         }}
-        #     }
-        raise NotImplementedError(
-            f'Operand of type: {value.__class__.__name__} not supported'
-        )
-    if isinstance(action, RemoveAction):
-        (path,) = action.values
-        # TODO: make $pull here?
-        return {'$unset': {path_to_raw(path): ''}}
-    if isinstance(action, AddAction):
+        if isinstance(value, (_Increment, _Decrement)):
+            first, second = value.values
+            if isinstance(first, Value):
+                operands = [value_to_raw(first), f'${path_to_raw(second)}']
+            elif isinstance(second, Value):
+                operands = [f'${path_to_raw(first)}', value_to_raw(second)]
+            else:  # both paths
+                operands = [f'${path_to_raw(first)}', f'${path_to_raw(second)}']
+            operation = '$add' if isinstance(value, _Increment) else '$subtract'
+            return [{
+                '$set': {
+                    path_to_raw(path): {
+                        operation: operands
+                    }
+                }
+            }]
+        raise NotImplementedError('Operand of type: {value.__class__.__name__} not supported')
+    elif isinstance(action, RemoveAction):
+        (path, ) = action.values
+        raw_path = path_to_raw(path)
+        m = re.search(LAST_NUMBER_REGEX, raw_path)
+        if not m:
+            return {'$unset': {raw_path: ''}}
+        # NOTE: special case when removing an element from a list.
+        # Need shifting: https://jira.mongodb.org/browse/SERVER-1014
+        # this works in MongoDB 4.4. It may not work in older versions.
+        index = int(m.group(1))
+        arr = raw_path[:-len(m.group(0))]
+        return [{
+            '$set': {
+                arr: {
+                    '$concatArrays': [
+                        {'$slice': [f'${arr}', index]},
+                        {'$slice': [f'${arr}', {'$add': [1, index]}, {'$size': f'${arr}'}]}
+                    ]
+                }
+            }
+        }]
+    elif isinstance(action, AddAction):
         path, value = action.values
+        # assuming that only numbers can be added
+        # TODO: implement for set
         return {'$inc': {path_to_raw(path): value_to_raw(value)}}
-    raise NotImplementedError(
-        f'Action {action.__class__.__name__} is not implemented'
-    )
+    raise NotImplementedError(f'Action {action.__class__.__name__} is not implemented')
+
+
+def merge_update_expressions(it: Iterable[dict | list[dict]]) -> dict | list[dict]:
+    """
+    Merges multiple update expressions into one. If there are multiple
+    """
+    items = tuple(it)
+    if not items:
+        return {}
+    d = {}
+    for item in filter(lambda x: isinstance(x, dict), items):
+        for action, query in item.items():
+            d.setdefault(action, {}).update(query)
+
+    lists = [x for x in items if isinstance(x, list)]
+    if d and lists:
+        # this means that we are going to make Mongo Pipeline instead of
+        # simple update. It currently can happen only if user removes an
+        # element from list by index. Pipeline syntax for some operations
+        # differs from simple update syntax. $unset is one of such cases.
+        stages = []
+        for k, v in d.items():
+            if k == '$unset':  # kludge
+                stages.append({'$unset': list(v)})
+            else:
+                stages.append({k: v})
+        return [*stages, *chain(*lists)]
+    elif d:
+        return d  # preferred case
+    else:  # only lists
+        return list(chain(*lists))
 
 
 def convert_attributes_to_get(attributes_to_get=None) -> tuple[str, ...]:
+    """
+    Converts PynamoDB attributes to get to MongoDB projection format.
+    """
     if not attributes_to_get:
         return ()
     if not isinstance(attributes_to_get, (list, tuple)):

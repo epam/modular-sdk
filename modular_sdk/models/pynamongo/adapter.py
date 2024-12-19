@@ -9,6 +9,7 @@ from modular_sdk.models.pynamongo.convertors import (
     convert_attributes_to_get,
     convert_condition_expression,
     convert_update_expression,
+    merge_update_expressions
 )
 
 if TYPE_CHECKING:
@@ -160,10 +161,9 @@ class PynamoDBToPymongoAdapter:
         }
 
     def update(self, instance: Model, actions: list['Action']) -> dict:
-        _update = {}
-        for dct in map(convert_update_expression, actions):
-            for action, query in dct.items():
-                _update.setdefault(action, {}).update(query)
+        _update = merge_update_expressions(
+            map(convert_update_expression, actions)
+        )
         if _id := self._ser.get_mongo_id(instance):
             q = {'_id': _id}
         else:

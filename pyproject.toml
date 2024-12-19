@@ -55,7 +55,7 @@ test = [
 
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = ["modular_sdk"]
 testpaths = ["tests"]
 
 
@@ -67,7 +67,7 @@ exclude = [
 pythonVersion = "3.10"
 reportIncompatibleMethodOverride = "warning"
 executionEnvironments = [
-    {root = "tests/", pythonVersion = "3.10", extraPaths = ["modular_sdk/"]}
+    {root = "tests/", pythonVersion = "3.10", extraPaths = ["./"]}
 ]
 
 [tool.ruff]
