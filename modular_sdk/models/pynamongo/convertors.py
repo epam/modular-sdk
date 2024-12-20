@@ -1,14 +1,29 @@
 import json
 import re
-from itertools import islice, chain
+from datetime import datetime
+from enum import Enum
+from itertools import chain, islice
 from typing import TYPE_CHECKING, Any, Iterable
+from uuid import UUID
 
-from pynamodb.attributes import Attribute
+from pynamodb.attributes import Attribute, AttributeContainer
 from pynamodb.constants import BINARY, BOOLEAN, LIST, MAP, NULL, NUMBER, STRING
 from pynamodb.expressions.condition import Condition
-from pynamodb.expressions.operand import Path, Value, _ListAppend, _Increment, _Decrement
-from pynamodb.expressions.update import Action, RemoveAction, SetAction, AddAction
+from pynamodb.expressions.operand import (
+    Path,
+    Value,
+    _Decrement,
+    _Increment,
+    _ListAppend,
+)
+from pynamodb.expressions.update import (
+    Action,
+    AddAction,
+    RemoveAction,
+    SetAction,
+)
 
+from commons.time_helper import utc_iso
 from modular_sdk.models.pynamongo.attributes import AS_IS
 
 if TYPE_CHECKING:
@@ -275,18 +290,19 @@ def convert_update_expression(action: Action) -> dict | list[dict]:
             elif isinstance(second, Value):
                 operands = [f'${path_to_raw(first)}', value_to_raw(second)]
             else:  # both paths
-                operands = [f'${path_to_raw(first)}', f'${path_to_raw(second)}']
-            operation = '$add' if isinstance(value, _Increment) else '$subtract'
-            return [{
-                '$set': {
-                    path_to_raw(path): {
-                        operation: operands
-                    }
-                }
-            }]
-        raise NotImplementedError('Operand of type: {value.__class__.__name__} not supported')
+                operands = [
+                    f'${path_to_raw(first)}',
+                    f'${path_to_raw(second)}',
+                ]
+            operation = (
+                '$add' if isinstance(value, _Increment) else '$subtract'
+            )
+            return [{'$set': {path_to_raw(path): {operation: operands}}}]
+        raise NotImplementedError(
+            'Operand of type: {value.__class__.__name__} not supported'
+        )
     elif isinstance(action, RemoveAction):
-        (path, ) = action.values
+        (path,) = action.values
         raw_path = path_to_raw(path)
         m = re.search(LAST_NUMBER_REGEX, raw_path)
         if not m:
@@ -295,26 +311,38 @@ def convert_update_expression(action: Action) -> dict | list[dict]:
         # Need shifting: https://jira.mongodb.org/browse/SERVER-1014
         # this works in MongoDB 4.4. It may not work in older versions.
         index = int(m.group(1))
-        arr = raw_path[:-len(m.group(0))]
-        return [{
-            '$set': {
-                arr: {
-                    '$concatArrays': [
-                        {'$slice': [f'${arr}', index]},
-                        {'$slice': [f'${arr}', {'$add': [1, index]}, {'$size': f'${arr}'}]}
-                    ]
+        arr = raw_path[: -len(m.group(0))]
+        return [
+            {
+                '$set': {
+                    arr: {
+                        '$concatArrays': [
+                            {'$slice': [f'${arr}', index]},
+                            {
+                                '$slice': [
+                                    f'${arr}',
+                                    {'$add': [1, index]},
+                                    {'$size': f'${arr}'},
+                                ]
+                            },
+                        ]
+                    }
                 }
             }
-        }]
+        ]
     elif isinstance(action, AddAction):
         path, value = action.values
         # assuming that only numbers can be added
         # TODO: implement for set
         return {'$inc': {path_to_raw(path): value_to_raw(value)}}
-    raise NotImplementedError(f'Action {action.__class__.__name__} is not implemented')
+    raise NotImplementedError(
+        f'Action {action.__class__.__name__} is not implemented'
+    )
 
 
-def merge_update_expressions(it: Iterable[dict | list[dict]]) -> dict | list[dict]:
+def merge_update_expressions(
+    it: Iterable[dict | list[dict]],
+) -> dict | list[dict]:
     """
     Merges multiple update expressions into one. If there are multiple
     """
@@ -365,3 +393,51 @@ def convert_attributes_to_get(attributes_to_get=None) -> tuple[str, ...]:
         if path:
             res.add('.'.join(path))
     return tuple(res)
+
+
+def instance_as_dict(item, exclude_none: bool = False):
+    if isinstance(item, AttributeContainer):
+        return {
+            k: instance_as_dict(v, exclude_none)
+            for k, v in item.attribute_values.items()
+            if not exclude_none or v is not None
+        }
+    if isinstance(item, dict):  # JSONAttribute for instance
+        return {
+            k: instance_as_dict(v, exclude_none)
+            for k, v in item.items()
+            if not exclude_none or v is not None
+        }
+    if isinstance(item, list):  # ListAttribute
+        return [instance_as_dict(i) for i in item]
+    return item  # better make sure those are immutable
+
+
+def instance_as_json_dict(item, exclude_none: bool = False):
+    """
+    Converts to dict that can be dumped to JSON
+    """
+    if isinstance(item, AttributeContainer):
+        return {
+            k: instance_as_json_dict(v, exclude_none)
+            for k, v in item.attribute_values.items()
+            if not exclude_none or v is not None
+        }
+    if isinstance(item, dict):  # JSONAttribute for instance
+        return {
+            k: instance_as_json_dict(v, exclude_none)
+            for k, v in item.items()
+            if not exclude_none or v is not None
+        }
+    if isinstance(item, (list, set, tuple)):
+        return [instance_as_json_dict(i) for i in item]
+    if isinstance(item, bytes):
+        return item.decode('utf-8')
+    if isinstance(item, datetime):
+        return utc_iso(item)
+    if isinstance(item, UUID):
+        return str(item)
+    if isinstance(item, Enum):
+        return item.value
+    return item
+

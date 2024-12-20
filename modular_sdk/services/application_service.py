@@ -10,7 +10,6 @@ from modular_sdk.commons.exception import ModularException
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.commons.time_helper import utc_datetime
 from modular_sdk.models.application import Application
-from modular_sdk.modular import Modular
 from modular_sdk.services.customer_service import CustomerService
 
 _LOG = get_logger(__name__)

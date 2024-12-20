@@ -1,9 +1,13 @@
+import json
+import base64
+import binascii
 from typing import TYPE_CHECKING, Generator, Iterator, TypeVar
 
 from pymongo import ASCENDING, DESCENDING, DeleteOne, ReplaceOne
 from pymongo.collection import ReturnDocument
 from pynamodb.models import Model
 
+from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.pynamongo.convertors import (
     PynamoDBModelToMongoDictSerializer,
     convert_attributes_to_get,
@@ -18,6 +22,8 @@ if TYPE_CHECKING:
     from pynamodb.expressions.update import Action
 
 _MT = TypeVar('_MT', bound=Model)
+
+_LOG = get_logger(__name__)
 
 
 class ResultIterator(Iterator[_MT]):
@@ -362,3 +368,47 @@ class PynamoDBToPymongoAdapter:
         return BatchWrite(
             serializer=self._ser, collection=self.get_collection(model)
         )
+
+
+class LastEvaluatedKey:
+    """
+    Simple abstraction over DynamoDB last evaluated key & MongoDB offset :)
+    """
+    payload_key_name = 'key'
+
+    def __init__(self, lek: dict | int | None = None):
+        self._lek = lek
+
+    def serialize(self) -> str:
+        payload = {self.payload_key_name: self._lek}
+        return base64.urlsafe_b64encode(
+            json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
+        ).decode()
+
+    @classmethod
+    def deserialize(cls, s: str | None = None) -> 'LastEvaluatedKey':
+        if not s or not isinstance(s, str):
+            return cls()
+        _payload = {}
+        try:
+            decoded = base64.urlsafe_b64decode(s.encode()).decode()
+            _payload = json.loads(decoded)
+        except binascii.Error:
+            _LOG.warning('Invalid base64 encoding in last evaluated key token')
+        except json.JSONDecodeError:
+            _LOG.warning('Invalid json string within last evaluated key token')
+        except Exception as e:  # you never know :)
+            _LOG.warning('Some unexpected exception occurred while '
+                         f'deserializing last evaluated key token : \'{e}\'')
+        return cls(_payload.get(cls.payload_key_name))
+
+    @property
+    def value(self) -> dict | int | None:
+        return self._lek
+
+    @value.setter
+    def value(self, v: dict | int | None):
+        self._lek = v
+
+    def __bool__(self) -> bool:
+        return bool(self._lek)

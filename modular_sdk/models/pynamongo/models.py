@@ -1,3 +1,4 @@
+import pymongo
 from typing import (
     Any,
     Dict,
@@ -10,6 +11,8 @@ from typing import (
     Union,
 )
 
+from pynamodb.attributes import Attribute, ListAttribute, MapAttribute
+from pynamodb.connection.table import TableConnection
 from pynamodb.exceptions import DoesNotExist
 from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.update import Action
@@ -18,11 +21,21 @@ from pynamodb.models import Model as _Model
 from pynamodb.pagination import ResultIterator
 from pynamodb.settings import OperationSettings
 
+from modular_sdk.commons.constants import Env, SERVICE_MODE_DOCKER
+from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.pynamongo.adapter import PynamoDBToPymongoAdapter
+from modular_sdk.modular import Modular
+
+_LOG = get_logger(__name__)
 
 
 class Model(_Model):
-    mongo_adapter = PynamoDBToPymongoAdapter()
+    @classmethod
+    def mongo_adapter(cls) -> PynamoDBToPymongoAdapter:
+        if hasattr(cls, '_mongo_adapter'):
+            return cls._mongo_adapter
+        setattr(cls, '_mongo_adapter', PynamoDBToPymongoAdapter())
+        return getattr(cls, '_mongo_adapter')
 
     @classmethod
     def is_mongo_model(cls) -> bool:
@@ -314,3 +327,155 @@ class Model(_Model):
             billing_mode=billing_mode,
             ignore_update_ttl_errors=ignore_update_ttl_errors,
         )
+
+
+class SafeUpdateModel(Model):
+    """
+    Allows not to override existing attributes that are not specified
+    in Models on item update.
+    """
+
+    _original_data_attr_name = '_original_data'
+
+    @classmethod
+    def _update_with_not_defined_attributes(
+        cls,
+        serialized: dict[str, dict[str, Any]],
+        original: dict[str, dict[str, Any]],
+        attributes: dict[str, Attribute],
+    ) -> None:
+        """
+        Changes serialized dict in place
+        """
+        name_to_instance = {
+            attr.attr_name: attr for attr in attributes.values()
+        }
+        for name, value in original.items():
+            if name not in name_to_instance:  # not defined in model
+                serialized[name] = value
+                continue
+            # attribute is defined, but maybe it's a nested mapping and
+            # some nested attributes are not defined
+            attr = name_to_instance[name]
+            if isinstance(attr, MapAttribute) and not attr.is_raw():
+                cls._update_with_not_defined_attributes(
+                    serialized=serialized[name].setdefault(attr.attr_type, {}),
+                    original=value.get(attr.attr_type, {}),
+                    attributes=attr.get_attributes(),
+                )
+            elif (
+                isinstance(attr, ListAttribute)
+                and issubclass(attr.element_type, MapAttribute)
+                and not attr.element_type.is_raw()
+            ):
+                # here we definitely have list of mappings
+                inner_attributes = attr.element_type.get_attributes()
+                orig_items = value.get(attr.attr_type, ())
+                for i, item in enumerate(
+                    serialized[name].setdefault(attr.attr_type, [])
+                ):
+                    if i >= len(orig_items):
+                        break
+                    cls._update_with_not_defined_attributes(
+                        serialized=item.setdefault(
+                            attr.element_type.attr_type, {}
+                        ),
+                        original=orig_items[i].get(
+                            attr.element_type.attr_type, {}
+                        ),
+                        attributes=inner_attributes,
+                    )
+
+    def serialize(self, null_check: bool = True) -> dict[str, dict[str, Any]]:
+        """
+        Used both by Mongo and PynamoDB serializers
+        """
+        serialized = super().serialize(null_check=null_check)
+        self._update_with_not_defined_attributes(
+            serialized=serialized,
+            original=getattr(self, self._original_data_attr_name, {}),
+            attributes=self.get_attributes(),
+        )
+        return serialized
+
+    def deserialize(self, attribute_values: dict[str, dict[str, Any]]) -> None:
+        """
+        Used by Mongo deserializer
+        """
+        setattr(self, self._original_data_attr_name, attribute_values)
+        return super().deserialize(attribute_values=attribute_values)
+
+    @classmethod
+    def _instantiate(cls, attribute_values: dict[str, dict[str, Any]]):
+        """
+        Used by PynamoDB deserializer
+        """
+        instance = super()._instantiate(attribute_values)
+        setattr(instance, cls._original_data_attr_name, attribute_values)
+        return instance
+
+
+class RoleAccessModel(SafeUpdateModel):
+    """
+    Each inherited model will use creds received by assuming a role from
+    env variables, and if the creds expire, they will be received again.
+    Use custom modular_sdk.models.base_meta.BaseMeta instead of standard Meta in
+    the inherited models
+    Not highly critical but still - problems:
+    - only one role available (the one from envs);
+    - if role is set in envs, hard-coded aws keys from Model.Meta/BaseMeta
+      will be ignored;
+    Take all this into consideration, use BaseRoleAccessModel and BaseMeta
+    together.
+    """
+
+    @classmethod
+    def _get_connection(cls) -> TableConnection:
+        _modular = Modular()
+        sts = _modular.sts_service()
+        if sts.assure_modular_credentials_valid():
+            env = _modular.environment_service()
+            for model in cls.__subclasses__():
+                if model._connection:
+                    # works as well but seems too tough
+                    # model._connection = None
+                    _LOG.warning(
+                        f'Existing connection found in {model.__name__}. '
+                        f'Updating credentials in botocore session and '
+                        f'dropping the existing botocore client...'
+                    )
+                    model._connection.connection.session.set_credentials(
+                        env.modular_aws_access_key_id(),
+                        env.modular_aws_secret_access_key(),
+                        env.modular_aws_session_token(),
+                    )
+                    model._connection.connection._client = None
+                else:
+                    _LOG.info(
+                        f'Existing connection not found in {model.__name__}'
+                        f'. Probably the first request. Connection will be '
+                        f'created using creds from envs which '
+                        f'already have been updated'
+                    )
+        return super()._get_connection()
+
+
+class ModularBaseModel(RoleAccessModel):
+    @classmethod
+    def is_mongo_model(cls) -> bool:
+        return Env.OLD_SERVICE_MODE.get() == SERVICE_MODE_DOCKER
+
+    @classmethod
+    def mongo_adapter(cls) -> PynamoDBToPymongoAdapter:
+        if hasattr(cls, '_mongo_adapter'):
+            return cls._mongo_adapter
+        user = Env.OLD_MONGO_USER.get()
+        password = Env.OLD_MONGO_PASSWORD.get()
+        url = Env.OLD_MONGO_URL.get()
+        db = Env.OLD_MONGO_DB_NAME.get()
+        setattr(cls, '_mongo_adapter', PynamoDBToPymongoAdapter(
+            db=pymongo.MongoClient(
+                f'mongodb://{user}:{password}@{url}/'
+            ).get_database(db)
+        ))
+        return getattr(cls, '_mongo_adapter')

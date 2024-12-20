@@ -43,11 +43,12 @@ BinarySetAttribute   | BS            | Array
 What private PynamoDB methods are used:
 TODO:
 
-Caveats to kwno
+Caveats to know:
 - NullAttribute
 - DynamicMapping
 - Sets
 - BinaryAttribute
+- dots not supported as in keys
 
 
 What PynamoDB features are not supported:
