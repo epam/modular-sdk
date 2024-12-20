@@ -16,17 +16,6 @@ from modular_sdk.commons.log_helper import get_logger
 _LOG = get_logger(__name__)
 
 
-RESPONSE_BAD_REQUEST_CODE = 400
-RESPONSE_UNAUTHORIZED = 401
-RESPONSE_FORBIDDEN_CODE = 403
-RESPONSE_RESOURCE_NOT_FOUND_CODE = 404
-RESPONSE_CONFLICT_CODE = 409
-RESPONSE_OK_CODE = 200
-RESPONSE_INTERNAL_SERVER_ERROR = 500
-RESPONSE_NOT_IMPLEMENTED = 501
-RESPONSE_SERVICE_UNAVAILABLE_CODE = 503
-
-
 def deprecated(message):
     def deprecated_decorator(func):
         def deprecated_func(*args, **kwargs):
@@ -41,36 +30,6 @@ def deprecated(message):
         return deprecated_func
 
     return deprecated_decorator
-
-
-# todo remove with major release
-@deprecated('not a part of the lib')
-def build_response(content, code=200):
-    if code == RESPONSE_OK_CODE:
-        if isinstance(content, str):
-            return {
-                'code': code,
-                'body': {
-                    'message': content
-                }
-            }
-        elif isinstance(content, dict):
-            return {
-                'code': code,
-                'body': {
-                    'items': [content]
-                }
-            }
-        return {
-            'code': code,
-            'body': {
-                'items': content
-            }
-        }
-    raise ModularException(
-        code=code,
-        content=content
-    )
 
 
 def get_missing_parameters(event, required_params_list):
