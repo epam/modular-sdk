@@ -194,10 +194,6 @@ class UUIDAttribute(Attribute[UUID]):
         return UUID(value)
 
 
-# NOTE: seems like NullAttribute also can be patched to return True when
-# deserialized. The existing behaviour seems broken because currently
-# it returns None when deserialized and then if you try to save the
-# instance it will be omitted.
 MONGO_ATTRIBUTE_PATCH_MAPPING = {
     UTCDateTimeAttribute: MongoUTCDateTimeAttribute,
     PynamoDBBinaryAttribute: BinaryAttribute,

@@ -33,7 +33,7 @@ class Model(_Model):
     @classmethod
     def mongo_adapter(cls) -> PynamoDBToPymongoAdapter:
         if hasattr(cls, '_mongo_adapter'):
-            return cls._mongo_adapter
+            return getattr(cls, '_mongo_adapter')
         setattr(cls, '_mongo_adapter', PynamoDBToPymongoAdapter())
         return getattr(cls, '_mongo_adapter')
 
@@ -53,7 +53,7 @@ class Model(_Model):
         settings: OperationSettings = OperationSettings.default,
     ) -> Iterator[_T]:
         if cls.is_mongo_model():
-            return cls.mongo_adapter.batch_get(
+            return cls.mongo_adapter().batch_get(
                 model=cls, items=items, attributes_to_get=attributes_to_get
             )
         return super().batch_get(
@@ -70,7 +70,7 @@ class Model(_Model):
         settings: OperationSettings = OperationSettings.default,
     ) -> BatchWrite[_T]:
         if cls.is_mongo_model():
-            return cls.mongo_adapter.batch_write(model=cls)
+            return cls.mongo_adapter().batch_write(model=cls)
         return super().batch_write(auto_commit=auto_commit, settings=settings)
 
     def delete(
@@ -81,7 +81,7 @@ class Model(_Model):
         add_version_condition: bool = True,
     ) -> Any:
         if self.is_mongo_model():
-            return self.mongo_adapter.delete(instance=self)
+            return self.mongo_adapter().delete(instance=self)
         return super().delete(
             condition=condition,
             settings=settings,
@@ -97,7 +97,7 @@ class Model(_Model):
         add_version_condition: bool = True,
     ) -> Any:
         if self.is_mongo_model():
-            return self.mongo_adapter.update(instance=self, actions=actions)
+            return self.mongo_adapter().update(instance=self, actions=actions)
         return super().update(
             actions=actions,
             condition=condition,
@@ -113,8 +113,7 @@ class Model(_Model):
         add_version_condition: bool = True,
     ) -> Dict[str, Any]:
         if self.is_mongo_model():
-            return self.mongo_adapter.save(instance=self)
-        # TODO: correct result
+            return self.mongo_adapter().save(instance=self)
         return super().save(
             condition=condition,
             settings=settings,
@@ -127,7 +126,7 @@ class Model(_Model):
         settings: OperationSettings = OperationSettings.default,
     ) -> None:
         if self.is_mongo_model():
-            return self.mongo_adapter.refresh(instance=self)
+            return self.mongo_adapter().refresh(instance=self)
         return super().refresh(
             consistent_read=consistent_read, settings=settings
         )
@@ -142,7 +141,7 @@ class Model(_Model):
         settings: OperationSettings = OperationSettings.default,
     ) -> _T:
         if cls.is_mongo_model():
-            return cls.mongo_adapter.get(
+            return cls.mongo_adapter().get(
                 model=cls,
                 hash_key=hash_key,
                 range_key=range_key,
@@ -189,7 +188,7 @@ class Model(_Model):
         settings: OperationSettings = OperationSettings.default,
     ) -> int:
         if cls.is_mongo_model():
-            return cls.mongo_adapter.count(
+            return cls.mongo_adapter().count(
                 model=cls,
                 hash_key=hash_key,
                 range_key_condition=range_key_condition,
@@ -225,7 +224,7 @@ class Model(_Model):
         settings: OperationSettings = OperationSettings.default,
     ) -> ResultIterator[_T]:
         if cls.is_mongo_model():
-            return cls.mongo_adapter.query(
+            return cls.mongo_adapter().query(
                 model=cls,
                 hash_key=hash_key,
                 range_key_condition=range_key_condition,
@@ -268,7 +267,7 @@ class Model(_Model):
         settings: OperationSettings = OperationSettings.default,
     ) -> ResultIterator[_T]:
         if cls.is_mongo_model():
-            return cls.mongo_adapter.scan(
+            return cls.mongo_adapter().scan(
                 model=cls,
                 filter_condition=filter_condition,
                 limit=limit,
@@ -294,13 +293,13 @@ class Model(_Model):
     @classmethod
     def exists(cls) -> bool:
         if cls.is_mongo_model():
-            return cls.mongo_adapter.exists(cls)
+            return cls.mongo_adapter().exists(cls)
         return super().exists()
 
     @classmethod
     def delete_table(cls) -> Any:
         if cls.is_mongo_model():
-            return cls.mongo_adapter.delete_table(cls)
+            return cls.mongo_adapter().delete_table(cls)
         return super().delete_table()
 
     @classmethod
@@ -319,7 +318,7 @@ class Model(_Model):
         ignore_update_ttl_errors: bool = False,
     ) -> Any:
         if cls.is_mongo_model():
-            return cls.mongo_adapter.create_table(cls)
+            return cls.mongo_adapter().create_table(cls)
         return super().create_table(
             wait=wait,
             read_capacity_units=read_capacity_units,

@@ -151,7 +151,6 @@ class PynamoDBToPymongoAdapter:
 
     def save(self, instance: Model) -> dict:
         collection = self.get_collection(instance)
-        # TODO: save by mongo_id if exists
         if _id := self._ser.get_mongo_id(instance):
             q = {'_id': _id}
         else:
