@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [7.0.0] - 2024-12-18
 - rewrite Pynamo & Mongo abstraction to support all attributes and functionality
+- Removed some existing variables, functions, classes and modules:
+  - `modular_sdk.commons.DynamoDBJsonSerializer`
+  - `modular_sdk.commons.build_response`
+  - `modular_sdk.commons.RESPONSE_*`
+  - `modular_sdk.commons.dict_without`
+  - `modular_sdk.commons.error_helper`
+  - `modular_sdk.commons.deep_pop`
+  - `modular_sdk.helpers`
 
 ## [6.3.0] - 2024-11-26
 - Fix Vault parameters encoder to comply with Maestro format

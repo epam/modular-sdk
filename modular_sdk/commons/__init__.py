@@ -1,5 +1,4 @@
 import base64
-import copy
 import dataclasses
 import gzip
 import json
@@ -7,11 +6,8 @@ import warnings
 from functools import partial
 from uuid import uuid4
 
-from boto3.dynamodb.types import TypeDeserializer, TypeSerializer
-
 from modular_sdk.commons.exception import ModularException
 from modular_sdk.commons.log_helper import get_logger
-
 
 _LOG = get_logger(__name__)
 
@@ -132,49 +128,6 @@ class SingletonMeta(type):
             instance = super().__call__(*args, **kwargs)
             cls._instances[cls] = instance
         return cls._instances[cls]
-
-
-class DynamoDBJsonSerializer(SingletonMeta):
-    serializer = TypeSerializer()
-    deserializer = TypeDeserializer()
-
-    @classmethod
-    def serialize_model(cls, model: dict) -> dict:
-        return {
-            k: cls.serializer.serialize(v)
-            for k, v in model.items()
-        }
-
-    @classmethod
-    def deserialize_model(cls, model: dict) -> dict:
-        return {
-            k: cls.deserializer.deserialize(v)
-            for k, v in model.items()
-        }
-
-
-def deep_pop(dct: dict, to_pop: dict) -> None:
-    for key, _to_pop in to_pop.items():
-        if not isinstance(_to_pop, (dict, list)):
-            dct.pop(key, None)
-            continue
-        # isinstance(_to_pop, (dict, list))
-        _dct = dct.get(key)
-        if type(_dct) != type(_to_pop):
-            continue
-        if isinstance(_to_pop, dict):  # going deeper
-            deep_pop(_dct, _to_pop)
-        else:  # isinstance(_to_pop, list)
-            for i, d in enumerate(_dct):
-                p = _to_pop[i] if len(to_pop) > i else None
-                if p:
-                    deep_pop(d, p)
-
-
-def dict_without(dct: dict, without: dict) -> dict:
-    cp = copy.deepcopy(dct)
-    deep_pop(cp, without)
-    return cp
 
 
 class DataclassBase:
