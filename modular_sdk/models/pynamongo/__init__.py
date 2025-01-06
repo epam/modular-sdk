@@ -244,8 +244,20 @@ AND                  | YES       | (Model.number > 10) & (Model.string == 'test'
 OR                   | YES       | (Model.number > 10) | (Model.string == 'test') |
 NOT                  | YES       | ~(Model.number > 10)                           |
 
-TODO: write supported methods
-
+Almost all public methods of Model are supported. Those are:
+- batch_get
+- batch_write
+- delete
+- update
+- save
+- refresh
+- get
+- count
+- query
+- scan
+- exists
+- delete_table
+- create_table
 
 What PynamoDB features are not supported:
 - Polymorphism through the use of discriminators (https://pynamodb.readthedocs.io/en/stable/polymorphism.html)
