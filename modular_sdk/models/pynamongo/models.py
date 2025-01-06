@@ -1,4 +1,6 @@
 import pymongo
+from datetime import datetime
+import json
 from typing import (
     Any,
     Dict,
@@ -25,8 +27,28 @@ from modular_sdk.commons.constants import Env, SERVICE_MODE_DOCKER
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.pynamongo.adapter import PynamoDBToPymongoAdapter
 from modular_sdk.modular import Modular
+from modular_sdk.commons.time_helper import utc_iso
+from modular_sdk.commons import deprecated
 
 _LOG = get_logger(__name__)
+
+
+class ModelEncoder(json.JSONEncoder):
+    """
+    It converts the item to DTO only representation. Do not use
+    get_json() on model and then write the result to DB again. Such
+    actions corrupt the item
+    """
+
+    def default(self, obj):
+        if hasattr(obj, 'attribute_values'):
+            return obj.attribute_values
+        elif isinstance(obj, datetime):
+            return utc_iso(_from=obj)
+        else:
+            # ObjectId, bytes and others
+            return str(obj)
+        # return json.JSONEncoder.default(self, obj)
 
 
 class Model(_Model):
@@ -326,6 +348,17 @@ class Model(_Model):
             billing_mode=billing_mode,
             ignore_update_ttl_errors=ignore_update_ttl_errors,
         )
+
+    @deprecated('Use modular_sdk.models.pynamongo.convertors.instance_as_* '
+                'functions or write your serializer. This one is kept for '
+                'easier transition')
+    def get_json(self) -> dict:
+        """
+        Returns dict which can be dumped to JSON. So, in case the model
+        contains Date or Binary, or ObjectId -> they will become strings.
+        :return:
+        """
+        return json.loads(json.dumps(self, cls=ModelEncoder))
 
 
 class SafeUpdateModel(Model):

@@ -244,12 +244,14 @@ AND                  | YES       | (Model.number > 10) & (Model.string == 'test'
 OR                   | YES       | (Model.number > 10) | (Model.string == 'test') |
 NOT                  | YES       | ~(Model.number > 10)                           |
 
+TODO: write supported methods
 
 
 What PynamoDB features are not supported:
 - Polymorphism through the use of discriminators (https://pynamodb.readthedocs.io/en/stable/polymorphism.html)
 - Transaction Operations (https://pynamodb.readthedocs.io/en/stable/transaction.html)
 - Conditional writes (https://pynamodb.readthedocs.io/en/stable/conditional.html#conditioning-on-keys)
+- Local secondary indexes (https://pynamodb.readthedocs.io/en/stable/indexes.html#local-secondary-indexes)
 
 """
 from .adapter import PynamoDBToPymongoAdapter, ResultIterator

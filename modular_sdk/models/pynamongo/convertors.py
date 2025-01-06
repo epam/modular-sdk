@@ -23,7 +23,7 @@ from pynamodb.expressions.update import (
     SetAction,
 )
 
-from commons.time_helper import utc_iso
+from modular_sdk.commons.time_helper import utc_iso
 from modular_sdk.models.pynamongo.attributes import AS_IS
 
 if TYPE_CHECKING:
@@ -132,7 +132,7 @@ class PynamoDBModelToMongoDictSerializer:
         h = model._hash_key_attribute().attr_name
         r = None
         if r_name := model._range_key_attribute():
-            r = r_name
+            r = r_name.attr_name
         return h, r
 
     @staticmethod

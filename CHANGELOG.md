@@ -17,8 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `modular_sdk.helpers`
   - `modular_sdk.models.pynamodb_extension`
   - `modular_sdk.connections.mongodb_connection`
+- Changes in BaseModel:
+  - `get_json()` is not deprecated and will be removed. Use pynamongo.convertors.instance_to_dict or write your serializer
+  - 
 - Added:
   - `modular_sdk.models.pynamongo.index_creator.IndexCreator`
+  - 
 
 ## [6.3.0] - 2024-11-26
 - Fix Vault parameters encoder to comply with Maestro format

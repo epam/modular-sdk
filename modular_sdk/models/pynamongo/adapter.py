@@ -61,6 +61,27 @@ class ResultIterator(Iterator[_MT]):
         return self._cursor.retrieved
 
 
+class EmptyResultIterator(ResultIterator):
+    __slots__ = '_lek'
+
+    def __init__(self, last_evaluated_key=None):
+        self._lek = last_evaluated_key
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        raise StopIteration('Cannot iterate over empty result iterator')
+
+    @property
+    def last_evaluated_key(self):
+        return self._lek
+
+    @property
+    def total_count(self):
+        return 0
+
+
 class BatchWrite:
     __slots__ = '_ser', '_collection', '_req'
 
@@ -112,6 +133,10 @@ class PynamoDBToPymongoAdapter:
 
     def __init__(self, db: 'Database | None' = None):
         self._db = db
+
+    @property
+    def mongo_database(self) -> 'Database | None':
+        return self._db
 
     def get_collection(self, model: type[Model] | Model) -> 'Collection':
         collection = getattr(model.Meta, 'mongo_collection', None)
