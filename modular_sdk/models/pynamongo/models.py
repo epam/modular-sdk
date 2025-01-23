@@ -28,7 +28,7 @@ from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.pynamongo.adapter import PynamoDBToPymongoAdapter
 from modular_sdk.modular import Modular
 from modular_sdk.commons.time_helper import utc_iso
-from modular_sdk.commons import deprecated
+from modular_sdk.commons import deprecated, iter_subclasses
 
 _LOG = get_logger(__name__)
 
@@ -467,7 +467,7 @@ class RoleAccessModel(SafeUpdateModel):
         sts = _modular.sts_service()
         if sts.assure_modular_credentials_valid():
             env = _modular.environment_service()
-            for model in cls.__subclasses__():
+            for model in iter_subclasses(cls):
                 if model._connection:
                     # works as well but seems too tough
                     # model._connection = None

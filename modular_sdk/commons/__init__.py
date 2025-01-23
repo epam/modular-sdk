@@ -5,6 +5,7 @@ import json
 import warnings
 from functools import partial
 from uuid import uuid4
+from typing import Generator, TypeVar
 
 from modular_sdk.commons.exception import ModularException
 from modular_sdk.commons.log_helper import get_logger
@@ -158,3 +159,26 @@ class DataclassBase:
         return cls(**{
             k.name: dct.get(k.name) for k in dataclasses.fields(cls)
         })
+
+
+T = TypeVar('T')
+
+
+def iter_subclasses(cls: type[T]) -> Generator[type[T], None, None]:
+    """
+    Recursively iterates over subclasses and their subclasses. Does not handle
+    duplicates in case of multiple inheritance.
+    """
+    for item in cls.__subclasses__():
+        yield item
+        yield from iter_subclasses(item)
+
+
+def iter_subclasses_unique(cls: type[T]) -> Generator[type[T], None, None]:
+    yielded = set()
+    for item in iter_subclasses(cls):
+        _id = id(item)
+        if _id in yielded:
+            continue
+        yield item
+        yielded.add(_id)
