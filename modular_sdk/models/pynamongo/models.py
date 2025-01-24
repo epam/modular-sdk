@@ -467,7 +467,7 @@ class RoleAccessModel(SafeUpdateModel):
         sts = _modular.sts_service()
         if sts.assure_modular_credentials_valid():
             env = _modular.environment_service()
-            for model in iter_subclasses(cls):
+            for model in iter_subclasses(RoleAccessModel):
                 if model._connection:
                     # works as well but seems too tough
                     # model._connection = None
