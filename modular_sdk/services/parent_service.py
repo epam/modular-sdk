@@ -14,6 +14,7 @@ from modular_sdk.models.parent import Parent
 from modular_sdk.models.tenant import Tenant
 from modular_sdk.services.customer_service import CustomerService
 from modular_sdk.services.tenant_service import TenantService
+from modular_sdk.models.pynamongo.convertors import instance_as_json_dict
 
 _LOG = get_logger(__name__)
 
@@ -180,7 +181,7 @@ class ParentService:
 
     @staticmethod
     def get_dto(parent: Parent) -> dict:
-        dct = parent.get_json()
+        dct = instance_as_json_dict(parent)
         ct = dct.pop('creation_timestamp', None)
         if ct:
             dct['created_at'] = utc_iso(datetime.fromtimestamp(ct / 1e3))

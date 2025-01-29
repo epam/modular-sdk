@@ -8,6 +8,7 @@ from modular_sdk.commons.exception import ModularException
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.parent import Parent
 from modular_sdk.models.tenant import Tenant
+from modular_sdk.models.pynamongo.convertors import instance_as_json_dict
 
 _LOG = get_logger(__name__)
 
@@ -201,7 +202,7 @@ class TenantService:
     @staticmethod
     def get_dto(tenant: Tenant):
         """Be CAREFUL: returns both active and inactive regions"""
-        tenant_json = tenant.get_json()
+        tenant_json = instance_as_json_dict(tenant)
         regions = tenant_json.get('regions') or []
         tenant_json['account_id'] = tenant_json.pop('project', None)
         tenant_json['regions'] = [

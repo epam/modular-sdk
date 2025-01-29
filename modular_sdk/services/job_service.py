@@ -8,6 +8,7 @@ from modular_sdk.commons import generate_id
 from modular_sdk.commons import ModularException
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.job import Job
+from modular_sdk.models.pynamongo.convertors import instance_as_json_dict
 
 _LOG = get_logger(__name__)
 
@@ -79,5 +80,5 @@ class JobService:
         job.update(actions=actions)
 
     @staticmethod
-    def get_dto(Job: Job) -> dict:
-        return Job.get_json()
+    def get_dto(job: Job) -> dict:
+        return instance_as_json_dict(job)

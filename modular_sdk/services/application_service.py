@@ -11,6 +11,7 @@ from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.commons.time_helper import utc_datetime
 from modular_sdk.models.application import Application
 from modular_sdk.services.customer_service import CustomerService
+from modular_sdk.models.pynamongo.convertors import instance_as_json_dict
 
 _LOG = get_logger(__name__)
 
@@ -170,7 +171,7 @@ class ApplicationService:
 
     @staticmethod
     def get_dto(application: Application) -> dict:
-        return application.get_json()
+        return instance_as_json_dict(application)
 
     @staticmethod
     def mark_deleted(application: Application):
