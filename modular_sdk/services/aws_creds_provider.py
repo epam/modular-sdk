@@ -102,7 +102,7 @@ class ModularAssumeRoleClient:
         if roles and self._expired():
             _LOG.info('Boto3 session inside ModularAssumeRoleClient descriptor '
                       'has expired. Re-assuming role')
-            payloads = list(sts.assume_roles_default_payloads(roles, last_duration=900))
+            payloads = list(sts.assume_roles_default_payloads(roles))
             creds = sts.assume_roles_chain(payloads)
             self._update_session(**creds)
             self._client = None

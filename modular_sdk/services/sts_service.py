@@ -177,7 +177,7 @@ class StsService(AWSCredentialsProvider):
             _LOG.info(f'Role {roles[-1]} has not been assumed or has expired. '
                       f'Reassuming the chain: {roles}')
             creds = self.assume_roles_chain(
-                list(self.assume_roles_default_payloads(roles, last_duration=900))
+                list(self.assume_roles_default_payloads(roles))
             )
             _LOG.debug('Credentials received successfully. '
                        'Setting them to envs')

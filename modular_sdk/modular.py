@@ -49,8 +49,7 @@ class Modular(metaclass=SingletonMeta):
             assumed_credentials = sts_service.assume_roles_chain(
                 list(sts_service.assume_roles_default_payloads(
                     assume_role_arn.split(','),
-                    ASSUMES_ROLE_SESSION_NAME,
-                    last_duration=900
+                    ASSUMES_ROLE_SESSION_NAME
                 ))
             )
             os.environ[MODULAR_AWS_ACCESS_KEY_ID_ENV] = assumed_credentials[
