@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 from enum import Enum
 from itertools import chain, islice
-from typing import TYPE_CHECKING, Any, Iterable
+from typing import TYPE_CHECKING, Any, Callable, Iterable
 from uuid import UUID
 
 from pynamodb.attributes import Attribute, AttributeContainer
@@ -395,49 +395,91 @@ def convert_attributes_to_get(attributes_to_get=None) -> tuple[str, ...]:
     return tuple(res)
 
 
-def instance_as_dict(item, exclude_none: bool = False):
-    if isinstance(item, AttributeContainer):
-        return {
-            k: instance_as_dict(v, exclude_none)
-            for k, v in item.attribute_values.items()
-            if not exclude_none or v is not None
-        }
-    if isinstance(item, dict):  # JSONAttribute for instance
-        return {
-            k: instance_as_dict(v, exclude_none)
-            for k, v in item.items()
-            if not exclude_none or v is not None
-        }
-    if isinstance(item, list):  # ListAttribute
-        return [instance_as_dict(i) for i in item]
-    return item  # better make sure those are immutable
+# MODEL convertors, split into different internal functions to
+# play nice with type checking and be able to create custom convertors based
+# on core iterators
+def _convert_model_internal(
+    item: Any,
+    exclude_none: bool = False,
+    convert_leaf: Callable[[Any, bool], Any] | None = None,
+) -> Any:
+    match item:
+        case AttributeContainer():
+            return _convert_attributes_container_internal(
+                item, exclude_none, convert_leaf
+            )
+        case dict():  # JSONAttribute for instance
+            return _convert_dict_internal(item, exclude_none, convert_leaf)
+        case list():
+            return _convert_list_internal(item, exclude_none, convert_leaf)
+    if convert_leaf is not None:
+        return convert_leaf(item, exclude_none)
+    return item
 
 
-def instance_as_json_dict(item, exclude_none: bool = False):
+def _convert_attributes_container_internal(
+    item: AttributeContainer,
+    exclude_none: bool = False,
+    convert_leaf: Callable[[Any, bool], Any] | None = None,
+) -> dict[str, Any]:
+    return {
+        k: _convert_model_internal(v, exclude_none, convert_leaf)
+        for k, v in item.attribute_values.items()
+        if not exclude_none or v is not None
+    }
+
+
+def _convert_dict_internal(
+    item: dict,
+    exclude_none: bool = False,
+    convert_leaf: Callable[[Any, bool], Any] | None = None,
+) -> dict[str, Any]:
+    return {
+        k: _convert_model_internal(v, exclude_none, convert_leaf)
+        for k, v in item.items()
+        if not exclude_none or v is not None
+    }
+
+
+def _convert_list_internal(
+    item: list | set | tuple,
+    exclude_none: bool = False,
+    convert_leaf: Callable[[Any, bool], Any] | None = None,
+) -> list:
+    return [
+        _convert_model_internal(i, exclude_none, convert_leaf) for i in item
+    ]
+
+
+def _convert_common_leafs(item: Any, exclude_none: bool = False) -> Any:
+    match item:
+        case set() | tuple():
+            return _convert_list_internal(
+                item, exclude_none, _convert_common_leafs
+            )
+        case bytes():
+            return item.decode('utf-8')
+        case datetime():
+            return utc_iso(item)
+        case UUID():
+            return str(item)
+        case Enum():
+            return item.value
+        case _:
+            return item
+
+
+def instance_as_dict(
+    item: 'Model', exclude_none: bool = False
+) -> dict[str, Any]:
+    # NOTE: mutable leafs are the same objects so be careful
+    return _convert_model_internal(item, exclude_none)
+
+
+def instance_as_json_dict(
+    item: 'Model', exclude_none: bool = False
+) -> dict[str, Any]:
     """
     Converts to dict that can be dumped to JSON
     """
-    if isinstance(item, AttributeContainer):
-        return {
-            k: instance_as_json_dict(v, exclude_none)
-            for k, v in item.attribute_values.items()
-            if not exclude_none or v is not None
-        }
-    if isinstance(item, dict):  # JSONAttribute for instance
-        return {
-            k: instance_as_json_dict(v, exclude_none)
-            for k, v in item.items()
-            if not exclude_none or v is not None
-        }
-    if isinstance(item, (list, set, tuple)):
-        return [instance_as_json_dict(i) for i in item]
-    if isinstance(item, bytes):
-        return item.decode('utf-8')
-    if isinstance(item, datetime):
-        return utc_iso(item)
-    if isinstance(item, UUID):
-        return str(item)
-    if isinstance(item, Enum):
-        return item.value
-    return item
-
+    return _convert_model_internal(item, exclude_none, _convert_common_leafs)
