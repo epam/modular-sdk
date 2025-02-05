@@ -51,6 +51,7 @@ class Env(str, Enum):
     OLD_MONGO_PASSWORD = 'modular_mongo_password'
     OLD_MONGO_URL = 'modular_mongo_url'
     OLD_MONGO_DB_NAME = 'modular_mongo_db_name'
+    OLD_MONGO_SRV = 'modular_mongo_srv'
     OLD_ASSUME_ROLE_ARN = 'modular_assume_role_arn'  # may be multiple split by ,
 
     OLD_MODULAR_AWS_REGION = 'MODULAR_AWS_REGION'  # used for cross account models access
@@ -87,6 +88,7 @@ PARAM_MONGO_USER = Env.OLD_MONGO_USER.value
 PARAM_MONGO_PASSWORD = Env.OLD_MONGO_PASSWORD.value
 PARAM_MONGO_URL = Env.OLD_MONGO_URL.value
 PARAM_MONGO_DB_NAME = Env.OLD_MONGO_DB_NAME.value
+PARAM_MONGO_SRV = Env.OLD_MONGO_SRV.value
 PARAM_ASSUME_ROLE_ARN = Env.OLD_ASSUME_ROLE_ARN.value
 
 ENV_INNER_CACHE_TTL_SECONDS = Env.OLD_INNER_CACHE_TTL_SECONDS.value

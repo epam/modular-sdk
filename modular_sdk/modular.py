@@ -7,7 +7,7 @@ from modular_sdk.commons.constants import SERVICE_MODE_DOCKER, \
     PARAM_MONGO_USER, PARAM_ASSUME_ROLE_ARN, SERVICE_MODE_SAAS, \
     ASSUMES_ROLE_SESSION_NAME, MODULAR_AWS_ACCESS_KEY_ID_ENV, \
     MODULAR_AWS_SECRET_ACCESS_KEY_ENV, MODULAR_AWS_SESSION_TOKEN_ENV, \
-    MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV
+    MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV, PARAM_MONGO_SRV
 from modular_sdk.services.impl.maestro_http_transport_service import \
     MaestroHTTPConfig
 
@@ -69,6 +69,10 @@ class Modular(metaclass=SingletonMeta):
             for attr in required_mongodb_attrs:
                 os.environ[attr] = kwargs.get(attr)
 
+            srv_enabled = kwargs.get(PARAM_MONGO_SRV)
+            if srv_enabled is not None:
+                os.environ[PARAM_MONGO_SRV] = srv_enabled
+
     @staticmethod
     def __collect_kwargs(kwargs):
         """
@@ -83,7 +87,8 @@ class Modular(metaclass=SingletonMeta):
         """
         allowed_attrs = (
             MODULAR_SERVICE_MODE_ENV, PARAM_MONGO_USER, PARAM_MONGO_PASSWORD,
-            PARAM_MONGO_URL, PARAM_MONGO_DB_NAME, PARAM_ASSUME_ROLE_ARN)
+            PARAM_MONGO_URL, PARAM_MONGO_DB_NAME, PARAM_MONGO_SRV,
+            PARAM_ASSUME_ROLE_ARN)
         kwargs = {k: v for k, v in kwargs.items() if k in allowed_attrs}
 
         for attr in allowed_attrs:
