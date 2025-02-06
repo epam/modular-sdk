@@ -192,3 +192,8 @@ return 1;  # nothing found. Logic not enabled for that tenant.
 **Case 2**
 
 ...
+
+
+### Parent Scope Visualized Examples
+
+![Parent Scope Examples](pics/parent_scopes.png)
