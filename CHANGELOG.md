@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [6.4.0] - 2025-02-05
 - Support mongodb SRV connection strings with `modular_mongo_srv` env.
+- Add `SEP_SANDBOX_AWS` to the list of supported application types
 
 ## [6.3.0] - 2024-11-26
 - Fix Vault parameters encoder to comply with Maestro format
