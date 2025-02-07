@@ -39,7 +39,7 @@ def build_mongodb_uri(user: str, password: str, url: str,
     Just makes the right formatting
     """
 
-    return f'mongodb{"+srv" if srv else ''}://{user}:{password}@{url}/'
+    return f'mongodb{"+srv" if srv else ""}://{user}:{password}@{url}/'
 
 
 class M3BooleanAttribute(BooleanAttribute):
