@@ -38,8 +38,8 @@ class MongoDBConnection:
         database = self.database(db_name)
         _key = (db_name, collection_name)
         if _key not in self._collection_cache:
-            self._collection_cache[_key] = database.get_collection(
-                collection_name)
+            self._collection_cache[_key] = \
+                database.get_collection(collection_name)
         return self._collection_cache[_key]
 
     @staticmethod
