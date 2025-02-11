@@ -191,7 +191,7 @@ return 1;  # nothing found. Logic not enabled for that tenant.
 
 **Case 2**
 
-...
+Temporarily omitted, will be revisited in the future
 
 
 ### Parent Scope Visualized Examples
