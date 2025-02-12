@@ -57,12 +57,16 @@ class JobService:
         job.save()
 
     @staticmethod
-    def update(job: Job, started_at: Optional[datetime] = None, 
+    def update(job: Job, started_at: Optional[datetime, str] = None,
                state: Optional[str] = None, 
-               stopped_at: Optional[datetime] = None,
+               stopped_at: Optional[datetime, str] = None,
                error_type: Optional[str] = None, 
                error_reason: Optional[str] = None, 
                meta: Optional[dict] = None):
+        if started_at and isinstance(started_at, datetime):
+            started_at = started_at.isoformat()
+        if stopped_at and isinstance(stopped_at, datetime):
+            stopped_at = stopped_at.isoformat()
         attributes = {
             'started_at': started_at,
             'state': state,
