@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Union
 
 from pynamodb.exceptions import DoesNotExist
 
@@ -14,12 +14,18 @@ _LOG = get_logger(__name__)
 
 class JobService:
     @staticmethod
-    def create(job: str, job_id: str, application: str, started_at: datetime, 
-               state: str, stopped_at: Optional[datetime] = None,
+    def create(job: str, job_id: str, application: str,
+               started_at: Union[datetime, str],
+               state: str, stopped_at: Optional[Union[datetime, str]] = None,
                error_type: Optional[str] = None, 
                error_reason: Optional[str] = None, 
                meta: Optional[dict] = None) -> Job:
         job_id = job_id or generate_id()
+        if isinstance(started_at, datetime):
+            started_at = started_at.isoformat()
+        if stopped_at and isinstance(stopped_at, datetime):
+            stopped_at = stopped_at.isoformat()
+
         return Job(job=job, job_id=job_id, application=application, 
             started_at=started_at, state=state, stopped_at=stopped_at, 
             error_type=error_type, error_reason=error_reason, meta=meta)
@@ -44,8 +50,12 @@ class JobService:
         return list(jobs)
 
     @staticmethod
-    def list_within_daterange(job: str, start_date: datetime, 
-                              end_date: datetime) -> List[Job]:
+    def list_within_daterange(job: str, start_date: Union[datetime, str],
+                              end_date: Union[datetime, str]) -> List[Job]:
+        if isinstance(start_date, datetime):
+            start_date = start_date.isoformat()
+        if isinstance(end_date, datetime):
+            end_date = end_date.isoformat()
         jobs = Job.job_started_at_index.query(
             hash_key=job,
             range_key_condition=Job.started_at.between(start_date, end_date)
@@ -57,9 +67,9 @@ class JobService:
         job.save()
 
     @staticmethod
-    def update(job: Job, started_at: Optional[datetime, str] = None,
+    def update(job: Job, started_at: Optional[Union[datetime, str]] = None,
                state: Optional[str] = None, 
-               stopped_at: Optional[datetime, str] = None,
+               stopped_at: Optional[Union[datetime, str]] = None,
                error_type: Optional[str] = None, 
                error_reason: Optional[str] = None, 
                meta: Optional[dict] = None):
