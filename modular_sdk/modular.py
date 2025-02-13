@@ -1,13 +1,13 @@
 import os
 
-from modular_sdk.commons import validate_params, SingletonMeta
+from modular_sdk.commons import SingletonMeta, validate_params_combinations
 from modular_sdk.commons.constants import SERVICE_MODE_DOCKER, \
     MODULAR_SERVICE_MODE_ENV, \
     PARAM_MONGO_DB_NAME, PARAM_MONGO_URL, PARAM_MONGO_PASSWORD, \
     PARAM_MONGO_USER, PARAM_ASSUME_ROLE_ARN, SERVICE_MODE_SAAS, \
     ASSUMES_ROLE_SESSION_NAME, MODULAR_AWS_ACCESS_KEY_ID_ENV, \
     MODULAR_AWS_SECRET_ACCESS_KEY_ENV, MODULAR_AWS_SESSION_TOKEN_ENV, \
-    MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV
+    MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV, PARAM_MONGO_URI
 from modular_sdk.services.impl.maestro_http_transport_service import \
     MaestroHTTPConfig
 
@@ -61,10 +61,20 @@ class Modular(metaclass=SingletonMeta):
                 assumed_credentials['expiration'].isoformat()
             os.environ[PARAM_ASSUME_ROLE_ARN] = assume_role_arn
         elif service_mode == SERVICE_MODE_DOCKER:
-            required_mongodb_attrs = (
+            required_mongodb_uri_attrs = (
+                MODULAR_SERVICE_MODE_ENV, PARAM_MONGO_DB_NAME, PARAM_MONGO_URI,
+            )
+            required_mongodb_details_attrs = (
                 MODULAR_SERVICE_MODE_ENV, PARAM_MONGO_USER, PARAM_MONGO_PASSWORD,
-                PARAM_MONGO_URL, PARAM_MONGO_DB_NAME)
-            validate_params(kwargs, required_mongodb_attrs)
+                PARAM_MONGO_URL, PARAM_MONGO_DB_NAME,
+            )
+            required_mongodb_attrs = validate_params_combinations(
+                event=kwargs,
+                required_params_lists=[
+                    required_mongodb_uri_attrs,
+                    required_mongodb_details_attrs,
+                ],
+            )
 
             for attr in required_mongodb_attrs:
                 os.environ[attr] = kwargs.get(attr)
@@ -83,7 +93,9 @@ class Modular(metaclass=SingletonMeta):
         """
         allowed_attrs = (
             MODULAR_SERVICE_MODE_ENV, PARAM_MONGO_USER, PARAM_MONGO_PASSWORD,
-            PARAM_MONGO_URL, PARAM_MONGO_DB_NAME, PARAM_ASSUME_ROLE_ARN)
+            PARAM_MONGO_URL, PARAM_MONGO_DB_NAME, PARAM_ASSUME_ROLE_ARN,
+            PARAM_MONGO_URI,
+        )
         kwargs = {k: v for k, v in kwargs.items() if k in allowed_attrs}
 
         for attr in allowed_attrs:
