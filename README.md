@@ -51,6 +51,7 @@ connection, different sets of env variables must be set:
    `modular_mongo_password`: `$MONGO_PASSWORD`,  
    `modular_mongo_url`: `$MONGO_URL`,  
    `modular_mongo_db_name`: `$MONGO_DB_NAME`,  
+   `modular_mongo_srv`: `True`, # Optional  
 2. SaaS, DynamoDB (cross-account access):  
    `modular_service_mode`: `saas` # Optional  
    `modular_assume_role_arn`: `$ASSUME_ROLE_ARN`  
