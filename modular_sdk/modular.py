@@ -61,7 +61,6 @@ class Modular(metaclass=SingletonMeta):
                 assumed_credentials['expiration'].isoformat()
             os.environ[PARAM_ASSUME_ROLE_ARN] = assume_role_arn
         elif service_mode == SERVICE_MODE_DOCKER:
-            # TODO: point here
             required_mongodb_uri_attrs = (
                 MODULAR_SERVICE_MODE_ENV, PARAM_MONGO_DB_NAME, PARAM_MONGO_URI,
             )
@@ -69,7 +68,7 @@ class Modular(metaclass=SingletonMeta):
                 MODULAR_SERVICE_MODE_ENV, PARAM_MONGO_USER, PARAM_MONGO_PASSWORD,
                 PARAM_MONGO_URL, PARAM_MONGO_DB_NAME,
             )
-            required_mongodb_attrs = validate_params_combinations(
+            mongodb_attrs = validate_params_combinations(
                 event=kwargs,
                 required_params_lists=[
                     required_mongodb_uri_attrs,
@@ -77,12 +76,11 @@ class Modular(metaclass=SingletonMeta):
                 ],
             )
 
-            for attr in required_mongodb_attrs:
+            for attr in mongodb_attrs:
                 os.environ[attr] = kwargs.get(attr)
 
-            # TODO: point here
             srv_enabled = kwargs.get(PARAM_MONGO_SRV)
-            if srv_enabled is not None:
+            if srv_enabled and mongodb_attrs is required_mongodb_details_attrs:
                 os.environ[PARAM_MONGO_SRV] = srv_enabled
 
     @staticmethod
