@@ -50,6 +50,7 @@ class Env(str, Enum):
     OLD_MONGO_USER = 'modular_mongo_user'
     OLD_MONGO_PASSWORD = 'modular_mongo_password'
     OLD_MONGO_URL = 'modular_mongo_url'
+    OLD_MONGO_URI = 'modular_mongo_uri'
     OLD_MONGO_DB_NAME = 'modular_mongo_db_name'
     OLD_MONGO_SRV = 'modular_mongo_srv'
     OLD_ASSUME_ROLE_ARN = 'modular_assume_role_arn'  # may be multiple split by ,
@@ -65,6 +66,7 @@ class Env(str, Enum):
     MONGO_USER = 'MODULAR_SDK_MONGO_USER'
     MONGO_PASSWORD = 'MODULAR_SDK_MONGO_PASSWORD'
     MONGO_URL = 'MODULAR_SDK_MONGO_URL'
+    MONGO_URI = 'MODULAR_SDK_MONGO_URI'
     MONGO_DB_NAME = 'MODULAR_SDK_MONGO_DB_NAME'
     ASSUME_ROLE_ARN = 'MODULAR_SDK_ASSUME_ROLE_ARN'
     ASSUME_ROLE_REGION = 'MODULAR_SDK_ASSUME_ROLE_REGION'
@@ -87,6 +89,7 @@ SERVICE_MODE_SAAS = 'saas'
 PARAM_MONGO_USER = Env.OLD_MONGO_USER.value
 PARAM_MONGO_PASSWORD = Env.OLD_MONGO_PASSWORD.value
 PARAM_MONGO_URL = Env.OLD_MONGO_URL.value
+PARAM_MONGO_URI = Env.OLD_MONGO_URI.value
 PARAM_MONGO_DB_NAME = Env.OLD_MONGO_DB_NAME.value
 PARAM_MONGO_SRV = Env.OLD_MONGO_SRV.value
 PARAM_ASSUME_ROLE_ARN = Env.OLD_ASSUME_ROLE_ARN.value
