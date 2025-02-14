@@ -14,13 +14,3 @@ class classproperty:
     def getter(self, method):
         self.fget = method
         return self
-
-
-def replace_keys_in_dict(dictionary: dict, old_character: str,
-                         new_character: str) -> dict:
-    new = {}
-    for key, value in dictionary.items():
-        if isinstance(value, dict):
-            value = replace_keys_in_dict(value, old_character, new_character)
-        new[key.replace(old_character, new_character)] = value
-    return new
