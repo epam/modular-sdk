@@ -24,6 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added:
   - `modular_sdk.models.pynamongo.index_creator.IndexCreator`
 
+## [6.3.2] - 2025-02-11
+[EPMCEOOS-6607]:
+- Add the ability to connect to MongoDB using a `URI` (env `modular_mongo_uri`)
+
+## [6.3.1] - 2025-01-06
+[EPMCEOOS-6587]:
+- Add `parent_scopes.png` as a visual example for the `parent_scopes.md` documentation
+
 ## [6.3.0] - 2024-11-26
 - Fix Vault parameters encoder to comply with Maestro format
 - Update `get_signed_headers` to support conditional handling of `http` and

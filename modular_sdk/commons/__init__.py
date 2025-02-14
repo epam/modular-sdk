@@ -4,6 +4,7 @@ import gzip
 import json
 import warnings
 from functools import partial
+from typing import Sequence
 from uuid import uuid4
 from typing import Generator, TypeVar
 
@@ -35,6 +36,34 @@ def get_missing_parameters(event, required_params_list):
         if event.get(param) is None:
             missing_params_list.append(param)
     return missing_params_list
+
+
+def validate_params_combinations(
+        event: dict,
+        required_params_lists: Sequence[Sequence],
+) -> Sequence:
+    """
+    Checks if event contains at least one complete set of required parameters.
+    Iterates through `required_params_lists` and returns the first full set
+    found. If no set is found, it raises a ValueError with details of missing
+    parameters and required sets
+
+    :param event: Event data as a dictionary
+    :param required_params_lists: Lists of required parameter sets
+    :return: First complete parameter set found
+    :raises ValueError: If no set is complete, with details on what is missing
+    """
+    for param_list in required_params_lists:
+        if all(param in event for param in param_list):
+            return param_list
+
+    missing_params = set()
+    for param_list in required_params_lists:
+        missing_params.update(set(param_list) - set(event.keys()))
+
+    error_message = f"Missing required parameters: {missing_params}. "
+    error_message += f"Required combinations are: {required_params_lists}"
+    raise ValueError(error_message)
 
 
 def validate_params(event, required_params_list):
