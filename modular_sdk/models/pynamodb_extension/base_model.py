@@ -23,9 +23,10 @@ from pynamodb.models import _T, _KeyType, BatchWrite
 from pynamodb.pagination import ResultIterator
 from pynamodb.settings import OperationSettings
 
-from modular_sdk.commons.constants import MODULAR_SERVICE_MODE_ENV, \
-    SERVICE_MODE_DOCKER, PARAM_MONGO_USER, PARAM_MONGO_PASSWORD, \
-    PARAM_MONGO_URL, PARAM_MONGO_DB_NAME
+from modular_sdk.commons.constants import (
+    MODULAR_SERVICE_MODE_ENV, SERVICE_MODE_DOCKER, PARAM_MONGO_USER,
+    PARAM_MONGO_PASSWORD, PARAM_MONGO_URL, PARAM_MONGO_DB_NAME, PARAM_MONGO_URI,
+)
 from modular_sdk.commons.helpers import classproperty
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.commons.time_helper import utc_iso
@@ -193,11 +194,11 @@ class ModularMongoDBHandlerMixin(ABCMongoDBHandlerMixin):
             user = os.environ.get(PARAM_MONGO_USER)
             password = os.environ.get(PARAM_MONGO_PASSWORD)
             url = os.environ.get(PARAM_MONGO_URL)
+            uri = os.environ.get(PARAM_MONGO_URI)
             db = os.environ.get(PARAM_MONGO_DB_NAME)
+            uri = uri or build_mongodb_uri(user, password, url)
             cls._mongodb = PynamoDBToPyMongoAdapter(
-                mongodb_connection=MongoDBConnection(
-                    build_mongodb_uri(user, password, url), db
-                )
+                mongodb_connection=MongoDBConnection(uri, db)
             )
         return cls._mongodb
 
