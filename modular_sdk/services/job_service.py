@@ -1,13 +1,14 @@
 from datetime import datetime
+from http import HTTPStatus
 from typing import Optional, List
 
 from pynamodb.exceptions import DoesNotExist
 
 from modular_sdk.commons import generate_id
-from modular_sdk.commons import ModularException, \
-    RESPONSE_RESOURCE_NOT_FOUND_CODE
+from modular_sdk.commons import ModularException
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.job import Job
+from modular_sdk.models.pynamongo.convertors import instance_as_json_dict
 
 _LOG = get_logger(__name__)
 
@@ -33,7 +34,7 @@ class JobService:
                                     f'id does not exists'
             _LOG.error(job_does_not_exist_message)
             raise ModularException(
-                code=RESPONSE_RESOURCE_NOT_FOUND_CODE,
+                code=HTTPStatus.NOT_FOUND.value,
                 content=job_does_not_exist_message
             )
         return job_item
@@ -79,5 +80,5 @@ class JobService:
         job.update(actions=actions)
 
     @staticmethod
-    def get_dto(Job: Job) -> dict:
-        return Job.get_json()
+    def get_dto(job: Job) -> dict:
+        return instance_as_json_dict(job)

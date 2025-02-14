@@ -3,6 +3,7 @@ from typing import List, Optional
 from pynamodb.pagination import ResultIterator
 
 from modular_sdk.models.customer import Customer
+from modular_sdk.models.pynamongo.convertors import instance_as_json_dict
 
 
 class CustomerService:
@@ -37,4 +38,4 @@ class CustomerService:
 
     @staticmethod
     def get_dto(customer: Customer) -> dict:
-        return customer.get_json()
+        return instance_as_json_dict(customer)
