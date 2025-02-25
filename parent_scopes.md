@@ -20,7 +20,7 @@ One Parent can be linked to one Application and one Application can be linked to
 
 Basically, the relationship between Parents and Tenants is N:M. One Tenant can be linked to multiple Parents of different types and one Parent can be linked to multiple Tenants. In general, such behaviour can be achieved by adding a third table to store all the connections between entities, but in our case we achive this relationship without the third table. The solution is not that common so the explanation follows.
 
-Imagine that we have **one** parent which represents some logic. From business prospective we should be able to handle such situations:
+Imagine that we have **one** parent which represents some logic. From business perspective we should be able to handle such situations:
 
 - a situation when we want to link that parent to **ONE** tenant. The logic that is represented by the parent is specific for that tenant;
 - a situation when we want to link that parent to **ALL** the available tenants of a specific cloud (can be some system logic for that cloud);
@@ -43,7 +43,7 @@ Now, let's move on to more technical details of the implementation. We add a new
 - `CUSTODIAN#SPECIFIC#EXAMPLE-TENANT-2`: custodian logic is enabled for `EXAMPLE-TENANT-2` ONLY.
 - `SIEM_DEFECT_DOJO#ALL#AWS`: siem defect dojo logic is enabled for all AWS tenants.
 
-**Priorities for higher to lower:**
+**Priorities from higher to lower:**
 
 - DISABLED
 - SPECIFIC
