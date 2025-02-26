@@ -1,6 +1,4 @@
 import pymongo
-from datetime import datetime
-import json
 from typing import (
     Any,
     Dict,
@@ -23,32 +21,13 @@ from pynamodb.models import Model as _Model
 from pynamodb.pagination import ResultIterator
 from pynamodb.settings import OperationSettings
 
-from modular_sdk.commons.constants import Env, SERVICE_MODE_DOCKER
+from modular_sdk.commons.constants import Env, ServiceMode
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.pynamongo.adapter import PynamoDBToPymongoAdapter
 from modular_sdk.modular import Modular
-from modular_sdk.commons.time_helper import utc_iso
-from modular_sdk.commons import deprecated, iter_subclasses
+from modular_sdk.commons import iter_subclasses
 
 _LOG = get_logger(__name__)
-
-
-class ModelEncoder(json.JSONEncoder):
-    """
-    It converts the item to DTO only representation. Do not use
-    get_json() on model and then write the result to DB again. Such
-    actions corrupt the item
-    """
-
-    def default(self, obj):
-        if hasattr(obj, 'attribute_values'):
-            return obj.attribute_values
-        elif isinstance(obj, datetime):
-            return utc_iso(_from=obj)
-        else:
-            # ObjectId, bytes and others
-            return str(obj)
-        # return json.JSONEncoder.default(self, obj)
 
 
 class Model(_Model):
@@ -349,17 +328,6 @@ class Model(_Model):
             ignore_update_ttl_errors=ignore_update_ttl_errors,
         )
 
-    @deprecated('Use modular_sdk.models.pynamongo.convertors.instance_as_* '
-                'functions or write your serializer. This one is kept for '
-                'easier transition')
-    def get_json(self) -> dict:
-        """
-        Returns dict which can be dumped to JSON. So, in case the model
-        contains Date or Binary, or ObjectId -> they will become strings.
-        :return:
-        """
-        return json.loads(json.dumps(self, cls=ModelEncoder))
-
 
 class SafeUpdateModel(Model):
     """
@@ -466,7 +434,6 @@ class RoleAccessModel(SafeUpdateModel):
         _modular = Modular()
         sts = _modular.sts_service()
         if sts.assure_modular_credentials_valid():
-            env = _modular.environment_service()
             for model in iter_subclasses(RoleAccessModel):
                 if model._connection:
                     # works as well but seems too tough
@@ -477,9 +444,9 @@ class RoleAccessModel(SafeUpdateModel):
                         f'dropping the existing botocore client...'
                     )
                     model._connection.connection.session.set_credentials(
-                        env.modular_aws_access_key_id(),
-                        env.modular_aws_secret_access_key(),
-                        env.modular_aws_session_token(),
+                        Env.INNER_AWS_ACCESS_KEY_ID.get(),
+                        Env.INNER_AWS_SECRET_ACCESS_KEY.get(),
+                        Env.INNER_AWS_SESSION_TOKEN.get()
                     )
                     model._connection.connection._client = None
                 else:
@@ -495,19 +462,25 @@ class RoleAccessModel(SafeUpdateModel):
 class ModularBaseModel(RoleAccessModel):
     @classmethod
     def is_mongo_model(cls) -> bool:
-        return Env.OLD_SERVICE_MODE.get() == SERVICE_MODE_DOCKER
+        return Env.SERVICE_MODE.get() == ServiceMode.DOCKER
+
+    @staticmethod
+    def _build_mongo_uri() -> str:
+        if uri := Env.MONGO_URI.get():
+            return uri
+        user = Env.MONGO_USER.get()
+        password = Env.MONGO_PASSWORD.get()
+        url = Env.MONGO_URL.get()
+        srv = bool(Env.MONGO_SRV.get())
+        return f'mongodb{"+srv" if srv else ""}://{user}:{password}@{url}/'
 
     @classmethod
     def mongo_adapter(cls) -> PynamoDBToPymongoAdapter:
         if hasattr(cls, '_mongo_adapter'):
             return cls._mongo_adapter
-        user = Env.OLD_MONGO_USER.get()
-        password = Env.OLD_MONGO_PASSWORD.get()
-        url = Env.OLD_MONGO_URL.get()
-        db = Env.OLD_MONGO_DB_NAME.get()
+        uri = cls._build_mongo_uri()
+        db = Env.MONGO_DB_NAME.get()
         setattr(cls, '_mongo_adapter', PynamoDBToPymongoAdapter(
-            db=pymongo.MongoClient(
-                f'mongodb://{user}:{password}@{url}/'
-            ).get_database(db)
+            db=pymongo.MongoClient(uri).get_database(db)
         ))
         return getattr(cls, '_mongo_adapter')

@@ -7,9 +7,7 @@ from typing import Optional, TypedDict, List, Tuple, Generator
 
 from botocore.exceptions import ClientError
 
-from modular_sdk.commons.constants import MODULAR_AWS_ACCESS_KEY_ID_ENV, \
-    MODULAR_AWS_SESSION_TOKEN_ENV, MODULAR_AWS_SECRET_ACCESS_KEY_ENV, \
-    MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV
+from modular_sdk.commons.constants import Env
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.commons.time_helper import utc_datetime, utc_iso
 from modular_sdk.services.aws_creds_provider import AWSCredentialsProvider
@@ -171,7 +169,7 @@ class StsService(AWSCredentialsProvider):
         roles = self._environment_service.modular_assume_role_arn()
         if not roles:
             return False
-        ex = self._environment_service.modular_aws_credentials_expiration()
+        ex = Env.INNER_AWS_CREDENTIALS_EXPIRATION.get()
         in_a_while = utc_datetime() + timedelta(minutes=5)
         if not ex or in_a_while > utc_datetime(ex):
             _LOG.info(f'Role {roles[-1]} has not been assumed or has expired. '
@@ -183,11 +181,10 @@ class StsService(AWSCredentialsProvider):
                        'Setting them to envs')
             ak, sk = creds['aws_access_key_id'], creds['aws_secret_access_key']
             st = creds['aws_session_token']
-            self._environment_service.set(MODULAR_AWS_ACCESS_KEY_ID_ENV, ak)
-            self._environment_service.set(MODULAR_AWS_SECRET_ACCESS_KEY_ENV, sk)
-            self._environment_service.set(MODULAR_AWS_SESSION_TOKEN_ENV, st)
-            self._environment_service.set(MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV,
-                                          utc_iso(creds['expiration']))
+            Env.INNER_AWS_ACCESS_KEY_ID.set(ak)
+            Env.INNER_AWS_SECRET_ACCESS_KEY.set(sk)
+            Env.INNER_AWS_SESSION_TOKEN.set(st)
+            Env.INNER_AWS_CREDENTIALS_EXPIRATION.set(utc_iso(creds['expiration']))
             return True
         else:
             return False
