@@ -8,6 +8,7 @@ from botocore.credentials import JSONFileCache
 from botocore.exceptions import ClientError
 from cachetools import TTLCache
 
+from modular_sdk.commons.constants import Env
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.commons.time_helper import utc_datetime
 from modular_sdk.services.aws_creds_provider import AWSCredentialsProvider, \
@@ -89,13 +90,14 @@ class VaultSSMClient(AbstractSSMClient):
     def _init_client(self):
         import hvac
         # TODO use some discussed constants. These I get from Custodian
-        vault_token = os.getenv('VAULT_TOKEN')
-        vault_host = os.getenv('VAULT_URL')
-        vault_port = os.getenv('VAULT_SERVICE_SERVICE_PORT')
+        token = Env.VAULT_TOKEN.get()
+        url = Env.VAULT_URL.get()
+        if not url:
+            url = f'http://{Env.VAULT_HOSTNAME.get()}:{Env.VAULT_PORT.get()}'
         _LOG.info('Initializing hvac client')
         self._client = hvac.Client(
-            url=f'http://{vault_host}:{vault_port}',
-            token=vault_token
+            url=url,
+            token=token
         )
         _LOG.info('Hvac client was initialized')
 

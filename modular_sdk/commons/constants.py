@@ -82,6 +82,12 @@ class Env(str, Enum):
     MONGO_SRV = 'MODULAR_SDK_MONGO_SRV', ('modular_mongo_srv', )
     MONGO_URI = 'MODULAR_SDK_MONGO_URI', ('modular_mongo_uri',)  # full uri
     MONGO_DB_NAME = 'MODULAR_SDK_MONGO_DB_NAME', ('modular_mongo_db_name',)
+
+    VAULT_TOKEN = 'MODULAR_SDK_VAULT_TOKEN', ('VAULT_TOKEN', )
+    VAULT_HOSTNAME = 'MODULAR_SDK_VAULT_HOSTNAME', ('VAULT_URL', )
+    VAULT_PORT = 'MODULAR_SDK_VAULT_PORT', ('VAULT_SERVICE_SERVICE_PORT', )
+    VAULT_URL = 'MODULAR_SDK_VAULT_URL'
+
     ASSUME_ROLE_ARN = (
         'MODULAR_SDK_ASSUME_ROLE_ARN',
         ('modular_assume_role_arn',),
