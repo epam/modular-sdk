@@ -365,6 +365,7 @@ class SafeUpdateModel(Model):
                 )
             elif (
                 isinstance(attr, ListAttribute)
+                and attr.element_type
                 and issubclass(attr.element_type, MapAttribute)
                 and not attr.element_type.is_raw()
             ):
@@ -446,7 +447,7 @@ class RoleAccessModel(SafeUpdateModel):
                     model._connection.connection.session.set_credentials(
                         Env.INNER_AWS_ACCESS_KEY_ID.get(),
                         Env.INNER_AWS_SECRET_ACCESS_KEY.get(),
-                        Env.INNER_AWS_SESSION_TOKEN.get()
+                        Env.INNER_AWS_SESSION_TOKEN.get(),
                     )
                     model._connection.connection._client = None
                 else:
@@ -480,7 +481,11 @@ class ModularBaseModel(RoleAccessModel):
             return cls._mongo_adapter
         uri = cls._build_mongo_uri()
         db = Env.MONGO_DB_NAME.get()
-        setattr(cls, '_mongo_adapter', PynamoDBToPymongoAdapter(
-            db=pymongo.MongoClient(uri).get_database(db)
-        ))
+        setattr(
+            cls,
+            '_mongo_adapter',
+            PynamoDBToPymongoAdapter(
+                db=pymongo.MongoClient(uri).get_database(db)
+            ),
+        )
         return getattr(cls, '_mongo_adapter')
