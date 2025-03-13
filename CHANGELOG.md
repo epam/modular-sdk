@@ -4,7 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [7.0.0] - 2024-12-18
+## [7.0.0a1] - 202-03-13
+- Disabled AWS xray SDK Patch, removed `aws-xray-sdk` from dependencies
+- Create one MongoClient instead of multiple ones
+
+## [7.0.0a0] - 2025-03-05
 - Rewritten Pynamo & Mongo abstraction to support all attributes and functionality:
   - `modular_sdk.models.pynamongo.models.Model` must be used instead of old BaseModel (see docs inside `modular_sdk.models.pynamongo.__init__`)
   - `get_json()` is removed. Use pynamongo.convertors.instance_to_dict or write your serializer

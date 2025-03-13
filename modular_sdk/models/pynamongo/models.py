@@ -1,3 +1,4 @@
+import os
 import pymongo
 from typing import (
     Any,
@@ -460,10 +461,8 @@ class RoleAccessModel(SafeUpdateModel):
         return super()._get_connection()
 
 
-class ModularBaseModel(RoleAccessModel):
-    @classmethod
-    def is_mongo_model(cls) -> bool:
-        return Env.SERVICE_MODE.get() == ServiceMode.DOCKER
+class MongoClientSingleton:
+    _instance = None
 
     @staticmethod
     def _build_mongo_uri() -> str:
@@ -476,16 +475,27 @@ class ModularBaseModel(RoleAccessModel):
         return f'mongodb{"+srv" if srv else ""}://{user}:{password}@{url}/'
 
     @classmethod
+    def get_instance(cls) -> pymongo.MongoClient:
+        if cls._instance is None:
+            _LOG.debug(f'Creating MongoClient in {os.getpid()}')
+            cls._instance = pymongo.MongoClient(cls._build_mongo_uri())
+        return cls._instance
+
+
+class ModularBaseModel(RoleAccessModel):
+    @classmethod
+    def is_mongo_model(cls) -> bool:
+        return Env.SERVICE_MODE.get() == ServiceMode.DOCKER
+
+    @classmethod
     def mongo_adapter(cls) -> PynamoDBToPymongoAdapter:
         if hasattr(cls, '_mongo_adapter'):
-            return cls._mongo_adapter
-        uri = cls._build_mongo_uri()
+            return getattr(cls, '_mongo_adapter')
+        client = MongoClientSingleton.get_instance()
         db = Env.MONGO_DB_NAME.get()
         setattr(
             cls,
             '_mongo_adapter',
-            PynamoDBToPymongoAdapter(
-                db=pymongo.MongoClient(uri).get_database(db)
-            ),
+            PynamoDBToPymongoAdapter(db=client.get_database(db)),
         )
         return getattr(cls, '_mongo_adapter')
