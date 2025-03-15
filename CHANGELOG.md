@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [7.0.0a1] - 202-03-13
 - Disabled AWS xray SDK Patch, removed `aws-xray-sdk` from dependencies
 - Create one MongoClient instead of multiple ones
+- Update dependencies version:
+  - boto3 to >=1.36.11
+  - botocore to >=1.36.11
+  - pymongo to ~=4.11.2
+  - python-dateutil to >=2.9.0.post0
+  - cachetools to ~=5.5.1
+  - cryptography to ~=43.0.3
+
 
 ## [7.0.0a0] - 2025-03-05
 - Rewritten Pynamo & Mongo abstraction to support all attributes and functionality:
@@ -27,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `modular_sdk.connections.mongodb_connection`
 - Added:
   - `modular_sdk.models.pynamongo.index_creator.IndexCreator`
+- Supported new names starting with `MODULAR_SDK_` for all available envs. 
+  Previous envs can also be used though they are deprecated and will be removed
 
 ## [6.3.2] - 2025-02-11
 [EPMCEOOS-6607]:
