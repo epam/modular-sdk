@@ -1,6 +1,7 @@
-import json
 import base64
 import binascii
+import json
+import math
 from typing import TYPE_CHECKING, Generator, Iterator, TypeVar
 
 from pymongo import ASCENDING, DESCENDING, DeleteOne, ReplaceOne
@@ -13,7 +14,7 @@ from modular_sdk.models.pynamongo.convertors import (
     convert_attributes_to_get,
     convert_condition_expression,
     convert_update_expression,
-    merge_update_expressions
+    merge_update_expressions,
 )
 
 if TYPE_CHECKING:
@@ -22,12 +23,14 @@ if TYPE_CHECKING:
     from pynamodb.expressions.update import Action
 
 _MT = TypeVar('_MT', bound=Model)
-
 _LOG = get_logger(__name__)
 
 
 class ResultIterator(Iterator[_MT]):
-    __slots__ = '_cursor', '_model', '_serializer', '_skip'
+    """
+    Mocks ResultIterator from PynamoDB
+    """
+    __slots__ = '_cursor', '_model', '_serializer', '_skip', '_total'
 
     def __init__(
         self,
@@ -35,11 +38,13 @@ class ResultIterator(Iterator[_MT]):
         model: type[_MT],
         serializer: PynamoDBModelToMongoDictSerializer,
         skip: int = 0,
+        total: int = math.inf,  # pyright: ignore
     ):
         self._cursor = cursor
         self._model = model
         self._serializer = serializer
         self._skip = skip
+        self._total = total
 
     def __iter__(self) -> 'ResultIterator':
         return self
@@ -54,7 +59,8 @@ class ResultIterator(Iterator[_MT]):
 
     @property
     def last_evaluated_key(self):
-        return self._skip
+        if self._skip < self._total:
+            return self._skip
 
     @property
     def total_count(self) -> int:
@@ -317,7 +323,8 @@ class PynamoDBToPymongoAdapter:
             q.update(convert_condition_expression(filter_condition))
         last_evaluated_key = last_evaluated_key or 0
 
-        cursor = self.get_collection(model).find(
+        col = self.get_collection(model)
+        cursor = col.find(
             q,
             projection=convert_attributes_to_get(attributes_to_get),
             skip=last_evaluated_key,
@@ -333,6 +340,7 @@ class PynamoDBToPymongoAdapter:
             model=model,
             serializer=self._ser,
             skip=last_evaluated_key,
+            total=col.count_documents(q)
         )
 
     def scan(
@@ -350,8 +358,9 @@ class PynamoDBToPymongoAdapter:
             query.update(convert_condition_expression(filter_condition))
         last_evaluated_key = last_evaluated_key or 0
 
-        # TODO: scan a specific index
-        cursor = self.get_collection(model).find(
+        # TODO: scan a specific index using mongo hint
+        col = self.get_collection(model)
+        cursor = col.find(
             query,
             projection=convert_attributes_to_get(attributes_to_get),
             skip=last_evaluated_key,
@@ -363,6 +372,7 @@ class PynamoDBToPymongoAdapter:
             model=model,
             serializer=self._ser,
             skip=last_evaluated_key,
+            total=col.count_documents(query)
         )
 
     def batch_get(
@@ -398,6 +408,7 @@ class LastEvaluatedKey:
     """
     Simple abstraction over DynamoDB last evaluated key & MongoDB offset :)
     """
+
     payload_key_name = 'key'
 
     def __init__(self, lek: dict | int | None = None):
@@ -406,7 +417,7 @@ class LastEvaluatedKey:
     def serialize(self) -> str:
         payload = {self.payload_key_name: self._lek}
         return base64.urlsafe_b64encode(
-            json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
+            json.dumps(payload, separators=(',', ':'), sort_keys=True).encode()
         ).decode()
 
     @classmethod
@@ -422,8 +433,10 @@ class LastEvaluatedKey:
         except json.JSONDecodeError:
             _LOG.warning('Invalid json string within last evaluated key token')
         except Exception as e:  # you never know :)
-            _LOG.warning('Some unexpected exception occurred while '
-                         f'deserializing last evaluated key token : \'{e}\'')
+            _LOG.warning(
+                'Some unexpected exception occurred while '
+                f"deserializing last evaluated key token : '{e}'"
+            )
         return cls(_payload.get(cls.payload_key_name))
 
     @property
