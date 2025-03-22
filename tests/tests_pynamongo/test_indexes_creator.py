@@ -2,7 +2,7 @@ import random
 from unittest.mock import patch, MagicMock
 
 import pymongo
-from pynamodb.attributes import UnicodeAttribute
+from pynamodb.attributes import UnicodeAttribute, TTLAttribute
 from pynamodb.indexes import GlobalSecondaryIndex, LocalSecondaryIndex, AllProjection
 from pynamodb.models import Model
 from pymongo.operations import IndexModel
@@ -43,6 +43,7 @@ class MyModel(Model):
     attr1 = UnicodeAttribute()
     attr2 = UnicodeAttribute()
     attr3 = UnicodeAttribute()
+    ttl = TTLAttribute()
 
     gsi1 = GSI1()
     gsi2 = GSI2()
@@ -78,8 +79,12 @@ class TestIndexesExtractor:
         ).get_primary(MyModel, unique=False).document == {'name': 'main', 'unique': False, 'key': {'hash': 1, 'sort': 1}}
 
     def test_get_ttl(self):
-        # TODO: add test if ttl is implemented
-        assert IndexesExtractor().get_ttl(MyModel) is None
+        item = IndexesExtractor().get_ttl(MyModel)
+        assert item.document == {
+            'name': 'ttl_1',
+            'expireAfterSeconds': 0,
+            'key': {'ttl': 1}
+        }
 
     def test_get_iter_indexes(self):
         items = tuple(IndexesExtractor().iter_indexes(MyModel))
@@ -133,10 +138,14 @@ def test_index_information_to_index_models():
         },
         'index3': {
             'key': [('test', -1)]
+        },
+        'ttl': {
+            'key': [('ttl', 1)],
+            'expireAfterSeconds': 0
         }
     }
     items = tuple(index_information_to_index_models(info))
-    assert len(items) == 3
+    assert len(items) == 4
     by_name = {item.document['name']: item for item in items}
     assert by_name['index1'].document == {
         'key': {'hash': 1, 'sort': -1},
@@ -151,6 +160,11 @@ def test_index_information_to_index_models():
         'key': {'test': -1},
         'name': 'index3'
     }
+    assert by_name['ttl'].document == {
+        'key': {'ttl': 1},
+        'name': 'ttl',
+        'expireAfterSeconds': 0
+    }
 
 
 def test_iter_comparing():
@@ -158,6 +172,7 @@ def test_iter_comparing():
         IndexModel(keys=[('hash', 1), ('sort', -1)], name='one', unique=True),
         IndexModel(keys='attr', name='two'),
         IndexModel(keys=[('attr', -1)], name='three'),
+        IndexModel(keys=[('ttl', 1)], name='ttl', expireAfterSeconds=0),
     )
     existing = (
         IndexModel(keys=[('hash', 1), ('sort', -1)], unique=True),
@@ -171,6 +186,7 @@ def test_iter_comparing():
     assert res[1][0] is needed[1] and res[1][1] is existing[1]
 
     assert res[2][0] is needed[2] and res[2][1] is None
+    assert res[3][0] is needed[3] and res[3][1] is None
 
     res = tuple(iter_comparing(existing, needed))
     assert res[0][0] is existing[0] and res[0][1] is needed[0]
@@ -185,7 +201,7 @@ class TestIndexCreator:
             IndexesCreator(mongo_database).ensure(MyModel)
 
         indexes = mongo_database.get_collection('MyModel').index_information()
-        for name in ('_id_', 'hash_1_sort_-1','attr1_1', 'attr2_1_attr3_-1', 'hash_1_attr1_-1' ):
+        for name in ('_id_', 'hash_1_sort_-1','attr1_1', 'attr2_1_attr3_-1', 'hash_1_attr1_-1', 'ttl_1'):
             assert name in indexes
 
         with patch.object(MyModel.Meta.mongo_collection, 'create_indexes') as mock_method:
@@ -199,5 +215,5 @@ class TestIndexCreator:
         MyModel.Meta.mongo_collection.drop_index('hash_1_sort_-1')
         IndexesCreator(mongo_database).sync(MyModel)
         indexes = MyModel.Meta.mongo_collection.index_information()
-        for name in ('_id_', 'hash_1_sort_-1', 'attr1_1', 'attr2_1_attr3_-1', 'hash_1_attr1_-1'):
+        for name in ('_id_', 'hash_1_sort_-1', 'attr1_1', 'attr2_1_attr3_-1', 'hash_1_attr1_-1', 'ttl_1'):
             assert name in indexes

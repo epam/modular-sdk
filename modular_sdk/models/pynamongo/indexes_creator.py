@@ -12,6 +12,7 @@ from typing import (
 import pymongo
 from pymongo.errors import OperationFailure
 from pymongo.operations import IndexModel
+from pynamodb.attributes import TTLAttribute
 
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.pynamongo.models import PynamoDBToPymongoAdapter
@@ -110,9 +111,21 @@ class IndexesExtractor:
             keys.append((r, self._ro))
         return IndexModel(keys=keys, name=self._pin, unique=unique)
 
-    def get_ttl(self, model: type['Model'], /) -> IndexModel | None:
-        # TODO: convert model's ttl attribute if found
-        return
+    def get_ttl(self, model: type['Model'], /, *, index_name: str | None = None) -> IndexModel | None:
+        ttl = None
+        for attr in model.get_attributes().values():
+            if isinstance(attr, TTLAttribute):
+                ttl = attr
+                break
+        if ttl is None:
+            return
+        # NOTE: expireAfterSeconds is 0 to mock DynamoDB's behaviour, that is the document is considered expired
+        # immediately when date of attribute's value is reached
+        return IndexModel(
+            keys=ttl.attr_name,
+            name=index_name,
+            expireAfterSeconds=0
+        )
 
     def iter_indexes(
         self, model: type['Model'], /
@@ -140,7 +153,7 @@ def index_information_to_index_models(
     """
     Converts the result of Collection.index_information() to an iterator of IndexModel items
     """
-    _additional = ('unique',)  # add ttl?
+    _additional = ('unique', 'expireAfterSeconds')
     for name, data in info.items():
         yield IndexModel(
             keys=data['key'],
@@ -157,7 +170,7 @@ def iter_comparing(
     found or None. Compares indexes based on their attributes
     (not based on names)
     """
-    _compare_keys = ('key', 'unique')
+    _compare_keys = ('key', 'unique', 'expireAfterSeconds')
 
     _existing = tuple(
         {k: v for k, v in item.document.items() if k in _compare_keys}

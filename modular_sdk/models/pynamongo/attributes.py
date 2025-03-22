@@ -16,6 +16,7 @@ from pynamodb.attributes import (
     UnicodeAttribute,
     UnicodeSetAttribute,
     UTCDateTimeAttribute,
+    TTLAttribute
 )
 from pynamodb.constants import BINARY, LIST, NUMBER, STRING, BOOLEAN
 from pynamodb.exceptions import AttributeDeserializationError
@@ -52,6 +53,23 @@ class MongoUTCDateTimeAttribute(Attribute[datetime]):
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
         return value.astimezone(timezone.utc)
+
+    def deserialize(self, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value
+
+
+class MongoTTLAttribute(TTLAttribute):
+    """
+    Mongo requires its ttl attributes to have Date type whereas DynamoDB need just a Number.
+    """
+    attr_type = AS_IS
+
+    def serialize(self, value):
+        if value is None:
+            return None
+        return self._normalize(value)
 
     def deserialize(self, value: datetime) -> datetime:
         if value.tzinfo is None:
@@ -133,16 +151,19 @@ class DynamicAttribute(Attribute[Any]):
         self.attr_type = attr.attr_type
         return attr.serialize(value)
 
-    def deserialize(self, value: Any) -> Any:
-        attr = self._dynamo_typ_attr.get(self.attr_type)
+    def deserialize(self, value: tuple[str, Any]) -> Any:
+        attr = self._dynamo_typ_attr.get(value[0])
         if not attr:
-            raise AttributeDeserializationError(self.attr_name, self.attr_type)
-        return attr.deserialize(value)
+            raise AttributeDeserializationError(self.attr_name, value[0])
+        return attr.deserialize(value[1])
 
-    def get_value(self, value: dict[str, Any]) -> Any:
-        attr_type, attr_value = next(iter(value.items()))
-        self.attr_type = attr_type
-        return attr_value
+    def get_value(self, value: dict[str, Any]) -> tuple[str, Any]:
+        # NOTE: the result of get_value is always passed to the deserialize method (at least in pynamodb==5.5.1)
+        #  so, seems like we can safely slightly change the interface of this method to avoid shared state.
+        #  We must be able to know somehow the type of this dynamic attribute inside "deserialize". We used to store
+        #  that type as a temp instance attribute but that seems not thread-safe since all the instances of model use
+        #  this one descriptor class. So returning attr_value and attr_type as a tuple
+        return next(iter(value.items()))
 
 
 class EnumUnicodeAttribute(Attribute[Enum | str]):
@@ -200,4 +221,5 @@ MONGO_ATTRIBUTE_PATCH_MAPPING = {
     BinarySetAttribute: MongoBinarySetAttribute,
     NumberSetAttribute: MongoNumberSetAttribute,
     UnicodeSetAttribute: MongoUnicodeSetAttribute,
+    TTLAttribute: MongoTTLAttribute
 }
