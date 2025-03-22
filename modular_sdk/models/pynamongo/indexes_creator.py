@@ -237,7 +237,6 @@ class IndexesCreator:
         """
         :param db: default Database object to use if it cannot be resolved
         from models
-        :param ignore_indexes: tuple of indexes names to
         """
         self._adapter = PynamoDBToPymongoAdapter(db)
 
