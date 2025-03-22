@@ -252,13 +252,13 @@ class TestUpdateExpressionConvertor:
             TestModel.number.set(TestModel.map['number'] + 1)
         ) == [{'$set': {'num': {'$add': ['$map.number', 1]}}}]
 
-    @pytest.mark.skip(reason='Currently not implemented')
+    @pytest.mark.skip(reason='Not implemented')
     def test_add_to_set(self): ...
 
-    @pytest.mark.skip(reason='Currently not implemented')
+    @pytest.mark.skip(reason='Not implemented')
     def test_delete_from_set(self): ...
 
-    @pytest.mark.skip(reason='Currently not implemented')
+    @pytest.mark.skip(reason='Not implemented')
     def test_is_not_exists(self): ...
 
 

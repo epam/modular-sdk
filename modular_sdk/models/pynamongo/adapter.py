@@ -19,6 +19,7 @@ from modular_sdk.models.pynamongo.convertors import (
 
 if TYPE_CHECKING:
     from pymongo.collection import Collection
+    from pymongo.database import Database
     from pymongo.cursor import Cursor
     from pynamodb.expressions.update import Action
 
@@ -140,20 +141,20 @@ class PynamoDBToPymongoAdapter:
     def __init__(self, db: 'Database | None' = None):
         self._db = db
 
-    @property
-    def mongo_database(self) -> 'Database | None':
-        return self._db
+    def get_database(self, model: type[Model] | Model) -> 'Database':
+        db = getattr(model.Meta, 'mongo_database', self._db)
+        assert db is not None, (
+            'Mongo database must be set either to model`s '
+            'Meta or to PynamoDBToPymongoAdapter'
+        )
+        return db
 
     def get_collection(self, model: type[Model] | Model) -> 'Collection':
         collection = getattr(model.Meta, 'mongo_collection', None)
         if collection is not None:
             return collection
 
-        db = getattr(model.Meta, 'mongo_database', self._db)
-        assert db is not None, (
-            'Mongo database must be set either to model`s '
-            'Meta or to PynamoDBToPymongoAdapter'
-        )
+        db = self.get_database(model)
         col = db.get_collection(model.Meta.table_name)
         setattr(model.Meta, 'mongo_collection', col)
         return col

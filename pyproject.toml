@@ -28,6 +28,14 @@ dependencies = [
     "cachetools~=5.5.1",
 ]
 
+[dependency-groups]
+test = [
+    "pytest>=8.3.2",
+    "mongomock>=4",
+    "pytest-xdist>=3.6.1",
+]
+
+
 [project.urls]
 Homepage = "https://github.com/epam/modular-sdk"
 Documentation = "https://github.com/epam/modular-sdk/blob/main/README.md"
@@ -45,10 +53,6 @@ namespaces = false
 [project.optional-dependencies]
 cryptography = [
     "cryptography~=43.0.3",
-]
-test = [
-    "pytest>=8.3.2",
-    "mongomock>=4",
 ]
 
 
