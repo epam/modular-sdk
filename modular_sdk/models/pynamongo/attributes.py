@@ -148,7 +148,7 @@ class DynamicAttribute(Attribute[Any]):
             raise NotImplementedError(
                 f'{type(value).__name__} is not supported for DynamicAttribute'
             )
-        self.attr_type = attr.attr_type
+        self.attr_type = attr.attr_type  # shared state, not thread-safe
         return attr.serialize(value)
 
     def deserialize(self, value: tuple[str, Any]) -> Any:
