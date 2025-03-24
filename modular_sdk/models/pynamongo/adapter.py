@@ -141,6 +141,10 @@ class PynamoDBToPymongoAdapter:
     def __init__(self, db: 'Database | None' = None):
         self._db = db
 
+    @property
+    def mongo_database(self) -> 'Database | None':
+        return self._db
+
     def get_database(self, model: type[Model] | Model) -> 'Database':
         db = getattr(model.Meta, 'mongo_database', self._db)
         assert db is not None, (

@@ -111,7 +111,9 @@ class IndexesExtractor:
             keys.append((r, self._ro))
         return IndexModel(keys=keys, name=self._pin, unique=unique)
 
-    def get_ttl(self, model: type['Model'], /, *, index_name: str | None = None) -> IndexModel | None:
+    def get_ttl(
+        self, model: type['Model'], /, *, index_name: str | None = None
+    ) -> IndexModel | None:
         ttl = None
         for attr in model.get_attributes().values():
             if isinstance(attr, TTLAttribute):
@@ -122,9 +124,7 @@ class IndexesExtractor:
         # NOTE: expireAfterSeconds is 0 to mock DynamoDB's behaviour, that is the document is considered expired
         # immediately when date of attribute's value is reached
         return IndexModel(
-            keys=ttl.attr_name,
-            name=index_name,
-            expireAfterSeconds=0
+            keys=ttl.attr_name, name=index_name, expireAfterSeconds=0
         )
 
     def iter_indexes(
@@ -207,7 +207,11 @@ def ensure_indexes(
         ),
     ):
         if existing is not None:
-            _LOG.warning(
+            if index.document['name'] == existing.document['name']:
+                _log = _LOG.info
+            else:
+                _log = _LOG.warning
+            _log(
                 f'Index: "{index.document["name"]}" won`t be created '
                 f'because there is another one called '
                 f'"{existing.document["name"]}" with the '
@@ -219,7 +223,9 @@ def ensure_indexes(
         _LOG.info('No indexes need to be created')
         return
 
-    _LOG.info(f'Going to create indexes: {", ".join(i.document["name"] for i in to_create)}')
+    _LOG.info(
+        f'Going to create indexes: {", ".join(i.document["name"] for i in to_create)}'
+    )
     try:
         collection.create_indexes(to_create, **kwargs)
     except OperationFailure:
@@ -241,7 +247,13 @@ class IndexesCreator:
         self._adapter = PynamoDBToPymongoAdapter(db)
 
     def ensure(
-        self, model: type['Model'], /, *, table_name: str | None = None
+        self,
+        model: type['Model'],
+        /,
+        *,
+        table_name: str | None = None,
+        hash_key_order: int = pymongo.ASCENDING,
+        range_key_order: int = pymongo.DESCENDING,
     ) -> None:
         """
         Creates missing indexes, but does not touch ones we do not know about
@@ -253,9 +265,11 @@ class IndexesCreator:
         else:
             collection = self._adapter.get_collection(model)
 
+        extractor = IndexesExtractor(
+            hash_key_order=hash_key_order, range_key_order=range_key_order
+        )
         ensure_indexes(
-            indexes=IndexesExtractor().iter_all_indexes(model),
-            collection=collection,
+            indexes=extractor.iter_all_indexes(model), collection=collection
         )
 
     def sync(
@@ -265,6 +279,8 @@ class IndexesCreator:
         *,
         table_name: str | None = None,
         always_keep: tuple[str, ...] = ('_id_',),
+        hash_key_order: int = pymongo.ASCENDING,
+        range_key_order: int = pymongo.DESCENDING,
     ) -> None:
         """
         Makes sure that existing mongo indexes correspond to those defined in code using PynamoDB models meaning
@@ -276,8 +292,11 @@ class IndexesCreator:
             )
         else:
             collection = self._adapter.get_collection(model)
+        extractor = IndexesExtractor(
+            hash_key_order=hash_key_order, range_key_order=range_key_order
+        )
 
-        needed = tuple(IndexesExtractor().iter_all_indexes(model))
+        needed = tuple(extractor.iter_all_indexes(model))
         info = collection.index_information()
         for name in always_keep:
             info.pop(name, None)
@@ -287,7 +306,11 @@ class IndexesCreator:
         to_drop = []
         for defined, created in iter_comparing(needed, existing):
             if created is not None:
-                _LOG.warning(
+                if defined.document['name'] == created.document['name']:
+                    _log = _LOG.info
+                else:
+                    _log = _LOG.warning
+                _log(
                     f'Index: "{defined.document["name"]}" won`t be created '
                     f'because there is another one called '
                     f'"{created.document["name"]}" with the '
@@ -312,7 +335,9 @@ class IndexesCreator:
             _LOG.info('No indexes need to be created')
             return
 
-        _LOG.info(f'Going to create indexes: {", ".join(i.document["name"] for i in to_create)}')
+        _LOG.info(
+            f'Going to create indexes: {", ".join(i.document["name"] for i in to_create)}'
+        )
         try:
             collection.create_indexes(to_create)
         except OperationFailure:
