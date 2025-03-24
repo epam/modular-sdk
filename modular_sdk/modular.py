@@ -1,41 +1,20 @@
 import os
 
 from modular_sdk.commons import SingletonMeta, validate_params_combinations
-from modular_sdk.commons.constants import SERVICE_MODE_DOCKER, \
-    MODULAR_SERVICE_MODE_ENV, \
-    PARAM_MONGO_DB_NAME, PARAM_MONGO_URL, PARAM_MONGO_PASSWORD, \
-    PARAM_MONGO_USER, PARAM_ASSUME_ROLE_ARN, SERVICE_MODE_SAAS, \
-    ASSUMES_ROLE_SESSION_NAME, MODULAR_AWS_ACCESS_KEY_ID_ENV, \
-    MODULAR_AWS_SECRET_ACCESS_KEY_ENV, MODULAR_AWS_SESSION_TOKEN_ENV, \
-    MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV, PARAM_MONGO_URI
-from modular_sdk.services.impl.maestro_http_transport_service import \
-    MaestroHTTPConfig
+from modular_sdk.commons.constants import (
+    SERVICE_MODE_DOCKER, MODULAR_SERVICE_MODE_ENV, PARAM_MONGO_DB_NAME,
+    PARAM_MONGO_URL, PARAM_MONGO_PASSWORD, PARAM_MONGO_USER,
+    PARAM_ASSUME_ROLE_ARN, SERVICE_MODE_SAAS, ASSUMES_ROLE_SESSION_NAME,
+    MODULAR_AWS_ACCESS_KEY_ID_ENV, MODULAR_AWS_SECRET_ACCESS_KEY_ENV,
+    MODULAR_AWS_SESSION_TOKEN_ENV, MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV,
+    PARAM_MONGO_URI,
+)
+from modular_sdk.services.impl.maestro_http_transport_service import (
+    MaestroHTTPConfig,
+)
 
 
-class Modular(metaclass=SingletonMeta):
-    # services
-    __rabbit_conn = None
-    __environment_service = None
-    __customer_service = None
-    __application_service = None
-    __parent_service = None
-    __region_service = None
-    __tenant_service = None
-    __tenant_settings_service = None
-    __customer_settings_service = None
-    __sts_service = None
-    __sqs_service = None
-    __lambda_service = None
-    __events_service = None
-    __rabbit_transport_service = None
-    __http_transport_service = None
-    __settings_service = None
-    __instantiated_setting_group = []
-    __credentials_service = None
-    __thread_local_storage_service = None
-
-    __ssm_service = None
-    __assume_role_ssm_service = None
+class Modular(ModularSP, metaclass=SingletonMeta):
 
     def __init__(self, *args, **kwargs):
         kwargs = self.__collect_kwargs(kwargs)
@@ -104,6 +83,32 @@ class Modular(metaclass=SingletonMeta):
         if not kwargs.get(MODULAR_SERVICE_MODE_ENV):
             kwargs[MODULAR_SERVICE_MODE_ENV] = SERVICE_MODE_SAAS
         return kwargs
+
+
+class ModularSP(metaclass=SingletonMeta):
+    # services
+    __rabbit_conn = None
+    __environment_service = None
+    __customer_service = None
+    __application_service = None
+    __parent_service = None
+    __region_service = None
+    __tenant_service = None
+    __tenant_settings_service = None
+    __customer_settings_service = None
+    __sts_service = None
+    __sqs_service = None
+    __lambda_service = None
+    __events_service = None
+    __rabbit_transport_service = None
+    __http_transport_service = None
+    __settings_service = None
+    __instantiated_setting_group = []
+    __credentials_service = None
+    __thread_local_storage_service = None
+
+    __ssm_service = None
+    __assume_role_ssm_service = None
 
     def __str__(self):
         return str(id(self))
