@@ -14,77 +14,6 @@ from modular_sdk.services.impl.maestro_http_transport_service import (
 )
 
 
-class Modular(ModularSP, metaclass=SingletonMeta):
-
-    def __init__(self, *args, **kwargs):
-        kwargs = self.__collect_kwargs(kwargs)
-
-        service_mode = kwargs.get(MODULAR_SERVICE_MODE_ENV, SERVICE_MODE_SAAS)
-        assume_role_arn = kwargs.get(
-            PARAM_ASSUME_ROLE_ARN)
-        if service_mode == SERVICE_MODE_SAAS and assume_role_arn:
-            sts_service = self.sts_service()
-            assumed_credentials = sts_service.assume_roles_chain(
-                list(sts_service.assume_roles_default_payloads(
-                    assume_role_arn.split(','),
-                    ASSUMES_ROLE_SESSION_NAME
-                ))
-            )
-            os.environ[MODULAR_AWS_ACCESS_KEY_ID_ENV] = assumed_credentials[
-                'aws_access_key_id']
-            os.environ[MODULAR_AWS_SECRET_ACCESS_KEY_ENV] = \
-                assumed_credentials['aws_secret_access_key']
-            os.environ[MODULAR_AWS_SESSION_TOKEN_ENV] = assumed_credentials[
-                'aws_session_token']
-            os.environ[MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV] = \
-                assumed_credentials['expiration'].isoformat()
-            os.environ[PARAM_ASSUME_ROLE_ARN] = assume_role_arn
-        elif service_mode == SERVICE_MODE_DOCKER:
-            required_mongodb_uri_attrs = (
-                MODULAR_SERVICE_MODE_ENV, PARAM_MONGO_DB_NAME, PARAM_MONGO_URI,
-            )
-            required_mongodb_details_attrs = (
-                MODULAR_SERVICE_MODE_ENV, PARAM_MONGO_USER, PARAM_MONGO_PASSWORD,
-                PARAM_MONGO_URL, PARAM_MONGO_DB_NAME,
-            )
-            required_mongodb_attrs = validate_params_combinations(
-                event=kwargs,
-                required_params_lists=[
-                    required_mongodb_uri_attrs,
-                    required_mongodb_details_attrs,
-                ],
-            )
-
-            for attr in required_mongodb_attrs:
-                os.environ[attr] = kwargs.get(attr)
-
-    @staticmethod
-    def __collect_kwargs(kwargs):
-        """
-        PARAM_ASSUME_ROLE_ARN is string, but it can contain multiple
-        roles divided by ',', hence:
-        TODO, in case kwargs are given, we should expect
-         modular_assume_role_arn to be a list. Or, better, use
-         environment_service here instead of os.environ. ES already
-         converts values.
-        :param kwargs:
-        :return:
-        """
-        allowed_attrs = (
-            MODULAR_SERVICE_MODE_ENV, PARAM_MONGO_USER, PARAM_MONGO_PASSWORD,
-            PARAM_MONGO_URL, PARAM_MONGO_DB_NAME, PARAM_ASSUME_ROLE_ARN,
-            PARAM_MONGO_URI,
-        )
-        kwargs = {k: v for k, v in kwargs.items() if k in allowed_attrs}
-
-        for attr in allowed_attrs:
-            if attr not in kwargs and attr in os.environ:
-                kwargs[attr] = os.environ.get(attr)
-        if not kwargs.get(MODULAR_SERVICE_MODE_ENV):
-            kwargs[MODULAR_SERVICE_MODE_ENV] = SERVICE_MODE_SAAS
-        return kwargs
-
-
 class ModularSP(metaclass=SingletonMeta):
     # services
     __rabbit_conn = None
@@ -309,3 +238,74 @@ class ModularSP(metaclass=SingletonMeta):
                 f'service {private_service_name} exists amongst the '
                 f'private attributes')
         setattr(self, private_service_name, None)
+
+
+class Modular(ModularSP, metaclass=SingletonMeta):
+
+    def __init__(self, *args, **kwargs):
+        kwargs = self.__collect_kwargs(kwargs)
+
+        service_mode = kwargs.get(MODULAR_SERVICE_MODE_ENV, SERVICE_MODE_SAAS)
+        assume_role_arn = kwargs.get(
+            PARAM_ASSUME_ROLE_ARN)
+        if service_mode == SERVICE_MODE_SAAS and assume_role_arn:
+            sts_service = self.sts_service()
+            assumed_credentials = sts_service.assume_roles_chain(
+                list(sts_service.assume_roles_default_payloads(
+                    assume_role_arn.split(','),
+                    ASSUMES_ROLE_SESSION_NAME
+                ))
+            )
+            os.environ[MODULAR_AWS_ACCESS_KEY_ID_ENV] = assumed_credentials[
+                'aws_access_key_id']
+            os.environ[MODULAR_AWS_SECRET_ACCESS_KEY_ENV] = \
+                assumed_credentials['aws_secret_access_key']
+            os.environ[MODULAR_AWS_SESSION_TOKEN_ENV] = assumed_credentials[
+                'aws_session_token']
+            os.environ[MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV] = \
+                assumed_credentials['expiration'].isoformat()
+            os.environ[PARAM_ASSUME_ROLE_ARN] = assume_role_arn
+        elif service_mode == SERVICE_MODE_DOCKER:
+            required_mongodb_uri_attrs = (
+                MODULAR_SERVICE_MODE_ENV, PARAM_MONGO_DB_NAME, PARAM_MONGO_URI,
+            )
+            required_mongodb_details_attrs = (
+                MODULAR_SERVICE_MODE_ENV, PARAM_MONGO_USER, PARAM_MONGO_PASSWORD,
+                PARAM_MONGO_URL, PARAM_MONGO_DB_NAME,
+            )
+            required_mongodb_attrs = validate_params_combinations(
+                event=kwargs,
+                required_params_lists=[
+                    required_mongodb_uri_attrs,
+                    required_mongodb_details_attrs,
+                ],
+            )
+
+            for attr in required_mongodb_attrs:
+                os.environ[attr] = kwargs.get(attr)
+
+    @staticmethod
+    def __collect_kwargs(kwargs):
+        """
+        PARAM_ASSUME_ROLE_ARN is string, but it can contain multiple
+        roles divided by ',', hence:
+        TODO, in case kwargs are given, we should expect
+         modular_assume_role_arn to be a list. Or, better, use
+         environment_service here instead of os.environ. ES already
+         converts values.
+        :param kwargs:
+        :return:
+        """
+        allowed_attrs = (
+            MODULAR_SERVICE_MODE_ENV, PARAM_MONGO_USER, PARAM_MONGO_PASSWORD,
+            PARAM_MONGO_URL, PARAM_MONGO_DB_NAME, PARAM_ASSUME_ROLE_ARN,
+            PARAM_MONGO_URI,
+        )
+        kwargs = {k: v for k, v in kwargs.items() if k in allowed_attrs}
+
+        for attr in allowed_attrs:
+            if attr not in kwargs and attr in os.environ:
+                kwargs[attr] = os.environ.get(attr)
+        if not kwargs.get(MODULAR_SERVICE_MODE_ENV):
+            kwargs[MODULAR_SERVICE_MODE_ENV] = SERVICE_MODE_SAAS
+        return kwargs
