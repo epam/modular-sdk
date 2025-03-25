@@ -26,6 +26,7 @@ from pynamodb.settings import OperationSettings
 from modular_sdk.commons.constants import (
     MODULAR_SERVICE_MODE_ENV, SERVICE_MODE_DOCKER, PARAM_MONGO_USER,
     PARAM_MONGO_PASSWORD, PARAM_MONGO_URL, PARAM_MONGO_DB_NAME, PARAM_MONGO_URI,
+    PARAM_MONGO_SRV,
 )
 from modular_sdk.commons.helpers import classproperty
 from modular_sdk.commons.log_helper import get_logger
@@ -34,11 +35,16 @@ from modular_sdk.commons.time_helper import utc_iso
 _LOG = get_logger(__name__)
 
 
-def build_mongodb_uri(user: str, password: str, url: str) -> str:
+def build_mongodb_uri(
+        user: str,
+        password: str,
+        url: str,
+        srv: bool = False,
+) -> str:
     """
     Just makes the right formatting
     """
-    return f'mongodb://{user}:{password}@{url}/'
+    return f'mongodb{"+srv" if srv else ""}://{user}:{password}@{url}/'
 
 
 class M3BooleanAttribute(BooleanAttribute):
@@ -194,9 +200,12 @@ class ModularMongoDBHandlerMixin(ABCMongoDBHandlerMixin):
             user = os.environ.get(PARAM_MONGO_USER)
             password = os.environ.get(PARAM_MONGO_PASSWORD)
             url = os.environ.get(PARAM_MONGO_URL)
+            srv = os.environ.get(PARAM_MONGO_SRV)
+            srv = True if srv and srv.lower() in ('true', 't', 'y', 'yes') \
+                else False
             uri = os.environ.get(PARAM_MONGO_URI)
             db = os.environ.get(PARAM_MONGO_DB_NAME)
-            uri = uri or build_mongodb_uri(user, password, url)
+            uri = uri or build_mongodb_uri(user, password, url, srv)
             cls._mongodb = PynamoDBToPyMongoAdapter(
                 mongodb_connection=MongoDBConnection(uri, db)
             )
