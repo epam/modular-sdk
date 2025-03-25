@@ -69,3 +69,12 @@ executionEnvironments = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 79
+src = ["src", "tests"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+skip-magic-trailing-comma = true

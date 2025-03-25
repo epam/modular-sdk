@@ -18,6 +18,8 @@ from modular_sdk.commons.constants import (
     PARAM_MONGO_USER,
     SERVICE_MODE_DOCKER,
     SERVICE_MODE_SAAS,
+    Env,
+    SecretsBackend
 )
 
 if TYPE_CHECKING:
@@ -249,12 +251,16 @@ class ModularServiceProvider(metaclass=SingletonMeta):
                 VaultSSMClient,
             )
 
-            if self.environment_service().is_docker():
+            backend = Env.SECRETS_BACKEND.get()
+
+            if backend == SecretsBackend.VAULT:
                 self.__ssm_service = VaultSSMClient()
-            else:
+            elif backend == SecretsBackend.SSM:
                 self.__ssm_service = SSMService(
                     aws_region=self.environment_service().aws_region()
                 )
+            else:
+                raise RuntimeError(f'Unknown secrets backend type: {backend}')
             self.__ssm_service = SSMClientCachingWrapper(
                 client=self.__ssm_service,
                 environment_service=self.environment_service(),
@@ -269,10 +275,14 @@ class ModularServiceProvider(metaclass=SingletonMeta):
                 VaultSSMClient,
             )
 
-            if self.environment_service().is_docker():
+            backend = Env.SECRETS_BACKEND.get()
+
+            if backend == SecretsBackend.VAULT:
                 self.__assume_role_ssm_service = VaultSSMClient()
-            else:
+            elif backend == SecretsBackend.SSM:
                 self.__assume_role_ssm_service = ModularAssumeRoleSSMService()
+            else:
+                raise RuntimeError(f'Unknown secrets backend type: {backend}')
             self.__assume_role_ssm_service = SSMClientCachingWrapper(
                 client=self.__assume_role_ssm_service,
                 environment_service=self.environment_service(),
