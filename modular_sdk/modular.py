@@ -1,20 +1,58 @@
 import os
+from typing import TYPE_CHECKING
 
 from modular_sdk.commons import SingletonMeta, validate_params_combinations
 from modular_sdk.commons.constants import (
-    SERVICE_MODE_DOCKER, MODULAR_SERVICE_MODE_ENV, PARAM_MONGO_DB_NAME,
-    PARAM_MONGO_URL, PARAM_MONGO_PASSWORD, PARAM_MONGO_USER,
-    PARAM_ASSUME_ROLE_ARN, SERVICE_MODE_SAAS, ASSUMES_ROLE_SESSION_NAME,
-    MODULAR_AWS_ACCESS_KEY_ID_ENV, MODULAR_AWS_SECRET_ACCESS_KEY_ENV,
-    MODULAR_AWS_SESSION_TOKEN_ENV, MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV,
+    ASSUMES_ROLE_SESSION_NAME,
+    MODULAR_AWS_ACCESS_KEY_ID_ENV,
+    MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV,
+    MODULAR_AWS_SECRET_ACCESS_KEY_ENV,
+    MODULAR_AWS_SESSION_TOKEN_ENV,
+    MODULAR_SERVICE_MODE_ENV,
+    PARAM_ASSUME_ROLE_ARN,
+    PARAM_MONGO_DB_NAME,
+    PARAM_MONGO_PASSWORD,
     PARAM_MONGO_URI,
-)
-from modular_sdk.services.impl.maestro_http_transport_service import (
-    MaestroHTTPConfig,
+    PARAM_MONGO_URL,
+    PARAM_MONGO_USER,
+    SERVICE_MODE_DOCKER,
+    SERVICE_MODE_SAAS,
 )
 
+if TYPE_CHECKING:
+    from modular_sdk.connections.rabbit_connection import RabbitMqConnection
+    from modular_sdk.services.application_service import ApplicationService
+    from modular_sdk.services.customer_service import CustomerService
+    from modular_sdk.services.customer_settings_service import CustomerSettingsService
+    from modular_sdk.services.environment_service import EnvironmentService
+    from modular_sdk.services.events_service import EventsService
+    from modular_sdk.services.impl.maestro_credentials_service import (
+        MaestroCredentialsService,
+    )
+    from modular_sdk.services.impl.maestro_http_transport_service import (
+        MaestroHTTPConfig,
+        MaestroHTTPTransport,
+    )
+    from modular_sdk.services.impl.maestro_rabbit_transport_service import (
+        MaestroRabbitMQTransport,
+    )
+    from modular_sdk.services.lambda_service import LambdaService
+    from modular_sdk.services.parent_service import ParentService
+    from modular_sdk.services.region_service import RegionService
+    from modular_sdk.services.settings_management_service import (
+        SettingsManagementService,
+    )
+    from modular_sdk.services.sqs_service import SQSService
+    from modular_sdk.services.ssm_service import SSMClientCachingWrapper
+    from modular_sdk.services.sts_service import StsService
+    from modular_sdk.services.tenant_service import TenantService
+    from modular_sdk.services.tenant_settings_service import TenantSettingsService
+    from modular_sdk.services.thread_local_storage_service import (
+        ThreadLocalStorageService,
+    )
 
-class ModularSP(metaclass=SingletonMeta):
+
+class ModularServiceProvider(metaclass=SingletonMeta):
     # services
     __rabbit_conn = None
     __environment_service = None
@@ -42,150 +80,174 @@ class ModularSP(metaclass=SingletonMeta):
     def __str__(self):
         return str(id(self))
 
-    def environment_service(self):
+    def environment_service(self) -> "EnvironmentService":
         if not self.__environment_service:
-            from modular_sdk.services.environment_service import \
-                EnvironmentService
+            from modular_sdk.services.environment_service import EnvironmentService
+
             self.__environment_service = EnvironmentService()
         return self.__environment_service
 
-    def application_service(self):
+    def application_service(self) -> "ApplicationService":
         if not self.__application_service:
-            from modular_sdk.services.application_service import \
-                ApplicationService
+            from modular_sdk.services.application_service import ApplicationService
+
             self.__application_service = ApplicationService(
                 customer_service=self.customer_service()
             )
         return self.__application_service
 
-    def customer_service(self):
+    def customer_service(self) -> "CustomerService":
         if not self.__customer_service:
             from modular_sdk.services.customer_service import CustomerService
+
             self.__customer_service = CustomerService()
         return self.__customer_service
 
-    def parent_service(self):
+    def parent_service(self) -> "ParentService":
         if not self.__parent_service:
             from modular_sdk.services.parent_service import ParentService
+
             self.__parent_service = ParentService(
                 tenant_service=self.tenant_service(),
-                customer_service=self.customer_service()
+                customer_service=self.customer_service(),
             )
         return self.__parent_service
 
-    def region_service(self):
+    def region_service(self) -> "RegionService":
         if not self.__region_service:
             from modular_sdk.services.region_service import RegionService
-            self.__region_service = RegionService(
-                tenant_service=self.tenant_service()
-            )
+
+            self.__region_service = RegionService(tenant_service=self.tenant_service())
         return self.__region_service
 
-    def tenant_service(self):
+    def tenant_service(self) -> "TenantService":
         if not self.__tenant_service:
             from modular_sdk.services.tenant_service import TenantService
+
             self.__tenant_service = TenantService()
         return self.__tenant_service
 
-    def tenant_settings_service(self):
+    def tenant_settings_service(self) -> "TenantSettingsService":
         if not self.__tenant_settings_service:
-            from modular_sdk.services.tenant_settings_service import \
-                TenantSettingsService
+            from modular_sdk.services.tenant_settings_service import (
+                TenantSettingsService,
+            )
+
             self.__tenant_settings_service = TenantSettingsService()
         return self.__tenant_settings_service
 
-    def customer_settings_service(self):
+    def customer_settings_service(self) -> "CustomerSettingsService":
         if not self.__customer_settings_service:
-            from modular_sdk.services.customer_settings_service import \
-                CustomerSettingsService
+            from modular_sdk.services.customer_settings_service import (
+                CustomerSettingsService,
+            )
+
             self.__customer_settings_service = CustomerSettingsService()
         return self.__customer_settings_service
 
-    def sts_service(self):
+    def sts_service(self) -> "StsService":
         if not self.__sts_service:
             from modular_sdk.services.sts_service import StsService
+
             self.__sts_service = StsService(
                 environment_service=self.environment_service(),
-                aws_region=self.environment_service().aws_region())
+                aws_region=self.environment_service().aws_region(),
+            )
         return self.__sts_service
 
-    def sqs_service(self):
+    def sqs_service(self) -> "SQSService":
         if not self.__sqs_service:
             from modular_sdk.services.sqs_service import SQSService
+
             self.__sqs_service = SQSService(
                 aws_region=self.environment_service().aws_region(),
-                environment_service=self.environment_service()
+                environment_service=self.environment_service(),
             )
         return self.__sqs_service
 
-    def lambda_service(self):
+    def lambda_service(self) -> "LambdaService":
         if not self.__lambda_service:
             from modular_sdk.services.lambda_service import LambdaService
+
             self.__lambda_service = LambdaService(
-                aws_region=self.environment_service().aws_region())
+                aws_region=self.environment_service().aws_region()
+            )
         return self.__lambda_service
 
-    def events_service(self):
+    def events_service(self) -> "EventsService":
         if not self.__events_service:
             from modular_sdk.services.events_service import EventsService
+
             self.__events_service = EventsService(
-                aws_region=self.environment_service().aws_region())
+                aws_region=self.environment_service().aws_region()
+            )
         return self.__events_service
 
-    def rabbit(self, connection_url, timeout=None, refresh=False):
+    def rabbit(
+        self, connection_url, timeout=None, refresh=False
+    ) -> "RabbitMqConnection":
         if not self.__rabbit_conn or refresh:
-            from modular_sdk.connections.rabbit_connection import \
-                RabbitMqConnection
+            from modular_sdk.connections.rabbit_connection import RabbitMqConnection
+
             self.__rabbit_conn = RabbitMqConnection(
-                connection_url=connection_url,
-                timeout=timeout
+                connection_url=connection_url, timeout=timeout
             )
         return self.__rabbit_conn
 
-    def rabbit_transport_service(self, connection_url, config,
-                                 timeout=None):
+    def rabbit_transport_service(
+        self, connection_url, config, timeout=None
+    ) -> "MaestroRabbitMQTransport":
         if not self.__rabbit_transport_service:
-            from modular_sdk.services.impl.maestro_rabbit_transport_service import \
-                MaestroRabbitMQTransport
+            from modular_sdk.services.impl.maestro_rabbit_transport_service import (
+                MaestroRabbitMQTransport,
+            )
+
             rabbit_connection = self.rabbit(
-                connection_url=connection_url,
-                timeout=timeout,
-                refresh=True
+                connection_url=connection_url, timeout=timeout, refresh=True
             )
             self.__rabbit_transport_service = MaestroRabbitMQTransport(
-                rabbit_connection=rabbit_connection,
-                config=config
+                rabbit_connection=rabbit_connection, config=config
             )
         return self.__rabbit_transport_service
 
     def http_transport_service(
-            self,
-            api_link: str,
-            config: MaestroHTTPConfig,
-            timeout: int | None = None,
-    ):
+        self,
+        api_link: str,
+        config: "MaestroHTTPConfig",
+        timeout: int | None = None,
+    ) -> "MaestroHTTPTransport":
         if not self.__http_transport_service:
-            from modular_sdk.services.impl.maestro_http_transport_service import \
-                MaestroHTTPTransport
+            from modular_sdk.services.impl.maestro_http_transport_service import (
+                MaestroHTTPTransport,
+            )
+
             self.__http_transport_service = MaestroHTTPTransport(
-                config=config, api_link=api_link, timeout=timeout,
+                config=config,
+                api_link=api_link,
+                timeout=timeout,
             )
         return self.__http_transport_service
 
-    def settings_service(self, group_name):
-        if not self.__settings_service or \
-                group_name not in self.__instantiated_setting_group:
-            from modular_sdk.services.settings_management_service import \
-                SettingsManagementService
-            self.__settings_service = SettingsManagementService(
-                group_name=group_name
+    def settings_service(self, group_name) -> "SettingsManagementService":
+        if (
+            not self.__settings_service
+            or group_name not in self.__instantiated_setting_group
+        ):
+            from modular_sdk.services.settings_management_service import (
+                SettingsManagementService,
             )
+
+            self.__settings_service = SettingsManagementService(group_name=group_name)
         return self.__settings_service
 
-    def ssm_service(self):
+    def ssm_service(self) -> "SSMClientCachingWrapper":
         if not self.__ssm_service:
-            from modular_sdk.services.ssm_service import VaultSSMClient, \
-                SSMService, SSMClientCachingWrapper
+            from modular_sdk.services.ssm_service import (
+                SSMClientCachingWrapper,
+                SSMService,
+                VaultSSMClient,
+            )
+
             if self.environment_service().is_docker():
                 self.__ssm_service = VaultSSMClient()
             else:
@@ -194,84 +256,102 @@ class ModularSP(metaclass=SingletonMeta):
                 )
             self.__ssm_service = SSMClientCachingWrapper(
                 client=self.__ssm_service,
-                environment_service=self.environment_service()
+                environment_service=self.environment_service(),
             )
         return self.__ssm_service
 
-    def assume_role_ssm_service(self):
+    def assume_role_ssm_service(self) -> "SSMClientCachingWrapper":
         if not self.__assume_role_ssm_service:
-            from modular_sdk.services.ssm_service import VaultSSMClient, \
-                ModularAssumeRoleSSMService, SSMClientCachingWrapper
+            from modular_sdk.services.ssm_service import (
+                ModularAssumeRoleSSMService,
+                SSMClientCachingWrapper,
+                VaultSSMClient,
+            )
+
             if self.environment_service().is_docker():
                 self.__assume_role_ssm_service = VaultSSMClient()
             else:
                 self.__assume_role_ssm_service = ModularAssumeRoleSSMService()
             self.__assume_role_ssm_service = SSMClientCachingWrapper(
                 client=self.__assume_role_ssm_service,
-                environment_service=self.environment_service()
+                environment_service=self.environment_service(),
             )
         return self.__assume_role_ssm_service
 
-    def maestro_credentials_service(self):
+    def maestro_credentials_service(self) -> "MaestroCredentialsService":
         if not self.__credentials_service:
-            from modular_sdk.services.impl.maestro_credentials_service import \
-                MaestroCredentialsService
-            self.__credentials_service = \
-                MaestroCredentialsService.build()
+            from modular_sdk.services.impl.maestro_credentials_service import (
+                MaestroCredentialsService,
+            )
+
+            self.__credentials_service = MaestroCredentialsService.build()
         return self.__credentials_service
 
-    def thread_local_storage_service(self):
+    def thread_local_storage_service(self) -> "ThreadLocalStorageService":
         if not self.__thread_local_storage_service:
-            from modular_sdk.services.thread_local_storage_service \
-                import ThreadLocalStorageService
+            from modular_sdk.services.thread_local_storage_service import (
+                ThreadLocalStorageService,
+            )
+
             self.__thread_local_storage_service = ThreadLocalStorageService()
         return self.__thread_local_storage_service
 
     def reset(self, service: str):
-        """Removes the saved instance of the service. It is useful,
+        """
+        Removes the saved instance of the service. It is useful,
         for example, in case of gitlab service - when we want to use
-        different rule-sources configurations"""
-        private_service_name = f'_MODULAR__{service}'
+        different rule-sources configurations
+        """
+        private_service_name = f"_ModularServiceProvider__{service}"
         if not hasattr(self, private_service_name):
             raise AssertionError(
-                f'In case you are using this method, make sure your '
-                f'service {private_service_name} exists amongst the '
-                f'private attributes')
+                f"In case you are using this method, make sure your "
+                f"service {private_service_name} exists amongst the "
+                f"private attributes"
+            )
         setattr(self, private_service_name, None)
 
 
-class Modular(ModularSP, metaclass=SingletonMeta):
-
+class Modular(ModularServiceProvider, metaclass=SingletonMeta):
     def __init__(self, *args, **kwargs):
         kwargs = self.__collect_kwargs(kwargs)
 
         service_mode = kwargs.get(MODULAR_SERVICE_MODE_ENV, SERVICE_MODE_SAAS)
-        assume_role_arn = kwargs.get(
-            PARAM_ASSUME_ROLE_ARN)
+        assume_role_arn = kwargs.get(PARAM_ASSUME_ROLE_ARN)
         if service_mode == SERVICE_MODE_SAAS and assume_role_arn:
             sts_service = self.sts_service()
             assumed_credentials = sts_service.assume_roles_chain(
-                list(sts_service.assume_roles_default_payloads(
-                    assume_role_arn.split(','),
-                    ASSUMES_ROLE_SESSION_NAME
-                ))
+                list(
+                    sts_service.assume_roles_default_payloads(
+                        assume_role_arn.split(","), ASSUMES_ROLE_SESSION_NAME
+                    )
+                )
             )
             os.environ[MODULAR_AWS_ACCESS_KEY_ID_ENV] = assumed_credentials[
-                'aws_access_key_id']
-            os.environ[MODULAR_AWS_SECRET_ACCESS_KEY_ENV] = \
-                assumed_credentials['aws_secret_access_key']
+                "aws_access_key_id"
+            ]
+            os.environ[MODULAR_AWS_SECRET_ACCESS_KEY_ENV] = assumed_credentials[
+                "aws_secret_access_key"
+            ]
             os.environ[MODULAR_AWS_SESSION_TOKEN_ENV] = assumed_credentials[
-                'aws_session_token']
-            os.environ[MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV] = \
-                assumed_credentials['expiration'].isoformat()
+                "aws_session_token"
+            ]
+            os.environ[MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV] = assumed_credentials[
+                "expiration"
+            ].isoformat()
             os.environ[PARAM_ASSUME_ROLE_ARN] = assume_role_arn
         elif service_mode == SERVICE_MODE_DOCKER:
             required_mongodb_uri_attrs = (
-                MODULAR_SERVICE_MODE_ENV, PARAM_MONGO_DB_NAME, PARAM_MONGO_URI,
+                MODULAR_SERVICE_MODE_ENV,
+                PARAM_MONGO_DB_NAME,
+                PARAM_MONGO_URI,
             )
             required_mongodb_details_attrs = (
-                MODULAR_SERVICE_MODE_ENV, PARAM_MONGO_USER, PARAM_MONGO_PASSWORD,
-                PARAM_MONGO_URL, PARAM_MONGO_DB_NAME,
+                MODULAR_SERVICE_MODE_ENV,
+                PARAM_MONGO_USER,
+                PARAM_MONGO_PASSWORD,
+                PARAM_MONGO_URL,
+                PARAM_MONGO_DB_NAME,
             )
             required_mongodb_attrs = validate_params_combinations(
                 event=kwargs,
@@ -297,8 +377,12 @@ class Modular(ModularSP, metaclass=SingletonMeta):
         :return:
         """
         allowed_attrs = (
-            MODULAR_SERVICE_MODE_ENV, PARAM_MONGO_USER, PARAM_MONGO_PASSWORD,
-            PARAM_MONGO_URL, PARAM_MONGO_DB_NAME, PARAM_ASSUME_ROLE_ARN,
+            MODULAR_SERVICE_MODE_ENV,
+            PARAM_MONGO_USER,
+            PARAM_MONGO_PASSWORD,
+            PARAM_MONGO_URL,
+            PARAM_MONGO_DB_NAME,
+            PARAM_ASSUME_ROLE_ARN,
             PARAM_MONGO_URI,
         )
         kwargs = {k: v for k, v in kwargs.items() if k in allowed_attrs}
