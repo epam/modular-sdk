@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Supported new names starting with `MODULAR_SDK_` for all available envs. 
   Previous envs can also be used though they are deprecated and will be removed
 
+## [6.4.0] - 2025-02-05
+- Support mongodb SRV connection strings with `modular_mongo_srv` env.
+- Add `SEP_SANDBOX_AWS` to the list of supported application types
+
 ## [6.3.2] - 2025-02-11
 [EPMCEOOS-6607]:
 - Add the ability to connect to MongoDB using a `URI` (env `modular_mongo_uri`)
