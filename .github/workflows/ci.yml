@@ -28,6 +28,4 @@ jobs:
     - name: Tests with pytest
       run: |
         pip install uv
-        uv venv
-        uv sync --group=test --all-extras
-        pytest --verbose
+        uv run --all-extras --group=test pytest --verbose
