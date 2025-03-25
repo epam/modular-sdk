@@ -1,6 +1,7 @@
 import os
 from enum import Enum
 from itertools import chain
+from typing import Callable
 
 HTTP_ATTR, HTTPS_ATTR = 'HTTP', 'HTTPS'
 
@@ -12,6 +13,32 @@ class ServiceMode(str, Enum):
     DOCKER = 'docker'
 
 
+class DBBackend(str, Enum):
+    """
+    Type of database backend for models
+    """
+
+    # uses boto credentials or role
+    DYNAMO = 'dynamo'
+
+    # uses mongo uri built from different parameters
+    MONGO = 'mongo'
+
+    def __str__(self):
+        return self.value
+
+
+class SecretsBackend(str, Enum):
+    # uses boto credentials or role
+    SSM = 'ssm'
+
+    # uses token and url from envs
+    VAULT = 'vault'
+
+    def __str__(self):
+        return self.value
+
+
 _SENTINEL = object()
 
 
@@ -20,7 +47,7 @@ class Env(str, Enum):
     Abstract enumeration class for holding environment variables
     """
 
-    default: str | None
+    _default: str | Callable[[type['Env']], str | None] | None
     aliases: tuple[str, ...]
 
     def __new__(
@@ -38,9 +65,20 @@ class Env(str, Enum):
         obj = str.__new__(cls, value)
         obj._value_ = value
 
-        obj.default = default
+        obj._default = default
         obj.aliases = aliases
         return obj
+
+    def __str__(self) -> str:
+        return self.value
+
+    @property
+    def default(self) -> str | None:
+        if self._default is None:
+            return
+        if callable(self._default):
+            return self._default(Env)
+        return self._default
 
     def get(self, default=_SENTINEL) -> str | None:
         # TODO: improve typing
@@ -61,11 +99,14 @@ class Env(str, Enum):
         else:
             os.environ[self.value] = str(val)
 
-    @property
-    def alias(self) -> str | None:
-        if not self.aliases:
+    def discard(self) -> None:
+        os.environ.pop(self.value, None)
+
+    def alias(self, n: int = 0, /) -> str | None:
+        try:
+            return self.aliases[n]
+        except IndexError:
             return
-        return self.aliases[0]
 
     # NOTE: aliases are kept for backward compatibility
     SERVICE_MODE = (
@@ -73,19 +114,34 @@ class Env(str, Enum):
         ('modular_service_mode',),
         'saas',
     )
+    DB_BACKEND = (
+        'MODULAR_SDK_DB_BACKEND',
+        (),
+        lambda cls: DBBackend.DYNAMO
+        if cls.SERVICE_MODE.get() == 'saas'
+        else DBBackend.MONGO,
+    )
+    SECRETS_BACKEND = (
+        'MODULAR_SDK_SECRETS_BACKEND',
+        (),
+        lambda cls: SecretsBackend.SSM
+        if cls.SERVICE_MODE.get() == 'saas'
+        else SecretsBackend.VAULT,
+    )
+
     MONGO_USER = 'MODULAR_SDK_MONGO_USER', ('modular_mongo_user',)
     MONGO_PASSWORD = 'MODULAR_SDK_MONGO_PASSWORD', ('modular_mongo_password',)
     MONGO_URL = (
         'MODULAR_SDK_MONGO_URL',
         ('modular_mongo_url',),
     )  # hostname:port
-    MONGO_SRV = 'MODULAR_SDK_MONGO_SRV', ('modular_mongo_srv', )
+    MONGO_SRV = 'MODULAR_SDK_MONGO_SRV', ('modular_mongo_srv',)
     MONGO_URI = 'MODULAR_SDK_MONGO_URI', ('modular_mongo_uri',)  # full uri
     MONGO_DB_NAME = 'MODULAR_SDK_MONGO_DB_NAME', ('modular_mongo_db_name',)
 
-    VAULT_TOKEN = 'MODULAR_SDK_VAULT_TOKEN', ('VAULT_TOKEN', )
-    VAULT_HOSTNAME = 'MODULAR_SDK_VAULT_HOSTNAME', ('VAULT_URL', )
-    VAULT_PORT = 'MODULAR_SDK_VAULT_PORT', ('VAULT_SERVICE_SERVICE_PORT', )
+    VAULT_TOKEN = 'MODULAR_SDK_VAULT_TOKEN', ('VAULT_TOKEN',)
+    VAULT_HOSTNAME = 'MODULAR_SDK_VAULT_HOSTNAME', ('VAULT_URL',)
+    VAULT_PORT = 'MODULAR_SDK_VAULT_PORT', ('VAULT_SERVICE_SERVICE_PORT',)
     VAULT_URL = 'MODULAR_SDK_VAULT_URL'
 
     ASSUME_ROLE_ARN = (

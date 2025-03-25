@@ -1,10 +1,8 @@
 import json
-import os
 import re
 from abc import ABC, abstractmethod
 from typing import Union, Dict, Optional, List
 
-from botocore.credentials import JSONFileCache
 from botocore.exceptions import ClientError
 from cachetools import TTLCache
 
@@ -50,34 +48,6 @@ class AbstractSSMClient(ABC):
     @abstractmethod
     def delete_parameter(self, name: str) -> bool:
         ...
-
-
-class OnPremSSMClient(AbstractSSMClient):
-    """
-    The purpose is only debug and local testing. It must not be used as
-    prod environment because it's not secure at all. Here I just
-    emulate some parameter store. In case we really need on-prem,
-    we must use Vault
-    """
-    path = os.path.expanduser(os.path.join('~', '.modular_sdk', 'on-prem', 'ssm'))
-
-    def __init__(self):
-        self._store = JSONFileCache(self.path)
-
-    def put_parameter(self, name: str, value: SecretValue,
-                      _type='SecureString') -> Optional[str]:
-        self._store[name] = value
-        return name
-
-    def get_parameter(self, name: str) -> Optional[SecretValue]:
-        if name in self._store:
-            return self._store[name]
-
-    def delete_parameter(self, name: str) -> bool:
-        if name in self._store:
-            del self._store[name]
-            return True
-        return False
 
 
 class VaultSSMClient(AbstractSSMClient):

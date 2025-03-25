@@ -27,5 +27,5 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Tests with pytest
       run: |
-        pip install '.[test]'
-        pytest tests/ -v
+        pip install uv
+        uv run --all-extras --group=test pytest --verbose

@@ -7,11 +7,12 @@ import pytest
 
 from modular_sdk.services.impl.maestro_signature_builder import \
     MaestroSignatureBuilder
-_cryptography = True
+_cryptography_installed = True
 try:
     import cryptography
 except ImportError:
-    _cryptography = False
+    _cryptography_installed = False
+    cryptography = None
 
 
 @pytest.fixture
@@ -19,7 +20,8 @@ def secret_key() -> str:
     return secrets.token_hex(random.choice((8, 12, 16)))
 
 
-@pytest.mark.skipif(not _cryptography, reason='cryptography is not installed')
+@pytest.mark.skipif(not _cryptography_installed,
+                    reason='Cryptography is not installed')
 def test_encrypt_decrypt(secret_key):
     signer = MaestroSignatureBuilder(
         access_key='access_key',
@@ -36,7 +38,8 @@ def test_encrypt_decrypt(secret_key):
     assert json.loads(signer.decrypt(signer.encrypt(data))) == data
 
 
-@pytest.mark.skipif(not _cryptography, reason='cryptography is not installed')
+@pytest.mark.skipif(not _cryptography_installed,
+                    reason='Cryptography is not installed')
 def test_encrypt():
     signer = MaestroSignatureBuilder(
         access_key='access_key',
@@ -48,7 +51,8 @@ def test_encrypt():
     assert val == b'MTExMTExMTExMTEx4pEMpmk6f+Ih4nJj3fK21M1TpP3VE/r/pggy'
 
 
-@pytest.mark.skipif(not _cryptography, reason='cryptography is not installed')
+@pytest.mark.skipif(not _cryptography_installed,
+                    reason='Cryptography is not installed')
 def test_decrypt():
     signer = MaestroSignatureBuilder(
         access_key='access_key',

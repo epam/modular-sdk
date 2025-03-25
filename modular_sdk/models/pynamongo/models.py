@@ -22,7 +22,7 @@ from pynamodb.models import Model as _Model
 from pynamodb.pagination import ResultIterator
 from pynamodb.settings import OperationSettings
 
-from modular_sdk.commons.constants import Env, ServiceMode
+from modular_sdk.commons.constants import Env, DBBackend
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.pynamongo.adapter import PynamoDBToPymongoAdapter
 from modular_sdk.modular import Modular
@@ -485,7 +485,7 @@ class MongoClientSingleton:
 class ModularBaseModel(RoleAccessModel):
     @classmethod
     def is_mongo_model(cls) -> bool:
-        return Env.SERVICE_MODE.get() == ServiceMode.DOCKER
+        return Env.DB_BACKEND.get() == DBBackend.MONGO
 
     @classmethod
     def mongo_adapter(cls) -> PynamoDBToPymongoAdapter:

@@ -54,6 +54,9 @@ namespaces = false
 cryptography = [
     "cryptography~=43.0.3",
 ]
+hvac = [
+    "hvac~=2.1.0",
+]
 
 
 [tool.pytest.ini_options]

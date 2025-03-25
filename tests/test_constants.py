@@ -24,3 +24,19 @@ def test_env_default():
     with patch('os.environ', {'MODULAR_SDK_LOG_LEVEL': 'WARNING'}):
         assert Env.LOG_LEVEL.get() == 'WARNING'
         assert Env.LOG_LEVEL.get('DEBUG') == 'WARNING'
+
+
+def test_env_default_callable():
+    with patch('os.environ', {'MODULAR_SDK_SERVICE_MODE': 'docker'}):
+        assert Env.SERVICE_MODE.get() == 'docker'
+        assert Env.DB_BACKEND.get() == 'mongo'
+        assert Env.SECRETS_BACKEND.get() == 'vault'
+    with patch('os.environ', {}):
+        assert Env.SERVICE_MODE.get() == 'saas'
+        assert Env.DB_BACKEND.get() == 'dynamo'
+        assert Env.SECRETS_BACKEND.get() == 'ssm'
+
+    with patch('os.environ', {'MODULAR_SDK_DB_BACKEND': 'mongo', 'MODULAR_SDK_SECRETS_BACKEND': 'ssm'}):
+        assert Env.SERVICE_MODE.get() == 'saas'
+        assert Env.DB_BACKEND.get() == 'mongo'
+        assert Env.SECRETS_BACKEND.get() == 'ssm'
