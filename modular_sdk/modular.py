@@ -12,6 +12,7 @@ from modular_sdk.commons.constants import (
     PARAM_ASSUME_ROLE_ARN,
     PARAM_MONGO_DB_NAME,
     PARAM_MONGO_PASSWORD,
+    PARAM_MONGO_SRV,
     PARAM_MONGO_URI,
     PARAM_MONGO_URL,
     PARAM_MONGO_USER,
@@ -353,7 +354,7 @@ class Modular(ModularServiceProvider, metaclass=SingletonMeta):
                 PARAM_MONGO_URL,
                 PARAM_MONGO_DB_NAME,
             )
-            required_mongodb_attrs = validate_params_combinations(
+            mongodb_attrs = validate_params_combinations(
                 event=kwargs,
                 required_params_lists=[
                     required_mongodb_uri_attrs,
@@ -361,8 +362,12 @@ class Modular(ModularServiceProvider, metaclass=SingletonMeta):
                 ],
             )
 
-            for attr in required_mongodb_attrs:
+            for attr in mongodb_attrs:
                 os.environ[attr] = kwargs.get(attr)
+
+            srv_enabled = kwargs.get(PARAM_MONGO_SRV)
+            if srv_enabled and mongodb_attrs is required_mongodb_details_attrs:
+                os.environ[PARAM_MONGO_SRV] = srv_enabled
 
     @staticmethod
     def __collect_kwargs(kwargs):
@@ -380,6 +385,7 @@ class Modular(ModularServiceProvider, metaclass=SingletonMeta):
             MODULAR_SERVICE_MODE_ENV,
             PARAM_MONGO_USER,
             PARAM_MONGO_PASSWORD,
+            PARAM_MONGO_SRV,
             PARAM_MONGO_URL,
             PARAM_MONGO_DB_NAME,
             PARAM_ASSUME_ROLE_ARN,

@@ -52,6 +52,7 @@ class Env(str, Enum):
     OLD_MONGO_URL = 'modular_mongo_url'
     OLD_MONGO_URI = 'modular_mongo_uri'
     OLD_MONGO_DB_NAME = 'modular_mongo_db_name'
+    OLD_MONGO_SRV = 'modular_mongo_srv'
     OLD_ASSUME_ROLE_ARN = 'modular_assume_role_arn'  # may be multiple split by ,
 
     OLD_MODULAR_AWS_REGION = 'MODULAR_AWS_REGION'  # used for cross account models access
@@ -90,6 +91,7 @@ PARAM_MONGO_PASSWORD = Env.OLD_MONGO_PASSWORD.value
 PARAM_MONGO_URL = Env.OLD_MONGO_URL.value
 PARAM_MONGO_URI = Env.OLD_MONGO_URI.value
 PARAM_MONGO_DB_NAME = Env.OLD_MONGO_DB_NAME.value
+PARAM_MONGO_SRV = Env.OLD_MONGO_SRV.value
 PARAM_ASSUME_ROLE_ARN = Env.OLD_ASSUME_ROLE_ARN.value
 
 ENV_INNER_CACHE_TTL_SECONDS = Env.OLD_INNER_CACHE_TTL_SECONDS.value
@@ -219,6 +221,7 @@ class ApplicationType(str, Enum):
     DEFECT_DOJO = 'DEFECT_DOJO'
     K8S_KUBE_CONFIG = 'K8S_KUBE_CONFIG'
     GCP_CHRONICLE_INSTANCE = 'GCP_CHRONICLE_INSTANCE'
+    SEP_SANDBOX_AWS = 'SEP_SANDBOX_AWS'
 
     @classmethod
     def iter(cls):
@@ -242,6 +245,7 @@ RIGHTSIZER_TYPE = ApplicationType.RIGHTSIZER.value
 RIGHTSIZER_LICENSES_TYPE = ApplicationType.RIGHTSIZER_LICENSES.value
 RABBITMQ_TYPE = ApplicationType.RABBITMQ.value
 DEFECT_DOJO_TYPE = ApplicationType.DEFECT_DOJO.value
+SEP_SANDBOX_AWS_TYPE = ApplicationType.SEP_SANDBOX_AWS.value
 
 AVAILABLE_APPLICATION_TYPES = list(ApplicationType.iter())
 
