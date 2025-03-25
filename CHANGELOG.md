@@ -4,11 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.5.0] - 2025-03-25
+- Refactor `Modular` class to inherit from new `ModularSP` base class,  
+  separating service initialization from credential logic
+- Updated existing environments and make old names aliases for backward compatibility
+- split service mode to db backend and secrets backend to allow more 
+  flexible configurations
+- Added code that retrieves envs from AWS SSM if the lib is used inside an 
+  AWS Lambda
+
+
 ## [6.4.0] - 2025-02-05
 - Support mongodb SRV connection strings with `modular_mongo_srv` env.
 - Add `SEP_SANDBOX_AWS` to the list of supported application types
-- Refactor `Modular` class to inherit from new `ModularSP` base class,  
-  separating service initialization from credential logic
+
 
 ## [6.3.2] - 2025-02-11
 [EPMCEOOS-6607]:
