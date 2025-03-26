@@ -2,7 +2,7 @@ import base64
 import binascii
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import (Any, Optional, Dict, Sequence, Iterable, Text, Union,
                     Iterator, Type, List)
 
@@ -154,6 +154,8 @@ def json_to_attribute_value(value: Any) -> Dict[str, Any]:
         return {NULL: True}
     if value is True or value is False:
         return {BOOLEAN: value}
+    if isinstance(value, datetime):
+        return {STRING: value.replace(tzinfo=timezone.utc).isoformat()}
     if isinstance(value, (int, float)):
         return {NUMBER: json.dumps(value)}
     if isinstance(value, str):

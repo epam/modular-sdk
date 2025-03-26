@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [6.4.0] - 2025-02-05
 - Support mongodb SRV connection strings with `modular_mongo_srv` env.
 - Add `SEP_SANDBOX_AWS` to the list of supported application types
+- Add convertion of datetime attribute values to UTC ISO8601
 
 ## [6.3.2] - 2025-02-11
 [EPMCEOOS-6607]:
