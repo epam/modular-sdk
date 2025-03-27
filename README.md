@@ -43,6 +43,18 @@ modular_sdk = Modular()
 parent_service = modular_sdk.parent_service()
 tenant_service = modular_sdk.tenant_service()
 ```
+
+For services that aren't tied to the `service_mode` configuration, you can use 
+`ModularServiceProvider`:
+
+```python
+from modular_sdk.modular import ModularServiceProvider
+
+modular_sdk = ModularServiceProvider()
+
+thread_local_storage_service = modular_sdk.thread_local_storage_service()
+```
+
 For now, Modular provides 3 ways of DB access. Depends on the way of database 
 connection, different sets of env variables must be set:
 1. Onprem, Mongodb:  
@@ -52,6 +64,9 @@ connection, different sets of env variables must be set:
    `modular_mongo_url`: `$MONGO_URL`,  
    `modular_mongo_db_name`: `$MONGO_DB_NAME`,  
    `modular_mongo_srv`: `True`, # Optional  
+   Alternatively, instead of specifying `modular_mongo_user`, `modular_mongo_password`,  
+   `modular_mongo_url`, and `modular_mongo_srv`, you can use:  
+   `modular_mongo_uri`: `$MONGO_URI` # Format: `mongodb+srv://<USER>:<PASSWORD>@<URL>/`  
 2. SaaS, DynamoDB (cross-account access):  
    `modular_service_mode`: `saas` # Optional  
    `modular_assume_role_arn`: `$ASSUME_ROLE_ARN`  

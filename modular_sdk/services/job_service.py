@@ -8,6 +8,7 @@ from modular_sdk.commons import ModularException, \
     RESPONSE_RESOURCE_NOT_FOUND_CODE
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.job import Job
+from modular_sdk.commons.time_helper import utc_iso
 
 _LOG = get_logger(__name__)
 
@@ -22,9 +23,9 @@ class JobService:
                meta: Optional[dict] = None) -> Job:
         job_id = job_id or generate_id()
         if isinstance(started_at, datetime):
-            started_at = started_at.isoformat()
+            started_at = utc_iso(started_at)
         if stopped_at and isinstance(stopped_at, datetime):
-            stopped_at = stopped_at.isoformat()
+            stopped_at = utc_iso(stopped_at)
 
         return Job(job=job, job_id=job_id, application=application, 
             started_at=started_at, state=state, stopped_at=stopped_at, 
@@ -53,9 +54,9 @@ class JobService:
     def list_within_daterange(job: str, start_date: Union[datetime, str],
                               end_date: Union[datetime, str]) -> List[Job]:
         if isinstance(start_date, datetime):
-            start_date = start_date.isoformat()
+            start_date = utc_iso(start_date)
         if isinstance(end_date, datetime):
-            end_date = end_date.isoformat()
+            end_date = utc_iso(end_date)
         jobs = Job.job_started_at_index.query(
             hash_key=job,
             range_key_condition=Job.started_at.between(start_date, end_date)
@@ -74,9 +75,9 @@ class JobService:
                error_reason: Optional[str] = None, 
                meta: Optional[dict] = None):
         if started_at and isinstance(started_at, datetime):
-            started_at = started_at.isoformat()
+            started_at = utc_iso(started_at)
         if stopped_at and isinstance(stopped_at, datetime):
-            stopped_at = stopped_at.isoformat()
+            stopped_at = utc_iso(stopped_at)
         attributes = {
             'started_at': started_at,
             'state': state,
@@ -93,5 +94,5 @@ class JobService:
         job.update(actions=actions)
 
     @staticmethod
-    def get_dto(Job: Job) -> dict:
-        return Job.get_json()
+    def get_dto(job: Job) -> dict:
+        return job.get_json()

@@ -1,5 +1,7 @@
-from enum import Enum
 import os
+from enum import Enum
+from itertools import chain
+from typing import Callable
 
 HTTP_ATTR, HTTPS_ATTR = 'HTTP', 'HTTPS'
 
@@ -13,13 +15,46 @@ MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV = 'modular_aws_credentials_expiration'
 _SENTINEL = object()
 
 
+class DBBackend(str, Enum):
+    """
+    Type of database backend for models
+    """
+
+    # uses boto credentials or role
+    DYNAMO = 'dynamo'
+
+    # uses mongo uri built from different parameters
+    MONGO = 'mongo'
+
+    def __str__(self):
+        return self.value
+
+
+class SecretsBackend(str, Enum):
+    # uses boto credentials or role
+    SSM = 'ssm'
+
+    # uses token and url from envs
+    VAULT = 'vault'
+
+    def __str__(self):
+        return self.value
+
+
 class Env(str, Enum):
     """
     Abstract enumeration class for holding environment variables
     """
-    default: str | None
 
-    def __new__(cls, value: str, default: str | None = None):
+    _default: str | Callable[[type['Env']], str | None] | None
+    aliases: tuple[str, ...]
+
+    def __new__(
+        cls,
+        value: str,
+        aliases: tuple[str, ...] = (),
+        default: str | Callable[[type['Env']], str | None] = None,  # pyright: ignore
+    ):
         """
         All environment variables and optionally their default values.
         Since envs always have string type the default value also should be
@@ -29,15 +64,33 @@ class Env(str, Enum):
         obj = str.__new__(cls, value)
         obj._value_ = value
 
-        obj.default = default
+        obj._default = default
+        obj.aliases = aliases
         return obj
 
+    def __str__(self) -> str:
+        return self.value
+
+    @property
+    def default(self) -> str | None:
+        if self._default is None:
+            return
+        if callable(self._default):
+            return self._default(Env)
+        return self._default
+
     def get(self, default=_SENTINEL) -> str | None:
+        # TODO: improve typing
+        for k in chain((self.value,), self.aliases):
+            if k in os.environ:
+                return os.environ[k]
+
+        # returning a default value
         if default is _SENTINEL:
             default = self.default
         if default is not None:
             default = str(default)
-        return os.environ.get(self.value, default)
+        return default
 
     def set(self, val: str | None):
         if val is None:
@@ -45,57 +98,107 @@ class Env(str, Enum):
         else:
             os.environ[self.value] = str(val)
 
-    # OLD ones
-    OLD_SERVICE_MODE = 'modular_service_mode'
-    OLD_MONGO_USER = 'modular_mongo_user'
-    OLD_MONGO_PASSWORD = 'modular_mongo_password'
-    OLD_MONGO_URL = 'modular_mongo_url'
-    OLD_MONGO_URI = 'modular_mongo_uri'
-    OLD_MONGO_DB_NAME = 'modular_mongo_db_name'
-    OLD_MONGO_SRV = 'modular_mongo_srv'
-    OLD_ASSUME_ROLE_ARN = 'modular_assume_role_arn'  # may be multiple split by ,
+    def discard(self) -> None:
+        os.environ.pop(self.value, None)
 
-    OLD_MODULAR_AWS_REGION = 'MODULAR_AWS_REGION'  # used for cross account models access
-    OLD_INNER_CACHE_TTL_SECONDS = 'INNER_CACHE_TTL_SECONDS', '600'
+    def alias(self, n: int = 0, /) -> str | None:
+        try:
+            return self.aliases[n]
+        except IndexError:
+            return
 
-    # TODO they are NOT used currently. We should add their support to
-    #  code but make a gradual transition from the old ones so that both
-    #  old and new are supported for some time.
-    # NEW ones
-    SERVICE_MODE = 'MODULAR_SDK_SERVICE_MODE'
-    MONGO_USER = 'MODULAR_SDK_MONGO_USER'
-    MONGO_PASSWORD = 'MODULAR_SDK_MONGO_PASSWORD'
-    MONGO_URL = 'MODULAR_SDK_MONGO_URL'
-    MONGO_URI = 'MODULAR_SDK_MONGO_URI'
-    MONGO_DB_NAME = 'MODULAR_SDK_MONGO_DB_NAME'
-    ASSUME_ROLE_ARN = 'MODULAR_SDK_ASSUME_ROLE_ARN'
-    ASSUME_ROLE_REGION = 'MODULAR_SDK_ASSUME_ROLE_REGION'
-    INNER_CACHE_TTL_SECONDS = 'MODULAR_SDK_INNER_CACHE_TTL_SECONDS', '300'
+    # NOTE: aliases are kept for backward compatibility
+    SERVICE_MODE = (
+        'MODULAR_SDK_SERVICE_MODE',
+        ('modular_service_mode',),
+        'saas',
+    )
+    DB_BACKEND = (
+        'MODULAR_SDK_DB_BACKEND',
+        (),
+        lambda cls: DBBackend.DYNAMO
+        if cls.SERVICE_MODE.get() == 'saas'
+        else DBBackend.MONGO,
+    )
+    SECRETS_BACKEND = (
+        'MODULAR_SDK_SECRETS_BACKEND',
+        (),
+        lambda cls: SecretsBackend.SSM
+        if cls.SERVICE_MODE.get() == 'saas'
+        else SecretsBackend.VAULT,
+    )
+
+    MONGO_USER = 'MODULAR_SDK_MONGO_USER', ('modular_mongo_user',)
+    MONGO_PASSWORD = 'MODULAR_SDK_MONGO_PASSWORD', ('modular_mongo_password',)
+    MONGO_URL = (
+        'MODULAR_SDK_MONGO_URL',
+        ('modular_mongo_url',),
+    )  # hostname:port
+    MONGO_SRV = 'MODULAR_SDK_MONGO_SRV', ('modular_mongo_srv',)
+    MONGO_URI = 'MODULAR_SDK_MONGO_URI', ('modular_mongo_uri',)  # full uri
+    MONGO_DB_NAME = 'MODULAR_SDK_MONGO_DB_NAME', ('modular_mongo_db_name',)
+
+    VAULT_TOKEN = 'MODULAR_SDK_VAULT_TOKEN', ('VAULT_TOKEN',)
+    VAULT_HOSTNAME = 'MODULAR_SDK_VAULT_HOSTNAME', ('VAULT_URL',)
+    VAULT_PORT = 'MODULAR_SDK_VAULT_PORT', ('VAULT_SERVICE_SERVICE_PORT',)
+    VAULT_URL = 'MODULAR_SDK_VAULT_URL'
+
+    ASSUME_ROLE_ARN = (
+        'MODULAR_SDK_ASSUME_ROLE_ARN',
+        ('modular_assume_role_arn',),
+    )
+    ASSUME_ROLE_REGION = (
+        'MODULAR_SDK_ASSUME_ROLE_REGION',
+        ('MODULAR_AWS_REGION',),
+    )
+    INNER_CACHE_TTL_SECONDS = (
+        'MODULAR_SDK_INNER_CACHE_TTL_SECONDS',
+        ('INNER_CACHE_TTL_SECONDS',),
+        '300',
+    )
+    COMPONENT_NAME = ('MODULAR_SDK_COMPONENT_NAME', ('component_name',))
+    APPLICATION_NAME = ('MODULAR_SDK_APPLICATION_NAME', ('application_name',))
+    QUEUE_URL = ('MODULAR_SDK_QUEUE_URL', ('queue_url',))
 
     # these below are used
     AWS_REGION = 'AWS_REGION'
     AWS_DEFAULT_REGION = 'AWS_DEFAULT_REGION'
-    LOG_LEVEL = 'MODULAR_SDK_LOG_LEVEL', 'INFO'
+    LOG_LEVEL = 'MODULAR_SDK_LOG_LEVEL', (), 'INFO'
+
+    # inner, not to be set from outside
+    INNER_AWS_ACCESS_KEY_ID = (
+        '_MODULAR_SDK_AWS_ACCESS_KEY_ID',
+        ('modular_aws_access_key_id',),
+    )
+    INNER_AWS_SECRET_ACCESS_KEY = (
+        '_MODULAR_SDK_AWS_SECRET_ACCESS_KEY',
+        ('modular_aws_secret_access_key',),
+    )
+    INNER_AWS_SESSION_TOKEN = (
+        '_MODULAR_SDK_AWS_SESSION_TOKEN',
+        ('modular_aws_session_token',),
+    )
+    INNER_AWS_CREDENTIALS_EXPIRATION = (
+        '_MODULAR_SDK_AWS_CREDENTIALS_EXPIRATION',
+        ('modular_aws_credentials_expiration',),
+    )
 
 
 REGION_ENV = Env.AWS_REGION.value
 DEFAULT_REGION_ENV = Env.AWS_DEFAULT_REGION.value
-MODULAR_REGION_ENV = Env.OLD_MODULAR_AWS_REGION.value
+MODULAR_REGION_ENV = Env.ASSUME_ROLE_REGION.alias()
 
-MODULAR_SERVICE_MODE_ENV = Env.OLD_SERVICE_MODE.value
+MODULAR_SERVICE_MODE_ENV = Env.SERVICE_MODE.alias()
 SERVICE_MODE_DOCKER = 'docker'
 SERVICE_MODE_SAAS = 'saas'
 
-PARAM_MONGO_USER = Env.OLD_MONGO_USER.value
-PARAM_MONGO_PASSWORD = Env.OLD_MONGO_PASSWORD.value
-PARAM_MONGO_URL = Env.OLD_MONGO_URL.value
-PARAM_MONGO_URI = Env.OLD_MONGO_URI.value
-PARAM_MONGO_DB_NAME = Env.OLD_MONGO_DB_NAME.value
-PARAM_MONGO_SRV = Env.OLD_MONGO_SRV.value
-PARAM_ASSUME_ROLE_ARN = Env.OLD_ASSUME_ROLE_ARN.value
-
-ENV_INNER_CACHE_TTL_SECONDS = Env.OLD_INNER_CACHE_TTL_SECONDS.value
-DEFAULT_INNER_CACHE_TTL_SECONDS: int = int(Env.OLD_INNER_CACHE_TTL_SECONDS.default)
+PARAM_MONGO_USER = Env.MONGO_USER.alias()
+PARAM_MONGO_PASSWORD = Env.MONGO_PASSWORD.alias()
+PARAM_MONGO_URL = Env.MONGO_URL.alias()
+PARAM_MONGO_URI = Env.MONGO_URI.alias()
+PARAM_MONGO_DB_NAME = Env.MONGO_DB_NAME.alias()
+PARAM_MONGO_SRV = Env.MONGO_SRV.alias()
+PARAM_ASSUME_ROLE_ARN = Env.ASSUME_ROLE_ARN.alias()
 
 
 class ParentType(str, Enum):
@@ -262,9 +365,11 @@ TENANT_PARENT_MAP_CUSTODIAN_LICENSES_TYPE = CUSTODIAN_LICENSES_TYPE
 TENANT_PARENT_MAP_RIGHTSIZER_TYPE = 'RIGHTSIZER'
 TENANT_PARENT_MAP_RIGHTSIZER_LICENSES_TYPE = 'RIGHTSIZER_LICENSES'
 TENANT_PARENT_MAP_RIGHTSIZER_SIEM_DEFECT_DOJO_TYPE = (
-    RIGHTSIZER_SIEM_DEFECT_DOJO_TYPE)
+    RIGHTSIZER_SIEM_DEFECT_DOJO_TYPE
+)
 TENANT_PARENT_MAP_CUSTODIAN_SIEM_DEFECT_DOJO_TYPE = (
-    CUSTODIAN_SIEM_DEFECT_DOJO_TYPE)
+    CUSTODIAN_SIEM_DEFECT_DOJO_TYPE
+)
 
 ALLOWED_TENANT_PARENT_MAP_KEYS = (
     TENANT_PARENT_MAP_BILLING_TYPE,
@@ -275,7 +380,7 @@ ALLOWED_TENANT_PARENT_MAP_KEYS = (
     TENANT_PARENT_MAP_RIGHTSIZER_SIEM_DEFECT_DOJO_TYPE,
     TENANT_PARENT_MAP_CUSTODIAN_SIEM_DEFECT_DOJO_TYPE,
     TENANT_PARENT_MAP_CUSTODIAN_LICENSES_TYPE,
-    TENANT_PARENT_MAP_CUSTODIAN_ACCESS_TYPE
+    TENANT_PARENT_MAP_CUSTODIAN_ACCESS_TYPE,
 )
 
 DEFAULT_AWS_REGION = 'us-east-1'

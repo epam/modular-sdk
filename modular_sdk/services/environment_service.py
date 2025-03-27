@@ -1,49 +1,51 @@
 import os
-from typing import Optional, List
+from typing import List, Optional
 
-from modular_sdk.commons.constants import PARAM_ASSUME_ROLE_ARN, \
-    MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV, REGION_ENV, ENVS_TO_HIDE, \
-    HIDDEN_ENV_PLACEHOLDER, MODULAR_AWS_SESSION_TOKEN_ENV, \
-    MODULAR_AWS_ACCESS_KEY_ID_ENV, MODULAR_AWS_SECRET_ACCESS_KEY_ENV, \
-    MODULAR_REGION_ENV, MODULAR_SERVICE_MODE_ENV, SERVICE_MODE_DOCKER, \
-    DEFAULT_REGION_ENV, ENV_INNER_CACHE_TTL_SECONDS, \
-    DEFAULT_INNER_CACHE_TTL_SECONDS
+from modular_sdk.commons.constants import (
+    ENVS_TO_HIDE,
+    HIDDEN_ENV_PLACEHOLDER,
+    SERVICE_MODE_DOCKER,
+    Env,
+)
 from modular_sdk.commons.log_helper import get_logger
 
 _LOG = get_logger(__name__)
 
 
+# NOTE: this environment service is obsolete. Use it only for
+# backward compatibility
 class EnvironmentService:
-    # TODO make it decent and put envs' names to constants
     def __init__(self):
         self._environment = os.environ
 
     def __repr__(self) -> str:
-        return ', '.join([
-            f'{k}={v if k not in ENVS_TO_HIDE else HIDDEN_ENV_PLACEHOLDER}'
-            for k, v in self._environment.items()
-        ])
+        return ', '.join(
+            [
+                f'{k}={v if k not in ENVS_TO_HIDE else HIDDEN_ENV_PLACEHOLDER}'
+                for k, v in self._environment.items()
+            ]
+        )
 
     def set(self, name: str, value: str):
         self._environment[name] = value
 
     def aws_region(self) -> str:
-        return self._environment.get(REGION_ENV)
+        return Env.AWS_REGION.get()
 
     def default_aws_region(self) -> str:
-        return self._environment.get(DEFAULT_REGION_ENV)
+        return Env.AWS_DEFAULT_REGION.get()
 
     def is_docker(self) -> bool:
-        return self._environment.get(MODULAR_SERVICE_MODE_ENV) == SERVICE_MODE_DOCKER
+        return Env.SERVICE_MODE.get() == SERVICE_MODE_DOCKER
 
     def component(self):
-        return self._environment.get('component_name')
+        return Env.COMPONENT_NAME.get()
 
     def application(self):
-        return self._environment.get('application_name')
+        return Env.APPLICATION_NAME.get()
 
     def queue_url(self) -> Optional[str]:
-        return self._environment.get('queue_url')
+        return Env.QUEUE_URL.get()
 
     def modular_assume_role_arn(self) -> List[str]:
         """
@@ -63,7 +65,7 @@ class EnvironmentService:
             changed their names, or we add new lambdas/roles
         :return:
         """
-        env = self._environment.get(PARAM_ASSUME_ROLE_ARN)
+        env = Env.ASSUME_ROLE_ARN.get()
         if not env:  # None or ''
             return []
         return env.split(',')
@@ -72,19 +74,19 @@ class EnvironmentService:
         """
         UTC iso
         """
-        return self._environment.get(MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV)
+        return Env.INNER_AWS_CREDENTIALS_EXPIRATION.get()
 
     def modular_aws_access_key_id(self) -> Optional[str]:
-        return self._environment.get(MODULAR_AWS_ACCESS_KEY_ID_ENV)
+        return Env.INNER_AWS_ACCESS_KEY_ID.get()
 
     def modular_aws_secret_access_key(self) -> Optional[str]:
-        return self._environment.get(MODULAR_AWS_SECRET_ACCESS_KEY_ENV)
+        return Env.INNER_AWS_SECRET_ACCESS_KEY.get()
 
     def modular_aws_session_token(self) -> Optional[str]:
-        return self._environment.get(MODULAR_AWS_SESSION_TOKEN_ENV)
+        return Env.INNER_AWS_SESSION_TOKEN.get()
 
     def modular_aws_region(self) -> Optional[str]:
-        return self._environment.get(MODULAR_REGION_ENV)
+        return Env.ASSUME_ROLE_REGION.get()
 
     def inner_cache_ttl_seconds(self) -> int:
         """
@@ -92,10 +94,7 @@ class EnvironmentService:
         Currently used in the caching wrapper of ssm service
         :return:
         """
-        from_env = str(self._environment.get(ENV_INNER_CACHE_TTL_SECONDS))
-        if from_env.isdigit():
-            return int(from_env)
-        return DEFAULT_INNER_CACHE_TTL_SECONDS
+        return int(Env.INNER_CACHE_TTL_SECONDS.get())
 
 
 class EnvironmentContext:
@@ -103,8 +102,9 @@ class EnvironmentContext:
     Use it with credentials
     """
 
-    def __init__(self, envs: Optional[dict] = None,
-                 reset_all: Optional[bool] = True):
+    def __init__(
+        self, envs: Optional[dict] = None, reset_all: Optional[bool] = True
+    ):
         self.envs = envs
         self._reset_all = reset_all
         self._is_set = False
@@ -120,9 +120,7 @@ class EnvironmentContext:
 
     @staticmethod
     def _adjust_envs(envs: dict) -> dict:
-        return {
-            k: str(v) for k, v in envs.items() if v
-        }
+        return {k: str(v) for k, v in envs.items() if v}
 
     def set(self):
         self._old_envs.update(os.environ)
