@@ -33,6 +33,7 @@ test = [
     "pytest>=8.3.2",
     "mongomock>=4",
     "pytest-xdist>=3.6.1",
+    "pytest-cov>=6.0.0",
 ]
 
 
