@@ -26,6 +26,9 @@ if TYPE_CHECKING:
 _LOG = get_logger(__name__)
 
 
+DEFAULT_INDEX_CMP_ATTRIBUTES = ('key', 'unique', 'expireAfterSeconds')
+
+
 class IndexesExtractor:
     """
     Holds logic how to extract Pymongo IndexModels from PynamoDB models
@@ -129,7 +132,8 @@ class IndexesExtractor:
                 break
         if ttl is None:
             return
-        # NOTE: expireAfterSeconds is 0 to mock DynamoDB's behaviour, that is the document is considered expired
+        # NOTE: expireAfterSeconds is 0 to mock DynamoDB's behaviour,
+        # that is the document is considered expired
         # immediately when date of attribute's value is reached
         return IndexModel(
             keys=ttl.attr_name, name=index_name, expireAfterSeconds=0
@@ -170,6 +174,22 @@ def index_information_to_index_models(
         )
 
 
+def extract_cmp_dict(
+    item: IndexModel, keys=DEFAULT_INDEX_CMP_ATTRIBUTES
+) -> dict:
+    """
+    Extracts only supported attributes from the given Index Model and prepares
+    them to be compared with other model
+    """
+    dct = {k: v for k, v in item.document.items() if k in keys}
+
+    if 'unique' in dct and dct['unique'] in (None, False):
+        dct.pop('unique')
+    if 'expireAfterSeconds' in dct and dct['expireAfterSeconds'] is None:
+        dct.pop('expireAfterSeconds')
+    return dct
+
+
 def iter_comparing(
     needed: Iterable[IndexModel], existing: Sequence[IndexModel]
 ) -> Generator[tuple[IndexModel, IndexModel | None], None, None]:
@@ -178,15 +198,10 @@ def iter_comparing(
     found or None. Compares indexes based on their attributes
     (not based on names)
     """
-    _compare_keys = ('key', 'unique', 'expireAfterSeconds')
-
-    _existing = tuple(
-        {k: v for k, v in item.document.items() if k in _compare_keys}
-        for item in existing
-    )
+    _existing = tuple(map(extract_cmp_dict, existing))
 
     for item in needed:
-        to_cmp = {k: v for k, v in item.document.items() if k in _compare_keys}
+        to_cmp = extract_cmp_dict(item)
         try:
             i = _existing.index(to_cmp)
             yield item, existing[i]
@@ -207,26 +222,32 @@ def ensure_indexes(
     - Unique Compound Mongo index works as you'd expect: the combination of fields must be unique
     - TODO: check if there is projections for indexes
     """
+    info = collection.index_information()
     to_create = []
-    for index, existing in iter_comparing(
-        indexes,
-        tuple(
-            index_information_to_index_models(collection.index_information())
-        ),
+    for needed, existing in iter_comparing(
+        indexes, tuple(index_information_to_index_models(info))
     ):
+        name = needed.document['name']
+
         if existing is not None:
-            if index.document['name'] == existing.document['name']:
+            if name == existing.document['name']:
                 _log = _LOG.info
             else:
                 _log = _LOG.warning
             _log(
-                f'Index: "{index.document["name"]}" won`t be created '
+                f'Index: "{name}" won`t be created '
                 f'because there is another one called '
                 f'"{existing.document["name"]}" with the '
                 f'same attributes'
             )
             continue
-        to_create.append(index)
+        elif name in info:
+            _LOG.warning(
+                f'A different index with the same name {name} already '
+                f'exists. Cannot create a new index with equal name'
+            )
+            continue
+        to_create.append(needed)
     if not to_create:
         _LOG.info('No indexes need to be created')
         return
@@ -310,35 +331,46 @@ class IndexesCreator:
             range_key_order=range_key_order,
         )
 
-        needed = tuple(extractor.iter_all_indexes(model))
+        required = tuple(extractor.iter_all_indexes(model))
         info = collection.index_information()
         for name in always_keep:
             info.pop(name, None)
-        existing = tuple(index_information_to_index_models(info))
+        actual = tuple(index_information_to_index_models(info))
+        # NOTE:
+        # required: indexes that we need
+        # actual: indexes that already exists in Mongo
 
         to_create = []
         to_drop = []
-        for defined, created in iter_comparing(needed, existing):
-            if created is not None:
-                if defined.document['name'] == created.document['name']:
+        for needed, existing in iter_comparing(required, actual):
+            name = needed.document['name']
+            if existing is not None:
+                if name == existing.document['name']:
                     _log = _LOG.info
                 else:
                     _log = _LOG.warning
                 _log(
-                    f'Index: "{defined.document["name"]}" won`t be created '
+                    f'Index: "{name}" won`t be created '
                     f'because there is another one called '
-                    f'"{created.document["name"]}" with the '
+                    f'"{existing.document["name"]}" with the '
                     f'same attributes'
                 )
                 continue
-            to_create.append(defined)
-        for created, defined in iter_comparing(existing, needed):
-            if defined is None:
+            elif name in info:
                 _LOG.warning(
-                    f'Index "{created.document["name"]}" will be '
+                    f'A different index with the same name {name} already '
+                    f'exists. Cannot create a new index with equal name'
+                )
+                continue
+            to_create.append(needed)
+
+        for existing, needed in iter_comparing(actual, required):
+            if needed is None:
+                _LOG.warning(
+                    f'Index "{existing.document["name"]}" will be '
                     'dropped because it is not defined in code'
                 )
-                to_drop.append(created)
+                to_drop.append(existing)
 
         for index in to_drop:
             name = index.document['name']
