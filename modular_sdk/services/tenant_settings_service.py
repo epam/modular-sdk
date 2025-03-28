@@ -1,10 +1,12 @@
 from typing import Optional
+from http import HTTPStatus
 
 from pynamodb.pagination import ResultIterator
 
-from modular_sdk.commons import RESPONSE_BAD_REQUEST_CODE, deprecated
+from modular_sdk.commons import deprecated
 from modular_sdk.commons.exception import ModularException
 from modular_sdk.models.tenant_settings import TenantSettings
+from modular_sdk.models.pynamongo.convertors import instance_as_json_dict
 
 RESOURCE_QUOTA = 'RESOURCE_QUOTA'
 
@@ -53,7 +55,7 @@ class TenantSettingsService:
 
         if not tenant_item:
             raise ModularException(
-                code=RESPONSE_BAD_REQUEST_CODE,
+                code=HTTPStatus.BAD_REQUEST.value,
                 content=f'Tenant with name {tenant} is not found'
             )
         # TODO what is wrong with this method?
@@ -89,4 +91,4 @@ class TenantSettingsService:
 
     @staticmethod
     def get_dto(item: TenantSettings) -> dict:
-        return item.get_json()
+        return instance_as_json_dict(item)

@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.0.0a1] - 202-03-13
+- Disabled AWS xray SDK Patch, removed `aws-xray-sdk` from dependencies
+- Create one MongoClient instead of multiple ones
+- Update dependencies version:
+  - boto3 to >=1.36.11
+  - botocore to >=1.36.11
+  - pymongo to ~=4.11.2
+  - python-dateutil to >=2.9.0.post0
+  - cachetools to ~=5.5.1
+  - cryptography to ~=43.0.3
+
+
+## [7.0.0a0] - 2025-03-05
+- Rewritten Pynamo & Mongo abstraction to support all attributes and functionality:
+  - `modular_sdk.models.pynamongo.models.Model` must be used instead of old BaseModel (see docs inside `modular_sdk.models.pynamongo.__init__`)
+  - `get_json()` is removed. Use pynamongo.convertors.instance_to_dict or write your serializer
+  - `mongo_id` attribute was replaced with `__mongo_id__`
+- Updated `pymongo` version to `pymongo~=4.10.1`
+- Removed `dynamodb-json~=1.4.2` package
+- Removed variables, functions, classes and modules:
+  - `modular_sdk.commons.DynamoDBJsonSerializer`
+  - `modular_sdk.commons.build_response`
+  - `modular_sdk.commons.RESPONSE_*`
+  - `modular_sdk.commons.dict_without`
+  - `modular_sdk.commons.error_helper`
+  - `modular_sdk.commons.deep_pop`
+  - `modular_sdk.helpers`
+  - `modular_sdk.models.pynamodb_extension`
+  - `modular_sdk.connections.mongodb_connection`
+- Added:
+  - `modular_sdk.models.pynamongo.index_creator.IndexCreator`
+- Supported new names starting with `MODULAR_SDK_` for all available envs. 
+  Previous envs can also be used though they are deprecated and will be removed
+
 ## [6.4.0] - 2025-02-05
 - Support mongodb SRV connection strings with `modular_mongo_srv` env.
 - Add `SEP_SANDBOX_AWS` to the list of supported application types

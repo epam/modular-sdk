@@ -1,9 +1,8 @@
 from typing import Optional, Iterator, Union, List
+from http import HTTPStatus
 
 from pynamodb.expressions.condition import Condition
 from datetime import datetime
-from modular_sdk.commons import RESPONSE_BAD_REQUEST_CODE, \
-    RESPONSE_RESOURCE_NOT_FOUND_CODE
 from modular_sdk.commons import generate_id
 from modular_sdk.commons.constants import ALL_PARENT_TYPES, ParentScope, \
     COMPOUND_KEYS_SEPARATOR, CLOUD_PROVIDERS, ParentType
@@ -13,9 +12,9 @@ from modular_sdk.commons.time_helper import java_timestamp, utc_datetime
 from modular_sdk.commons.time_helper import utc_iso
 from modular_sdk.models.parent import Parent
 from modular_sdk.models.tenant import Tenant
-from modular_sdk.modular import Modular
 from modular_sdk.services.customer_service import CustomerService
 from modular_sdk.services.tenant_service import TenantService
+from modular_sdk.models.pynamongo.convertors import instance_as_json_dict
 
 _LOG = get_logger(__name__)
 
@@ -156,7 +155,7 @@ class ParentService:
             _LOG.warning(f'Invalid parent type specified \'{parent_type}\'. '
                          f'Available options: {ALL_PARENT_TYPES}')
             raise ModularException(
-                code=RESPONSE_BAD_REQUEST_CODE,
+                code=HTTPStatus.BAD_REQUEST.value,
                 content=f'Invalid parent type specified \'{parent_type}\'. '
                         f'Available options are: {ALL_PARENT_TYPES}'
             )
@@ -164,7 +163,7 @@ class ParentService:
         if not customer:
             _LOG.error(f'Customer with name \'{customer_id}\' does not exist')
             raise ModularException(
-                code=RESPONSE_RESOURCE_NOT_FOUND_CODE,
+                code=HTTPStatus.NOT_FOUND.value,
                 content=f'Customer with name \'{customer_id}\' does not exist'
             )
         return self._create(
@@ -182,7 +181,7 @@ class ParentService:
 
     @staticmethod
     def get_dto(parent: Parent) -> dict:
-        dct = parent.get_json()
+        dct = instance_as_json_dict(parent)
         ct = dct.pop('creation_timestamp', None)
         if ct:
             dct['created_at'] = utc_iso(datetime.fromtimestamp(ct / 1e3))

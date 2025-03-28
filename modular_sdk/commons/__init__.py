@@ -1,5 +1,4 @@
 import base64
-import copy
 import dataclasses
 import gzip
 import json
@@ -7,25 +6,12 @@ import warnings
 from functools import partial
 from typing import Sequence
 from uuid import uuid4
-
-from boto3.dynamodb.types import TypeDeserializer, TypeSerializer
+from typing import Generator, TypeVar
 
 from modular_sdk.commons.exception import ModularException
 from modular_sdk.commons.log_helper import get_logger
 
-
 _LOG = get_logger(__name__)
-
-
-RESPONSE_BAD_REQUEST_CODE = 400
-RESPONSE_UNAUTHORIZED = 401
-RESPONSE_FORBIDDEN_CODE = 403
-RESPONSE_RESOURCE_NOT_FOUND_CODE = 404
-RESPONSE_CONFLICT_CODE = 409
-RESPONSE_OK_CODE = 200
-RESPONSE_INTERNAL_SERVER_ERROR = 500
-RESPONSE_NOT_IMPLEMENTED = 501
-RESPONSE_SERVICE_UNAVAILABLE_CODE = 503
 
 
 def deprecated(message):
@@ -44,70 +30,12 @@ def deprecated(message):
     return deprecated_decorator
 
 
-# todo remove with major release
-@deprecated('not a part of the lib')
-def build_response(content, code=200):
-    if code == RESPONSE_OK_CODE:
-        if isinstance(content, str):
-            return {
-                'code': code,
-                'body': {
-                    'message': content
-                }
-            }
-        elif isinstance(content, dict):
-            return {
-                'code': code,
-                'body': {
-                    'items': [content]
-                }
-            }
-        return {
-            'code': code,
-            'body': {
-                'items': content
-            }
-        }
-    raise ModularException(
-        code=code,
-        content=content
-    )
-
-
 def get_missing_parameters(event, required_params_list):
     missing_params_list = []
     for param in required_params_list:
         if event.get(param) is None:
             missing_params_list.append(param)
     return missing_params_list
-
-
-def validate_params_combinations(
-        event: dict,
-        required_params_lists: Sequence[Sequence],
-) -> Sequence:
-    """
-    Checks if event contains at least one complete set of required parameters.
-    Iterates through `required_params_lists` and returns the first full set
-    found. If no set is found, it raises a ValueError with details of missing
-    parameters and required sets
-
-    :param event: Event data as a dictionary
-    :param required_params_lists: Lists of required parameter sets
-    :return: First complete parameter set found
-    :raises ValueError: If no set is complete, with details on what is missing
-    """
-    for param_list in required_params_lists:
-        if all(param in event for param in param_list):
-            return param_list
-
-    missing_params = set()
-    for param_list in required_params_lists:
-        missing_params.update(set(param_list) - set(event.keys()))
-
-    error_message = f"Missing required parameters: {missing_params}. "
-    error_message += f"Required combinations are: {required_params_lists}"
-    raise ValueError(error_message)
 
 
 def validate_params(event, required_params_list):
@@ -204,49 +132,6 @@ class SingletonMeta(type):
         return cls._instances[cls]
 
 
-class DynamoDBJsonSerializer(SingletonMeta):
-    serializer = TypeSerializer()
-    deserializer = TypeDeserializer()
-
-    @classmethod
-    def serialize_model(cls, model: dict) -> dict:
-        return {
-            k: cls.serializer.serialize(v)
-            for k, v in model.items()
-        }
-
-    @classmethod
-    def deserialize_model(cls, model: dict) -> dict:
-        return {
-            k: cls.deserializer.deserialize(v)
-            for k, v in model.items()
-        }
-
-
-def deep_pop(dct: dict, to_pop: dict) -> None:
-    for key, _to_pop in to_pop.items():
-        if not isinstance(_to_pop, (dict, list)):
-            dct.pop(key, None)
-            continue
-        # isinstance(_to_pop, (dict, list))
-        _dct = dct.get(key)
-        if type(_dct) != type(_to_pop):
-            continue
-        if isinstance(_to_pop, dict):  # going deeper
-            deep_pop(_dct, _to_pop)
-        else:  # isinstance(_to_pop, list)
-            for i, d in enumerate(_dct):
-                p = _to_pop[i] if len(to_pop) > i else None
-                if p:
-                    deep_pop(d, p)
-
-
-def dict_without(dct: dict, without: dict) -> dict:
-    cp = copy.deepcopy(dct)
-    deep_pop(cp, without)
-    return cp
-
-
 class DataclassBase:
     """
     Provides some useful methods for dataclass instances.
@@ -275,3 +160,26 @@ class DataclassBase:
         return cls(**{
             k.name: dct.get(k.name) for k in dataclasses.fields(cls)
         })
+
+
+T = TypeVar('T')
+
+
+def iter_subclasses(cls: type[T]) -> Generator[type[T], None, None]:
+    """
+    Recursively iterates over subclasses and their subclasses. Does not handle
+    duplicates in case of multiple inheritance.
+    """
+    for item in cls.__subclasses__():
+        yield item
+        yield from iter_subclasses(item)
+
+
+def iter_subclasses_unique(cls: type[T]) -> Generator[type[T], None, None]:
+    yielded = set()
+    for item in iter_subclasses(cls):
+        _id = id(item)
+        if _id in yielded:
+            continue
+        yield item
+        yielded.add(_id)

@@ -1,7 +1,7 @@
 from typing import Optional
-from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.region import RegionModel, RegionAttr
 from modular_sdk.services.tenant_service import TenantService
+from modular_sdk.models.pynamongo.convertors import instance_as_json_dict, instance_as_dict
 
 REGION_TABLE_NAME = 'Regions'
 REGION_TABLE_HASH_KEY = 'r'
@@ -15,16 +15,6 @@ REGION_ID = 'rId'
 VIRT_PROFILE_ERROR_PATTERN = 'There is no virt profiles in region {0}'
 SHAPE_MAPPING_ERROR_PATTERN = 'There is no shape mapping in region {0}'
 
-_LOG = get_logger(__name__)
-
-
-def _extract_region_fields(region_item):
-    _log = _LOG.getChild('_extract_region_fields')
-    region_fields = region_item.fields
-    if not region_fields:
-        _LOG.error('There are no fields in region item')
-        return dict()
-    return region_fields
 
 
 class RegionService:
@@ -71,10 +61,10 @@ class RegionService:
     @staticmethod
     def get_dto(region):
         if isinstance(region, RegionModel):
-            return region.get_json()
+            return instance_as_json_dict(region)
         if isinstance(region, RegionAttr):
             return region.as_dict()
 
     @staticmethod
     def region_model_to_attr(region: RegionModel):
-        return RegionAttr(**region.get_json())
+        return RegionAttr(**instance_as_dict(region))
