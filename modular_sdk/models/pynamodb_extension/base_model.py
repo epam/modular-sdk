@@ -1,7 +1,6 @@
 import base64
 import binascii
 import json
-import os
 from datetime import datetime
 from typing import (Any, Optional, Dict, Sequence, Iterable, Text, Union,
                     Iterator, Type, List)
@@ -23,11 +22,7 @@ from pynamodb.models import _T, _KeyType, BatchWrite
 from pynamodb.pagination import ResultIterator
 from pynamodb.settings import OperationSettings
 
-from modular_sdk.commons.constants import (
-    MODULAR_SERVICE_MODE_ENV, SERVICE_MODE_DOCKER, PARAM_MONGO_USER,
-    PARAM_MONGO_PASSWORD, PARAM_MONGO_URL, PARAM_MONGO_DB_NAME, PARAM_MONGO_URI,
-    PARAM_MONGO_SRV,
-)
+from modular_sdk.commons.constants import Env, DBBackend
 from modular_sdk.commons.helpers import classproperty
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.commons.time_helper import utc_iso
@@ -197,14 +192,14 @@ class ModularMongoDBHandlerMixin(ABCMongoDBHandlerMixin):
                 MongoDBConnection
             from modular_sdk.models.pynamodb_extension.pynamodb_to_pymongo_adapter \
                 import PynamoDBToPyMongoAdapter
-            user = os.environ.get(PARAM_MONGO_USER)
-            password = os.environ.get(PARAM_MONGO_PASSWORD)
-            url = os.environ.get(PARAM_MONGO_URL)
-            srv = os.environ.get(PARAM_MONGO_SRV)
+            user = Env.MONGO_USER.get()
+            password = Env.MONGO_PASSWORD.get()
+            url = Env.MONGO_URL.get()
+            srv = Env.MONGO_SRV.get()
             srv = True if srv and srv.lower() in ('true', 't', 'y', 'yes') \
                 else False
-            uri = os.environ.get(PARAM_MONGO_URI)
-            db = os.environ.get(PARAM_MONGO_DB_NAME)
+            uri = Env.MONGO_URI.get()
+            db = Env.MONGO_DB_NAME.get()
             uri = uri or build_mongodb_uri(user, password, url, srv)
             cls._mongodb = PynamoDBToPyMongoAdapter(
                 mongodb_connection=MongoDBConnection(uri, db)
@@ -234,7 +229,7 @@ class RawBaseModel(models.Model):
 
     @classproperty
     def is_docker(cls) -> bool:
-        return os.environ.get(MODULAR_SERVICE_MODE_ENV) == SERVICE_MODE_DOCKER
+        return Env.DB_BACKEND.get() == DBBackend.MONGO
 
     @classmethod
     def get_nullable(cls, hash_key, range_key=None, attributes_to_get=None,
@@ -494,7 +489,7 @@ class RawBaseModel(models.Model):
 class RawBaseGSI(indexes.GlobalSecondaryIndex):
     @classproperty
     def is_docker(cls) -> bool:
-        return os.environ.get(MODULAR_SERVICE_MODE_ENV) == SERVICE_MODE_DOCKER
+        return Env.DB_BACKEND.get() == DBBackend.MONGO
 
     @classmethod
     def _range_key_attribute(cls) -> Attribute:
