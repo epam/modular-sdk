@@ -82,6 +82,7 @@ def test_get_headers():
             'maestro-sdk-async': 'true', 'compressed': True
         }
 
+
 def test_get_http_headers():
     signer = MaestroSignatureBuilder(
         access_key='access_key',

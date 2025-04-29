@@ -1,23 +1,23 @@
 from datetime import datetime
-from typing import Optional, List, Union
+from http import HTTPStatus
+from typing import Optional, List
 
 from pynamodb.exceptions import DoesNotExist
 
 from modular_sdk.commons import generate_id
-from modular_sdk.commons import ModularException, \
-    RESPONSE_RESOURCE_NOT_FOUND_CODE
+from modular_sdk.commons import ModularException
+from modular_sdk.commons.time_helper import utc_iso
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.job import Job
-from modular_sdk.commons.time_helper import utc_iso
+from modular_sdk.models.pynamongo.convertors import instance_as_json_dict
 
 _LOG = get_logger(__name__)
 
 
 class JobService:
     @staticmethod
-    def create(job: str, job_id: str, application: str,
-               started_at: Union[datetime, str],
-               state: str, stopped_at: Optional[Union[datetime, str]] = None,
+    def create(job: str, job_id: str, application: str, started_at: datetime | str,
+               state: str, stopped_at: datetime | str | None = None,
                error_type: Optional[str] = None, 
                error_reason: Optional[str] = None, 
                meta: Optional[dict] = None) -> Job:
@@ -40,7 +40,7 @@ class JobService:
                                     f'id does not exists'
             _LOG.error(job_does_not_exist_message)
             raise ModularException(
-                code=RESPONSE_RESOURCE_NOT_FOUND_CODE,
+                code=HTTPStatus.NOT_FOUND.value,
                 content=job_does_not_exist_message
             )
         return job_item
@@ -51,8 +51,8 @@ class JobService:
         return list(jobs)
 
     @staticmethod
-    def list_within_daterange(job: str, start_date: Union[datetime, str],
-                              end_date: Union[datetime, str]) -> List[Job]:
+    def list_within_daterange(job: str, start_date: datetime | str,
+                              end_date: datetime | str) -> List[Job]:
         if isinstance(start_date, datetime):
             start_date = utc_iso(start_date)
         if isinstance(end_date, datetime):
@@ -68,9 +68,9 @@ class JobService:
         job.save()
 
     @staticmethod
-    def update(job: Job, started_at: Optional[Union[datetime, str]] = None,
+    def update(job: Job, started_at: datetime | str | None = None,
                state: Optional[str] = None, 
-               stopped_at: Optional[Union[datetime, str]] = None,
+               stopped_at: datetime | str | None = None,
                error_type: Optional[str] = None, 
                error_reason: Optional[str] = None, 
                meta: Optional[dict] = None):
@@ -95,4 +95,4 @@ class JobService:
 
     @staticmethod
     def get_dto(job: Job) -> dict:
-        return job.get_json()
+        return instance_as_json_dict(job)

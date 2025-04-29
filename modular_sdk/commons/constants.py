@@ -1,18 +1,16 @@
 import os
 from enum import Enum
 from itertools import chain
-from typing import Callable
+from typing import Callable, TypeVar
 
 HTTP_ATTR, HTTPS_ATTR = 'HTTP', 'HTTPS'
 
 ASSUMES_ROLE_SESSION_NAME = 'modular'
 
-MODULAR_AWS_ACCESS_KEY_ID_ENV = 'modular_aws_access_key_id'
-MODULAR_AWS_SECRET_ACCESS_KEY_ENV = 'modular_aws_secret_access_key'
-MODULAR_AWS_SESSION_TOKEN_ENV = 'modular_aws_session_token'
-MODULAR_AWS_CREDENTIALS_EXPIRATION_ENV = 'modular_aws_credentials_expiration'
 
-_SENTINEL = object()
+class ServiceMode(str, Enum):
+    SAAS = 'saas'
+    DOCKER = 'docker'
 
 
 class DBBackend(str, Enum):
@@ -39,6 +37,10 @@ class SecretsBackend(str, Enum):
 
     def __str__(self):
         return self.value
+
+
+_SENTINEL = object()
+_E = TypeVar('_E', bound=Enum)
 
 
 class Env(str, Enum):
@@ -80,7 +82,7 @@ class Env(str, Enum):
         return self._default
 
     def get(self, default=_SENTINEL) -> str | None:
-        # TODO: improve typing
+        # TODO: improve generic typing
         for k in chain((self.value,), self.aliases):
             if k in os.environ:
                 return os.environ[k]
@@ -92,7 +94,7 @@ class Env(str, Enum):
             default = str(default)
         return default
 
-    def set(self, val: str | None):
+    def set(self, val: str | None, /):
         if val is None:
             os.environ.pop(self.value, None)
         else:
@@ -106,6 +108,55 @@ class Env(str, Enum):
             return self.aliases[n]
         except IndexError:
             return
+
+    def is_set(self) -> bool:
+        """
+        Checks whether this environment variable is set
+        """
+        return self.get() is not None
+
+    def as_bool(
+        self, allowed: str | tuple[str, ...] = ('y', 'yes', 'true', '1'), /
+    ) -> bool:
+        """
+        Treats env as boolean variable
+        """
+        allowed = (allowed,) if isinstance(allowed, str) else tuple(allowed)
+        return str(self.get()).lower() in allowed
+
+    def as_str(self) -> str:
+        """
+        Makes sure that the env exists. Supposed to be used with envs
+        that are requires to be set otherwise there's no even need to start
+        the server
+        """
+        val = self.get()
+        if val is None:
+            raise RuntimeError(f'Env {self.value} is required')
+        return val
+
+    def as_int(self) -> int:
+        val = self.as_str()
+        try:
+            return int(float(val))
+        except (ValueError, OverflowError):
+            raise RuntimeError(f'Env {self.value} must contain integer')
+
+    def as_float(self) -> float:
+        val = self.as_str()
+        try:
+            return float(val)
+        except ValueError:
+            raise RuntimeError(f'Env {self.value} must contain float')
+
+    def as_enum(self, typ: type[_E], /) -> _E:
+        val = self.as_str()
+        try:
+            return typ(val)
+        except ValueError:
+            raise RuntimeError(
+                f'Env {self.value} must be one of: {[i.value for i in typ]}'
+            )
 
     # NOTE: aliases are kept for backward compatibility
     SERVICE_MODE = (
@@ -182,23 +233,6 @@ class Env(str, Enum):
         '_MODULAR_SDK_AWS_CREDENTIALS_EXPIRATION',
         ('modular_aws_credentials_expiration',),
     )
-
-
-REGION_ENV = Env.AWS_REGION.value
-DEFAULT_REGION_ENV = Env.AWS_DEFAULT_REGION.value
-MODULAR_REGION_ENV = Env.ASSUME_ROLE_REGION.alias()
-
-MODULAR_SERVICE_MODE_ENV = Env.SERVICE_MODE.alias()
-SERVICE_MODE_DOCKER = 'docker'
-SERVICE_MODE_SAAS = 'saas'
-
-PARAM_MONGO_USER = Env.MONGO_USER.alias()
-PARAM_MONGO_PASSWORD = Env.MONGO_PASSWORD.alias()
-PARAM_MONGO_URL = Env.MONGO_URL.alias()
-PARAM_MONGO_URI = Env.MONGO_URI.alias()
-PARAM_MONGO_DB_NAME = Env.MONGO_DB_NAME.alias()
-PARAM_MONGO_SRV = Env.MONGO_SRV.alias()
-PARAM_ASSUME_ROLE_ARN = Env.ASSUME_ROLE_ARN.alias()
 
 
 class ParentType(str, Enum):
