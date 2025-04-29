@@ -1,7 +1,7 @@
 import os
 from enum import Enum
 from itertools import chain
-from typing import Callable
+from typing import Callable, TypeVar
 
 HTTP_ATTR, HTTPS_ATTR = 'HTTP', 'HTTPS'
 
@@ -40,6 +40,7 @@ class SecretsBackend(str, Enum):
 
 
 _SENTINEL = object()
+_E = TypeVar('_E', bound=Enum)
 
 
 class Env(str, Enum):
@@ -81,7 +82,7 @@ class Env(str, Enum):
         return self._default
 
     def get(self, default=_SENTINEL) -> str | None:
-        # TODO: improve typing
+        # TODO: improve generic typing
         for k in chain((self.value,), self.aliases):
             if k in os.environ:
                 return os.environ[k]
@@ -93,7 +94,7 @@ class Env(str, Enum):
             default = str(default)
         return default
 
-    def set(self, val: str | None):
+    def set(self, val: str | None, /):
         if val is None:
             os.environ.pop(self.value, None)
         else:
@@ -107,6 +108,55 @@ class Env(str, Enum):
             return self.aliases[n]
         except IndexError:
             return
+
+    def is_set(self) -> bool:
+        """
+        Checks whether this environment variable is set
+        """
+        return self.get() is not None
+
+    def as_bool(
+        self, allowed: str | tuple[str, ...] = ('y', 'yes', 'true', '1'), /
+    ) -> bool:
+        """
+        Treats env as boolean variable
+        """
+        allowed = (allowed,) if isinstance(allowed, str) else tuple(allowed)
+        return str(self.get()).lower() in allowed
+
+    def as_str(self) -> str:
+        """
+        Makes sure that the env exists. Supposed to be used with envs
+        that are requires to be set otherwise there's no even need to start
+        the server
+        """
+        val = self.get()
+        if val is None:
+            raise RuntimeError(f'Env {self.value} is required')
+        return val
+
+    def as_int(self) -> int:
+        val = self.as_str()
+        try:
+            return int(float(val))
+        except (ValueError, OverflowError):
+            raise RuntimeError(f'Env {self.value} must contain integer')
+
+    def as_float(self) -> float:
+        val = self.as_str()
+        try:
+            return float(val)
+        except ValueError:
+            raise RuntimeError(f'Env {self.value} must contain float')
+
+    def as_enum(self, typ: type[_E], /) -> _E:
+        val = self.as_str()
+        try:
+            return typ(val)
+        except ValueError:
+            raise RuntimeError(
+                f'Env {self.value} must be one of: {[i.value for i in typ]}'
+            )
 
     # NOTE: aliases are kept for backward compatibility
     SERVICE_MODE = (
