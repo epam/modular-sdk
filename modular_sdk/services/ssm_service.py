@@ -15,7 +15,7 @@ from modular_sdk.services.environment_service import EnvironmentService
 
 _LOG = get_logger(__name__)
 
-SSM_NOT_AVAILABLE = re.compile(r'[^a-zA-Z0-9\/_.-]')
+SSM_NOT_AVAILABLE = re.compile(r'[^a-zA-Z0-9/_.-]')
 SecretValue = Union[Dict, List, str]
 
 
@@ -59,7 +59,6 @@ class VaultSSMClient(AbstractSSMClient):
 
     def _init_client(self):
         import hvac
-        # TODO use some discussed constants. These I get from Custodian
         token = Env.VAULT_TOKEN.get()
         url = Env.VAULT_URL.get()
         if not url:

@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [7.0.0a1] - 202-03-13
+## [7.0.0a1] - 2025-03-13
 - Disabled AWS xray SDK Patch, removed `aws-xray-sdk` from dependencies
 - Create one MongoClient instead of multiple ones
 - Update dependencies version:
@@ -14,7 +14,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - python-dateutil to >=2.9.0.post0
   - cachetools to ~=5.5.1
   - cryptography to ~=43.0.3
-
 
 ## [7.0.0a0] - 2025-03-05
 - Rewritten Pynamo & Mongo abstraction to support all attributes and functionality:
@@ -37,6 +36,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `modular_sdk.models.pynamongo.index_creator.IndexCreator`
 - Supported new names starting with `MODULAR_SDK_` for all available envs. 
   Previous envs can also be used though they are deprecated and will be removed
+
+## [6.5.0] - 2025-03-25
+- Refactor `Modular` class to inherit from new `ModularSP` base class,  
+  separating service initialization from credential logic
+- Updated existing environments and make old names aliases for backward compatibility
+- split service mode to db backend and secrets backend to allow more 
+  flexible configurations
+- Added code that retrieves envs from AWS SSM if the lib is used inside an 
+  AWS Lambda
 
 ## [6.4.0] - 2025-02-05
 - Support mongodb SRV connection strings with `modular_mongo_srv` env.

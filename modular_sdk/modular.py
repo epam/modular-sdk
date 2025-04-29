@@ -307,9 +307,11 @@ class ModularServiceProvider(metaclass=SingletonMeta):
         return self.__thread_local_storage_service
 
     def reset(self, service: str):
-        """Removes the saved instance of the service. It is useful,
+        """
+        Removes the saved instance of the service. It is useful,
         for example, in case of gitlab service - when we want to use
-        different rule-sources configurations"""
+        different rule-sources configurations
+        """
         private_service_name = f'__ModularServiceProvider_{service}'
         if not hasattr(self, private_service_name):
             raise AssertionError(

@@ -54,7 +54,7 @@ class Env(str, Enum):
         cls,
         value: str,
         aliases: tuple[str, ...] = (),
-        default: str = None,  # pyright: ignore
+        default: str | Callable[[type['Env']], str | None] = None,  # pyright: ignore
     ):
         """
         All environment variables and optionally their default values.

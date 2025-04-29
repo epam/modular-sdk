@@ -13,7 +13,6 @@ _LOG = get_logger(__name__)
 
 
 class EnvironmentService:
-    # TODO make it decent and put envs' names to constants
     def __init__(self):
         self._environment = os.environ
 
