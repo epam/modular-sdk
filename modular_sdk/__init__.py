@@ -20,7 +20,8 @@ def _init_envs_from_ssm():
     log.setLevel(logging.INFO)
     try:
         data = boto3.client('ssm').get_parameter(
-            Name=name, WithDecryption=True
+            Name=name,
+            WithDecryption=True
         )['Parameter']['Value']
     except Exception as e:  # noqa
         log.warning(f'Could not get SSM Parameter {name}: {e}')
