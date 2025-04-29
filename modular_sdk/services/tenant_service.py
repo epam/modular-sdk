@@ -1,16 +1,14 @@
 from typing import Optional, Iterator, Union, List
-
+from http import HTTPStatus
 from pynamodb.pagination import ResultIterator
 
-from modular_sdk.commons import RESPONSE_BAD_REQUEST_CODE, default_instance, \
-    deprecated
+from modular_sdk.commons import default_instance, deprecated
 from modular_sdk.commons.constants import ALLOWED_TENANT_PARENT_MAP_KEYS
 from modular_sdk.commons.exception import ModularException
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.parent import Parent
-from modular_sdk.models.pynamodb_extension.pynamodb_to_pymongo_adapter import \
-    Result
 from modular_sdk.models.tenant import Tenant
+from modular_sdk.models.pynamongo.convertors import instance_as_json_dict
 
 _LOG = get_logger(__name__)
 
@@ -90,7 +88,7 @@ class TenantService:
             cloud: Optional[str] = None,
             attributes_to_get: Optional[list] = None,
             rate_limit: Optional[int] = None
-    ) -> Union[ResultIterator, Result]:
+    ) -> ResultIterator:
 
         condition = active if active is None else (Tenant.is_active == active)
         name = default_instance(tenant_name, str)
@@ -158,20 +156,20 @@ class TenantService:
             _LOG.warning(f'Unsupported type \'{type_}\'. Available options: '
                          f'{", ".join(ALLOWED_TENANT_PARENT_MAP_KEYS)}')
             raise ModularException(
-                code=RESPONSE_BAD_REQUEST_CODE,
+                code=HTTPStatus.BAD_REQUEST.value,
                 content=f'Unsupported type \'{type_}\'. Available options: '
                         f'{", ".join(ALLOWED_TENANT_PARENT_MAP_KEYS)}'
             )
         if not tenant.is_active:
             _LOG.warning(f'Tenant \'{tenant.name}\' is not active.')
             raise ModularException(
-                code=RESPONSE_BAD_REQUEST_CODE,
+                code=HTTPStatus.BAD_REQUEST.value,
                 content=f'Tenant \'{tenant.name}\' is not active.'
             )
         if parent.is_deleted:
             _LOG.warning(f'Parent \'{parent.parent_id}\' is deleted.')
             raise ModularException(
-                code=RESPONSE_BAD_REQUEST_CODE,
+                code=HTTPStatus.BAD_REQUEST.value,
                 content=f'Tenant \'{tenant.name}\' is deleted.'
             )
         parent_map = tenant.parent_map.as_dict()  # default "dict"
@@ -179,7 +177,7 @@ class TenantService:
             _LOG.warning(f'Tenant \'{tenant.name}\' already has \'{type_}\' '
                          f'linkage type.')
             raise ModularException(
-                code=RESPONSE_BAD_REQUEST_CODE,
+                code=HTTPStatus.BAD_REQUEST.value,
                 content=f'Tenant \'{tenant.name}\' already has \'{type_}\' '
                         f'linkage type.'
             )
@@ -204,7 +202,7 @@ class TenantService:
     @staticmethod
     def get_dto(tenant: Tenant):
         """Be CAREFUL: returns both active and inactive regions"""
-        tenant_json = tenant.get_json()
+        tenant_json = instance_as_json_dict(tenant)
         regions = tenant_json.get('regions') or []
         tenant_json['account_id'] = tenant_json.pop('project', None)
         tenant_json['regions'] = [

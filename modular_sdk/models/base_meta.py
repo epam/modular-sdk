@@ -8,6 +8,7 @@ class BaseMeta:
     """
     Allows using separate set of credentials to access Dynamodb
     """
+
     @classproperty
     def aws_access_key_id(cls):
         return Env.INNER_AWS_ACCESS_KEY_ID.get()

@@ -67,9 +67,6 @@ def tracer_decorator(is_scheduled=False, is_job=False, component=None):
                     meta = {'message': 'Dry run mode enabled.'}
                 job_tracer.start(job_id=request_id, meta=meta)
             try:
-                from aws_xray_sdk.core import patch
-                libs_to_patch = ('boto3', 'pynamodb')
-                patch(libs_to_patch)
                 response = func(*args, **kwargs)
             except Exception as e:
                 if is_job:

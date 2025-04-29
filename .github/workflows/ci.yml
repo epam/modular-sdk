@@ -9,23 +9,26 @@ jobs:
     uses: ./.github/workflows/build-and-check-python-package.yml
 
   test:
+    name: "Run Python Tests"
     needs: build-package
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
-
     steps:
     - uses: actions/checkout@v4
       with: 
         ref: ${{ github.event.pull_request.head.sha }}
-       
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+    - name: Install uv and set the python version
+      uses: astral-sh/setup-uv@v5
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Tests with pytest
+        enable-cache: true
+        cache-dependency-glob: "uv.lock"
+    - name: Install dependencies
       run: |
-        pip install uv
-        uv run --all-extras --group=test pytest --verbose
+        uv sync --frozen --all-extras --all-groups
+    - name: Run tests with Python ${{ matrix.python-version }}
+      run: |
+        uv run --frozen pytest --verbose -n2 --cov=modular_sdk/ --cov-report=term

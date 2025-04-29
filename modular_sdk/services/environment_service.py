@@ -4,16 +4,14 @@ from typing import List, Optional
 from modular_sdk.commons.constants import (
     ENVS_TO_HIDE,
     HIDDEN_ENV_PLACEHOLDER,
-    SERVICE_MODE_DOCKER,
     Env,
+    ServiceMode,
 )
 from modular_sdk.commons.log_helper import get_logger
 
 _LOG = get_logger(__name__)
 
 
-# NOTE: this environment service is obsolete. Use it only for
-# backward compatibility
 class EnvironmentService:
     def __init__(self):
         self._environment = os.environ
@@ -36,7 +34,7 @@ class EnvironmentService:
         return Env.AWS_DEFAULT_REGION.get()
 
     def is_docker(self) -> bool:
-        return Env.SERVICE_MODE.get() == SERVICE_MODE_DOCKER
+        return Env.SERVICE_MODE.get() == ServiceMode.DOCKER
 
     def component(self):
         return Env.COMPONENT_NAME.get()
@@ -94,7 +92,10 @@ class EnvironmentService:
         Currently used in the caching wrapper of ssm service
         :return:
         """
-        return int(Env.INNER_CACHE_TTL_SECONDS.get())
+        from_env = Env.INNER_CACHE_TTL_SECONDS.get()
+        if from_env.isdigit():
+            return int(from_env)
+        return int(Env.INNER_CACHE_TTL_SECONDS.default)
 
 
 class EnvironmentContext:
