@@ -191,7 +191,7 @@ Caveats to know:
   try to save the instance it will be just omitted. That is strange. Better
   do not use the NullAttribute or at least use it specifying null=True
   (NullAttribute(null=True))
-- DynamicMapping from PynamoDB has strange behavior of a bug. It always
+- DynamicMapping from PynamoDB has strange behavior or a bug. It always
   contains "attribute_values" inside even if you didn't set such attribute.
   That is somehow related to its inner representation. Better not use that
   for now. Standard MapAttribute can easily replace the dynamic one.
@@ -263,7 +263,6 @@ What PynamoDB features are not supported:
 - Polymorphism through the use of discriminators (https://pynamodb.readthedocs.io/en/stable/polymorphism.html)
 - Transaction Operations (https://pynamodb.readthedocs.io/en/stable/transaction.html)
 - Conditional writes (https://pynamodb.readthedocs.io/en/stable/conditional.html#conditioning-on-keys)
-- Local secondary indexes (https://pynamodb.readthedocs.io/en/stable/indexes.html#local-secondary-indexes)
 
 """
 from .adapter import PynamoDBToPymongoAdapter, ResultIterator
