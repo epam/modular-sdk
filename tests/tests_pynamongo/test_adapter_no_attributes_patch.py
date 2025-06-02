@@ -93,6 +93,20 @@ def test_delete(adapter, model_instance):
     with pytest.raises(DoesNotExist):
         adapter.get(TestModel, hash_key='test')
 
+def test_delete_with_condition(adapter, model_instance):
+    adapter.save(model_instance)
+
+    adapter.delete(model_instance, condition=TestModel.unicode != 'test')
+
+    item = adapter.get(TestModel, hash_key='test')
+    assert item
+    assert item.__mongo_id__, "Mongo ID should be set after get"
+
+    adapter.delete(model_instance, condition=TestModel.unicode.startswith('te'))
+
+    with pytest.raises(DoesNotExist):
+        adapter.get(TestModel, hash_key='test')
+
 
 def test_update(adapter, model_instance):
     adapter.save(model_instance)
@@ -118,6 +132,28 @@ def test_update(adapter, model_instance):
         assert instance.datetime == datetime(2023, 12, 20, 15, 0, 0,
                                              tzinfo=timezone.utc)
         assert instance.json == {'new_key': 'new_value'}
+
+def test_update_with_condition(adapter, model_instance):
+    adapter.save(model_instance)
+
+    adapter.update(
+        model_instance,
+        [TestModel.boolean.set(False)], 
+        TestModel.number > 50
+    )
+    
+    item = adapter.get(TestModel, hash_key='test')
+    assert item.boolean
+
+    adapter.update(
+        model_instance,
+        [TestModel.boolean.set(False)], 
+        TestModel.number <= 43
+    )
+
+    item = adapter.get(TestModel, hash_key='test')
+    assert not item.boolean
+
 
 
 def test_update_pipeline(adapter, model_instance):

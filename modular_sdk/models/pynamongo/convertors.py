@@ -245,7 +245,7 @@ def convert_condition_expression(condition: Condition) -> dict:
         return {path_to_raw(condition.values[0]): {'$exists': False}}
     if op == 'attribute_type':
         return {path_to_raw(condition.values[0]): {
-            '$type': DYNAMO_TO_MONGO_TYPE_MAP[condition.values[1]]
+            '$type': DYNAMO_TO_MONGO_TYPE_MAP[value_to_raw(condition.values[1])]
         }}
     # pynamodb permits path in second value, but it is not working there
     if op == 'IN': 
@@ -277,13 +277,15 @@ def convert_condition_expression(condition: Condition) -> dict:
     if op == 'BETWEEN':
         return {
             '$expr': {
-                '$gte': [
-                    path_or_value_to_raw(condition.values[0]),
-                    path_or_value_to_raw(condition.values[1])
-                ],
-                '$lte': [
-                    path_or_value_to_raw(condition.values[0]),
-                    path_or_value_to_raw(condition.values[2])
+                '$and': [
+                    {'$gte': [
+                        path_or_value_to_raw(condition.values[0]),
+                        path_or_value_to_raw(condition.values[1])
+                    ]},
+                    {'$lte': [
+                        path_or_value_to_raw(condition.values[0]),
+                        path_or_value_to_raw(condition.values[2])
+                    ]}
                 ]
             }
         }

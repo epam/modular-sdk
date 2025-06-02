@@ -83,7 +83,7 @@ class Model(_Model):
         add_version_condition: bool = True,
     ) -> Any:
         if self.is_mongo_model():
-            return self.mongo_adapter().delete(instance=self)
+            return self.mongo_adapter().delete(instance=self, condition=condition)
         return super().delete(
             condition=condition,
             settings=settings,
@@ -99,7 +99,7 @@ class Model(_Model):
         add_version_condition: bool = True,
     ) -> Any:
         if self.is_mongo_model():
-            return self.mongo_adapter().update(instance=self, actions=actions)
+            return self.mongo_adapter().update(instance=self, actions=actions, condition=condition)
         return super().update(
             actions=actions,
             condition=condition,

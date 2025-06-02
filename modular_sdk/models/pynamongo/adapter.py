@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Generator, Iterator, TypeVar
 from pymongo import ASCENDING, DESCENDING, DeleteOne, ReplaceOne
 from pymongo.collection import ReturnDocument
 from pynamodb.models import Model
+from pynamodb.expressions.condition import Condition
 
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.pynamongo.convertors import (
@@ -14,7 +15,7 @@ from modular_sdk.models.pynamongo.convertors import (
     convert_attributes_to_get,
     convert_condition_expression,
     convert_update_expression,
-    merge_update_expressions,
+    merge_update_expressions
 )
 
 if TYPE_CHECKING:
@@ -203,7 +204,7 @@ class PynamoDBToPymongoAdapter:
             }
         }
 
-    def update(self, instance: Model, actions: list['Action']) -> dict:
+    def update(self, instance: Model, actions: list['Action'], condition:Condition | None = None) -> dict:
         _update = merge_update_expressions(
             map(convert_update_expression, actions)
         )
@@ -211,10 +212,12 @@ class PynamoDBToPymongoAdapter:
             q = {'_id': _id}
         else:
             q = self._ser.instance_serialized_keys(instance)
+        if condition is not None:
+            q = {'$and': [q, convert_condition_expression(condition)]}
         res = self.get_collection(instance).find_one_and_update(
             filter=q,
             update=_update,
-            upsert=True,
+            upsert=True if condition is None else False,
             return_document=ReturnDocument.AFTER,
         )
         if res:
@@ -226,11 +229,13 @@ class PynamoDBToPymongoAdapter:
             }
         }
 
-    def delete(self, instance: Model) -> dict:
+    def delete(self, instance: Model, condition: Condition | None = None) -> dict:
         if _id := self._ser.get_mongo_id(instance):
             q = {'_id': _id}
         else:
             q = self._ser.instance_serialized_keys(instance)
+        if condition is not None:
+            q = {'$and': [q, convert_condition_expression(condition)]}
 
         self.get_collection(instance).delete_one(q)
         return {
