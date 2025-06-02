@@ -164,6 +164,18 @@ COMPARISON_MAP = {
     '<=': '$lte',
     '<>': '$ne',
 }
+DYNAMO_TO_MONGO_TYPE_MAP = {
+    STRING: 'string',
+    NUMBER: 'double',
+    BOOLEAN: 'bool',
+    BINARY: 'binData',
+    LIST: 'array',
+    MAP: 'object',
+    NULL: 'null',
+    'SS': 'array',  # String Set
+    'NS': 'array',  # Number Set
+    'BS': 'array',  # Binary Set
+}
 
 
 def value_to_raw(value: Value) -> Any:
@@ -192,6 +204,17 @@ def path_to_raw(path: Path) -> str:
         raw = raw.replace(index, f'.{n}', 1)
     return raw
 
+def path_or_value_to_raw(p_or_v:Path | Value) -> str | Any:
+    """
+    Converts PynamoDB Path or Value to raw MongoDB path or value.
+    :param p_or_v: PynamoDB Path or Value
+    :return: raw MongoDB path or value
+    """
+    if isinstance(p_or_v, Path):
+        return '$' + path_to_raw(p_or_v)
+    elif isinstance(p_or_v, Value):
+        return value_to_raw(p_or_v)
+    raise TypeError(f'Unsupported type: {p_or_v.__class__.__name__}')
 
 def convert_condition_expression(condition: Condition) -> dict:
     """
@@ -199,7 +222,7 @@ def convert_condition_expression(condition: Condition) -> dict:
     `pynamodb.expressions.condition`: Comparison, Between, In, Exists,
     NotExists, BeginsWith, Contains, And, Or, Not.
 
-    IsType and size are not supported. Add support if you want
+    size is not supported. Add support if you want
     """
     op = condition.operator
     if op == 'OR':
@@ -220,13 +243,12 @@ def convert_condition_expression(condition: Condition) -> dict:
         return {path_to_raw(condition.values[0]): {'$exists': True}}
     if op == 'attribute_not_exists':
         return {path_to_raw(condition.values[0]): {'$exists': False}}
-    if op == 'contains':
-        return {
-            path_to_raw(condition.values[0]): {
-                '$regex': value_to_raw(condition.values[1])
-            }
-        }
-    if op == 'IN':
+    if op == 'attribute_type':
+        return {path_to_raw(condition.values[0]): {
+            '$type': DYNAMO_TO_MONGO_TYPE_MAP[condition.values[1]]
+        }}
+    # pynamodb permits path in second value, but it is not working there
+    if op == 'IN': 
         return {
             path_to_raw(condition.values[0]): {
                 '$in': list(
@@ -236,25 +258,53 @@ def convert_condition_expression(condition: Condition) -> dict:
         }
     if op == '=':
         return {
-            path_to_raw(condition.values[0]): value_to_raw(condition.values[1])
+            '$expr': {
+                '$eq': [
+                    path_or_value_to_raw(condition.values[0]),
+                    path_or_value_to_raw(condition.values[1])
+                ]
+            }
         }
     if op in COMPARISON_MAP:
         return {
-            path_to_raw(condition.values[0]): {
-                COMPARISON_MAP[op]: value_to_raw(condition.values[1])
+            '$expr': {
+                COMPARISON_MAP[op]: [
+                    path_or_value_to_raw(condition.values[0]),
+                    path_or_value_to_raw(condition.values[1])
+                ]
             }
         }
     if op == 'BETWEEN':
         return {
-            path_to_raw(condition.values[0]): {
-                '$gte': value_to_raw(condition.values[1]),
-                '$lte': value_to_raw(condition.values[2]),
+            '$expr': {
+                '$gte': [
+                    path_or_value_to_raw(condition.values[0]),
+                    path_or_value_to_raw(condition.values[1])
+                ],
+                '$lte': [
+                    path_or_value_to_raw(condition.values[0]),
+                    path_or_value_to_raw(condition.values[2])
+                ]
+            }
+        }
+    if op == 'contains':
+        return { 
+            '$expr':{
+                '$regexMatch': {
+                    'input': path_or_value_to_raw(condition.values[0]),
+                    'regex': path_or_value_to_raw(condition.values[1])
+                }
             }
         }
     if op == 'begins_with':
         return {
-            path_to_raw(condition.values[0]): {
-                '$regex': f'^{value_to_raw(condition.values[1])}'
+            '$expr': {
+                '$regexMatch': {
+                    'input': path_or_value_to_raw(condition.values[0]),
+                    'regex': {
+                        '$concat':['^', path_or_value_to_raw(condition.values[1])]
+                    }
+                }
             }
         }
     raise NotImplementedError(f'Operator: {op} is not supported')
