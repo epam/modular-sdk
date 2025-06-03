@@ -205,7 +205,7 @@ class PynamoDBToPymongoAdapter:
             }
         }
 
-    def update(self, instance: Model, actions: list['Action'], condition:Condition | None = None) -> dict:
+    def update(self, instance: Model, actions: list['Action'], condition: Condition | None = None) -> dict:
         _update = merge_update_expressions(
             map(convert_update_expression, actions)
         )

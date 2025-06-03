@@ -234,9 +234,7 @@ class Env(str, Enum):
         ('modular_aws_credentials_expiration',),
     )
     RABBITMQ_MAX_MESSAGE_SIZE = (
-        'MODULAR_SDK_RABBITMQ_MAX_MESSAGE_SIZE',
-        ('modular_rabbitmq_max_message_size',), 
-        '5242880' # 5 MB
+        'MODULAR_SDK_RABBITMQ_MAX_MESSAGE_SIZE', (), '5242880' # 5 MB
     )
 
 

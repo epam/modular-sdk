@@ -7,7 +7,18 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable
 from uuid import UUID
 
 from pynamodb.attributes import Attribute, AttributeContainer
-from pynamodb.constants import BINARY, BOOLEAN, LIST, MAP, NULL, NUMBER, STRING
+from pynamodb.constants import (
+    BINARY,
+    BINARY_SET,
+    BOOLEAN,
+    LIST,
+    MAP,
+    NULL,
+    NUMBER,
+    NUMBER_SET,
+    STRING,
+    STRING_SET,
+)
 from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.operand import (
     Path,
@@ -72,7 +83,6 @@ class PynamoDBModelToMongoDictSerializer:
     _mongo_id_attr = '__mongo_id__'
 
     def serialize(self, instance: 'Model') -> dict:
-        # TODO: encode not supported keys?
         return {
             k: attribute_value_to_mongo(v)
             for k, v in instance.serialize().items()
@@ -172,9 +182,9 @@ DYNAMO_TO_MONGO_TYPE_MAP = {
     LIST: 'array',
     MAP: 'object',
     NULL: 'null',
-    'SS': 'array',  # String Set
-    'NS': 'array',  # Number Set
-    'BS': 'array',  # Binary Set
+    STRING_SET: 'array',
+    NUMBER_SET: 'array',
+    BINARY_SET: 'array',
 }
 
 
@@ -204,17 +214,23 @@ def path_to_raw(path: Path) -> str:
         raw = raw.replace(index, f'.{n}', 1)
     return raw
 
-def path_or_value_to_raw(p_or_v:Path | Value) -> str | Any:
+
+def path_value_to_raw(value: Path) -> str:
+    return '$' + path_to_raw(value)
+
+
+def path_or_value_to_raw(p_or_v: Path | Value, /) -> str | Any:
     """
     Converts PynamoDB Path or Value to raw MongoDB path or value.
     :param p_or_v: PynamoDB Path or Value
     :return: raw MongoDB path or value
     """
     if isinstance(p_or_v, Path):
-        return '$' + path_to_raw(p_or_v)
+        return path_value_to_raw(p_or_v)
     elif isinstance(p_or_v, Value):
         return value_to_raw(p_or_v)
     raise TypeError(f'Unsupported type: {p_or_v.__class__.__name__}')
+
 
 def convert_condition_expression(condition: Condition) -> dict:
     """
@@ -244,11 +260,16 @@ def convert_condition_expression(condition: Condition) -> dict:
     if op == 'attribute_not_exists':
         return {path_to_raw(condition.values[0]): {'$exists': False}}
     if op == 'attribute_type':
-        return {path_to_raw(condition.values[0]): {
-            '$type': DYNAMO_TO_MONGO_TYPE_MAP[value_to_raw(condition.values[1])]
-        }}
-    # pynamodb permits path in second value, but it is not working there
-    if op == 'IN': 
+        return {
+            path_to_raw(condition.values[0]): {
+                '$type': DYNAMO_TO_MONGO_TYPE_MAP[
+                    value_to_raw(condition.values[1])
+                ]
+            }
+        }
+
+    # pynamodb permits path in second value
+    if op == 'IN':  # item in array of
         return {
             path_to_raw(condition.values[0]): {
                 '$in': list(
@@ -261,7 +282,7 @@ def convert_condition_expression(condition: Condition) -> dict:
             '$expr': {
                 '$eq': [
                     path_or_value_to_raw(condition.values[0]),
-                    path_or_value_to_raw(condition.values[1])
+                    path_or_value_to_raw(condition.values[1]),
                 ]
             }
         }
@@ -270,7 +291,7 @@ def convert_condition_expression(condition: Condition) -> dict:
             '$expr': {
                 COMPARISON_MAP[op]: [
                     path_or_value_to_raw(condition.values[0]),
-                    path_or_value_to_raw(condition.values[1])
+                    path_or_value_to_raw(condition.values[1]),
                 ]
             }
         }
@@ -278,23 +299,27 @@ def convert_condition_expression(condition: Condition) -> dict:
         return {
             '$expr': {
                 '$and': [
-                    {'$gte': [
-                        path_or_value_to_raw(condition.values[0]),
-                        path_or_value_to_raw(condition.values[1])
-                    ]},
-                    {'$lte': [
-                        path_or_value_to_raw(condition.values[0]),
-                        path_or_value_to_raw(condition.values[2])
-                    ]}
+                    {
+                        '$gte': [
+                            path_or_value_to_raw(condition.values[0]),
+                            path_or_value_to_raw(condition.values[1]),
+                        ]
+                    },
+                    {
+                        '$lte': [
+                            path_or_value_to_raw(condition.values[0]),
+                            path_or_value_to_raw(condition.values[2]),
+                        ]
+                    },
                 ]
             }
         }
     if op == 'contains':
-        return { 
-            '$expr':{
+        return {
+            '$expr': {
                 '$regexMatch': {
                     'input': path_or_value_to_raw(condition.values[0]),
-                    'regex': path_or_value_to_raw(condition.values[1])
+                    'regex': path_or_value_to_raw(condition.values[1]),
                 }
             }
         }
@@ -304,8 +329,11 @@ def convert_condition_expression(condition: Condition) -> dict:
                 '$regexMatch': {
                     'input': path_or_value_to_raw(condition.values[0]),
                     'regex': {
-                        '$concat':['^', path_or_value_to_raw(condition.values[1])]
-                    }
+                        '$concat': [
+                            '^',
+                            path_or_value_to_raw(condition.values[1]),
+                        ]
+                    },
                 }
             }
         }
@@ -313,8 +341,14 @@ def convert_condition_expression(condition: Condition) -> dict:
 
 
 def convert_update_expression(action: Action) -> dict | list[dict]:
+    """
+    dictionary is returned for simple update expressions, whereas list
+    for pipeline expressions.
+    """
     if isinstance(action, SetAction):
         path, value = action.values
+        if isinstance(value, Path):
+            return [{'$set': {path_to_raw(path): path_value_to_raw(value)}}]
         if isinstance(value, Value):
             return {'$set': {path_to_raw(path): value_to_raw(value)}}
         if isinstance(value, _ListAppend):
@@ -351,7 +385,7 @@ def convert_update_expression(action: Action) -> dict | list[dict]:
             )
             return [{'$set': {path_to_raw(path): {operation: operands}}}]
         raise NotImplementedError(
-            'Operand of type: {value.__class__.__name__} not supported'
+            f'Operand of type: {value.__class__.__name__} not supported'
         )
     elif isinstance(action, RemoveAction):
         (path,) = action.values
@@ -409,8 +443,7 @@ def merge_update_expressions(
     lists = [x for x in items if isinstance(x, list)]
     if d and lists:
         # this means that we are going to make Mongo Pipeline instead of
-        # simple update. It currently can happen only if user removes an
-        # element from list by index. Pipeline syntax for some operations
+        # simple update. Pipeline syntax for some operations
         # differs from simple update syntax. $unset is one of such cases.
         stages = []
         for k, v in d.items():
