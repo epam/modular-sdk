@@ -62,19 +62,21 @@ class MaestroRabbitMQTransport(RabbitMQTransport):
             compressed=compressed
         )
 
-        if len(json.dumps(message).encode('utf-8')) > int(Env.RABBITMQ_MAX_MESSAGE_SIZE):
-            _LOG.error('Message size exceeds maximum allowed size')
-            raise ModularException(
-                code=500,
-                content=f'Message size for RabbitMQ exceeds maximum allowed size: {Env.RABBITMQ_MAX_MESSAGE_SIZE} bytes'
-            )
-
         signer = MaestroSignatureBuilder(
             access_key=config.sdk_access_key if config and config.sdk_access_key else self.access_key,
             secret_key=config.sdk_secret_key if config and config.sdk_secret_key else self.secret_key,
             user=config.maestro_user if config and config.maestro_user else self.user,
         )
         encrypted_body = signer.encrypt(data=message)
+
+        limit = Env.RABBITMQ_MAX_MESSAGE_SIZE.as_int()
+        if len(encrypted_body) > limit:
+            _LOG.error(f'Message size exceeds maximum allowed size: {limit}')
+            raise ModularException(
+                code=500,
+                content=f'Message size for RabbitMQ exceeds maximum allowed size: {limit} bytes'
+            )
+        _LOG.debug('Message length is within the limit')
 
         _LOG.debug('Message encrypted')
         # sign headers
