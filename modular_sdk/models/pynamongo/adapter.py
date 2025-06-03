@@ -9,6 +9,7 @@ from pymongo.collection import ReturnDocument
 from pynamodb.models import Model
 from pynamodb.expressions.condition import Condition
 
+
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.pynamongo.convertors import (
     PynamoDBModelToMongoDictSerializer,

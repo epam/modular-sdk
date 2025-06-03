@@ -107,7 +107,6 @@ def test_delete_with_condition(adapter, model_instance):
     with pytest.raises(DoesNotExist):
         adapter.get(TestModel, hash_key='test')
 
-
 def test_update(adapter, model_instance):
     adapter.save(model_instance)
     # NOTE: these update below produce simple mongo update query,
@@ -153,8 +152,6 @@ def test_update_with_condition(adapter, model_instance):
 
     item = adapter.get(TestModel, hash_key='test')
     assert not item.boolean
-
-
 
 def test_update_pipeline(adapter, model_instance):
     """

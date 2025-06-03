@@ -206,7 +206,6 @@ class TestConditionExpressionConvertor:
             )
             | (TestModel.nested.one.startswith('one'))
         )
-        print(convert_condition_expression(cond))
         assert convert_condition_expression(cond) == {
             '$or': [
                 {
