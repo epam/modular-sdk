@@ -51,8 +51,8 @@ class SerializeTestModel(Model):
     string = UnicodeAttribute(hash_key=True, attr_name='s')
     number = NumberAttribute()
     boolean = BooleanAttribute()
-    binary = BinaryAttribute()
-    binary_set = BinarySetAttribute()
+    binary = BinaryAttribute(legacy_encoding=False)
+    binary_set = BinarySetAttribute(legacy_encoding=False)
     unicode_set = UnicodeSetAttribute()
     number_set = NumberSetAttribute()
     json = JSONAttribute()
@@ -119,7 +119,6 @@ class TestConditionExpressionConvertor:
             TestModel.map['key'].is_in('one', 'two')
         ) == {'map.key': {'$in': ['one', 'two']}}
 
-    @pytest.mark.skip(reason='Dont work with PynamoDB==5.5.1')
     def test_equal(self):
         assert convert_condition_expression(
             TestModel.short_string == 'test'
@@ -160,7 +159,6 @@ class TestConditionExpressionConvertor:
             TestModel.string <= TestModel.short_string
         ) == {'$expr': {'$lte': ['$string', '$s']}}
     
-    @pytest.mark.skip(reason='Dont work with PynamoDB==5.5.1')
     def test_not_equal(self):
         assert convert_condition_expression(
             TestModel.short_string != 'test'
