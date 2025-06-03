@@ -233,6 +233,11 @@ class Env(str, Enum):
         '_MODULAR_SDK_AWS_CREDENTIALS_EXPIRATION',
         ('modular_aws_credentials_expiration',),
     )
+    RABBITMQ_MAX_MESSAGE_SIZE = (
+        'MODULAR_SDK_RABBITMQ_MAX_MESSAGE_SIZE',
+        ('modular_rabbitmq_max_message_size',), 
+        '5242880' # 5 MB
+    )
 
 
 class ParentType(str, Enum):
@@ -466,5 +471,3 @@ SUCCESS_STATUS = 'SUCCESS'
 ERROR_STATUS = 'FAILED'
 RESULTS = 'results'
 DATA = 'data'
-
-MAX_RABBITMQ_MESSAGE_SIZE = 5<<20  # 5 MB

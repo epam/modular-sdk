@@ -5,12 +5,12 @@ from modular_sdk.commons import (
     ModularException, generate_id, build_secure_message, build_message,
 )
 from modular_sdk.commons.constants import (
+    Env,
     PLAIN_CONTENT_TYPE,
     SUCCESS_STATUS,
     ERROR_STATUS,
     RESULTS,
     DATA,
-    MAX_RABBITMQ_MESSAGE_SIZE,
 )  # todo remove these imports with major release. They can be used from outside
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.connections.rabbit_connection import RabbitMqConnection
@@ -62,11 +62,11 @@ class MaestroRabbitMQTransport(RabbitMQTransport):
             compressed=compressed
         )
 
-        if len(json.dumps(message).encode('utf-8')) > MAX_RABBITMQ_MESSAGE_SIZE:
+        if len(json.dumps(message).encode('utf-8')) > int(Env.RABBITMQ_MAX_MESSAGE_SIZE):
             _LOG.error('Message size exceeds maximum allowed size')
             raise ModularException(
                 code=500,
-                content=f'Message size for RabbitMQ exceeds maximum allowed size: {MAX_RABBITMQ_MESSAGE_SIZE} bytes'
+                content=f'Message size for RabbitMQ exceeds maximum allowed size: {Env.RABBITMQ_MAX_MESSAGE_SIZE} bytes'
             )
 
         signer = MaestroSignatureBuilder(
