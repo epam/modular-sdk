@@ -2,6 +2,20 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 import pytest
+from modular_sdk.commons.constants import Cloud
+from modular_sdk.models.pynamongo.attributes import (
+    DynamicAttribute,
+    EnumUnicodeAttribute,
+    UUIDAttribute,
+)
+from modular_sdk.models.pynamongo.convertors import (
+    convert_attributes_to_get,
+    convert_condition_expression,
+    convert_update_expression,
+    instance_as_dict,
+    instance_as_json_dict,
+    path_to_raw,
+)
 from pynamodb.attributes import (
     BinaryAttribute,
     BinarySetAttribute,
@@ -17,20 +31,6 @@ from pynamodb.attributes import (
     UTCDateTimeAttribute,
 )
 from pynamodb.models import Model
-
-from modular_sdk.commons.constants import Cloud
-from modular_sdk.models.pynamongo.attributes import (
-    DynamicAttribute,
-    EnumUnicodeAttribute,
-    UUIDAttribute,
-)
-from modular_sdk.models.pynamongo.convertors import (
-    convert_attributes_to_get,
-    convert_condition_expression,
-    convert_update_expression,
-    instance_as_dict,
-    instance_as_json_dict,
-)
 
 
 class Nested(MapAttribute):
@@ -100,16 +100,16 @@ class TestConditionExpressionConvertor:
         assert convert_condition_expression(
             TestModel.list.does_not_exist()
         ) == {'list': {'$exists': False}}
-    
+
     def test_attr_is_type(self):
-        assert convert_condition_expression(
-            TestModel.string.is_type()
-        ) == {'string': {'$type': 'string'}}
+        assert convert_condition_expression(TestModel.string.is_type()) == {
+            'string': {'$type': 'string'}
+        }
 
     def test_contains(self):
         assert convert_condition_expression(
             TestModel.short_string.contains('test')
-        ) == {'$expr': {'$regexMatch': {'input': '$s', 'regex': 'test'}}}
+        ) == {'s': {'$regex': 'test'}}
         assert convert_condition_expression(
             TestModel.string.contains(TestModel.short_string)
         ) == {'$expr': {'$regexMatch': {'input': '$string', 'regex': '$s'}}}
@@ -122,43 +122,43 @@ class TestConditionExpressionConvertor:
     def test_equal(self):
         assert convert_condition_expression(
             TestModel.short_string == 'test'
-        ) == {'$expr':{'$eq': ['$s', 'test']}}
+        ) == {'$expr': {'$eq': ['$s', 'test']}}
         assert convert_condition_expression(
             TestModel.short_string == TestModel.string
         ) == {'$expr': {'$eq': ['$s', '$string']}}
 
     def test_gt(self):
-        assert convert_condition_expression(
-            TestModel.number > 10
-        ) == { '$expr': {'$gt': ['$num', 10]} }
+        assert convert_condition_expression(TestModel.number > 10) == {
+            '$expr': {'$gt': ['$num', 10]}
+        }
         assert convert_condition_expression(
             TestModel.string > TestModel.short_string
         ) == {'$expr': {'$gt': ['$string', '$s']}}
-    
+
     def test_lt(self):
-        assert convert_condition_expression(
-            TestModel.number < 10
-        ) == { '$expr': {'$lt': ['$num', 10]} }
+        assert convert_condition_expression(TestModel.number < 10) == {
+            '$expr': {'$lt': ['$num', 10]}
+        }
         assert convert_condition_expression(
             TestModel.string < TestModel.short_string
         ) == {'$expr': {'$lt': ['$string', '$s']}}
 
     def test_gte(self):
-        assert convert_condition_expression(
-            TestModel.number >= 10
-        ) == { '$expr': {'$gte': ['$num', 10]} }
+        assert convert_condition_expression(TestModel.number >= 10) == {
+            '$expr': {'$gte': ['$num', 10]}
+        }
         assert convert_condition_expression(
             TestModel.string >= TestModel.short_string
         ) == {'$expr': {'$gte': ['$string', '$s']}}
 
     def test_lte(self):
-        assert convert_condition_expression(
-            TestModel.number <= 10
-        ) == { '$expr': {'$lte': ['$num', 10]} }
+        assert convert_condition_expression(TestModel.number <= 10) == {
+            '$expr': {'$lte': ['$num', 10]}
+        }
         assert convert_condition_expression(
             TestModel.string <= TestModel.short_string
         ) == {'$expr': {'$lte': ['$string', '$s']}}
-    
+
     def test_not_equal(self):
         assert convert_condition_expression(
             TestModel.short_string != 'test'
@@ -170,25 +170,44 @@ class TestConditionExpressionConvertor:
     def test_between(self):
         assert convert_condition_expression(
             TestModel.number.between(10, 20)
-        ) == {'$expr': {'$and': [
-            {'$gte': ['$num', 10]},
-            {'$lte': ['$num', 20]}
-        ]}}
+        ) == {
+            '$expr': {'$and': [{'$gte': ['$num', 10]}, {'$lte': ['$num', 20]}]}
+        }
 
     def test_begins_with(self):
         assert convert_condition_expression(
             TestModel.short_string.startswith('test')
-        ) == {'$expr': {'$regexMatch': {'input': '$s', 'regex': {'$concat': ['^', 'test']}}}}
+        ) == {'s': {'$regex': '^test'}}
+        assert convert_condition_expression(
+            TestModel.short_string.startswith(TestModel.string)
+        ) == {
+            '$expr': {
+                '$regexMatch': {
+                    'input': '$s',
+                    'regex': {'$concat': ['^', '$string']},
+                }
+            }
+        }
 
     def test_and(self):
         assert convert_condition_expression(
             (TestModel.number > 10) & (TestModel.short_string == 'test')
-        ) == {'$and': [{'$expr': {'$gt': ['$num', 10]}}, {'$expr': {'$eq': ['$s', 'test']}}]}
+        ) == {
+            '$and': [
+                {'$expr': {'$gt': ['$num', 10]}},
+                {'$expr': {'$eq': ['$s', 'test']}},
+            ]
+        }
 
     def test_or(self):
         assert convert_condition_expression(
             (TestModel.number > 10) | (TestModel.short_string == 'test')
-        ) == {'$or': [{'$expr': {'$gt': ['$num', 10]}}, {'$expr': {'$eq': ['$s', 'test']}}]}
+        ) == {
+            '$or': [
+                {'$expr': {'$gt': ['$num', 10]}},
+                {'$expr': {'$eq': ['$s', 'test']}},
+            ]
+        }
 
     def test_not(self):
         assert convert_condition_expression(~(TestModel.number > 10)) == {
@@ -204,21 +223,26 @@ class TestConditionExpressionConvertor:
             )
             | (TestModel.nested.one.startswith('one'))
         )
+
         assert convert_condition_expression(cond) == {
             '$or': [
                 {
                     '$or': [
-                        {'$and': [{'$expr': {'$eq': ['$map.one', 'one']}},
-                                  {'$expr': {'$eq': ['$map.two', 'two']}}]},
+                        {
+                            '$and': [
+                                {'$expr': {'$eq': ['$map.one', 'one']}},
+                                {'$expr': {'$eq': ['$map.two', 'two']}},
+                            ]
+                        },
                         {
                             '$and': [
                                 {'$expr': {'$eq': ['$map.three', 'three']}},
-                                {'$nor': [{'$expr': {'$regexMatch': {'input': '$s', 'regex': 'sss'}}}]},
+                                {'$nor': [{'s': {'$regex': 'sss'}}]},
                             ]
                         },
                     ]
                 },
-                {'$expr': {'$regexMatch': {'input': '$n.o', 'regex': {'$concat':['^', 'one']}}}}
+                {'n.o': {'$regex': '^one'}},
             ]
         }
 
@@ -434,3 +458,14 @@ def test_instance_as_json_dict():
     for attr in ('binary_set', 'unicode_set', 'number_set'):
         assert sorted(res.pop(attr)) == sorted(expected.pop(attr))
     assert res == expected
+
+
+def test_path_to_raw():
+    path = str((SerializeTestModel.list[2]['key1']['key2'] == 1).values[0])
+
+    assert path_to_raw(path) == 'list.2.key1.key2'
+    assert path_to_raw('attr') == 'attr'
+    assert path_to_raw('attr[0]') == 'attr.0'
+    assert path_to_raw('attr1.attr2.attr3') == 'attr1.attr2.attr3'
+    assert path_to_raw('attr1.attr2.attr3[10]') == 'attr1.attr2.attr3.10'
+    assert path_to_raw('one.two[3].four[5]') == 'one.two.3.four.5'

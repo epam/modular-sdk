@@ -2,7 +2,7 @@ import json
 import re
 from datetime import datetime
 from enum import Enum
-from itertools import chain, islice
+from itertools import chain
 from typing import TYPE_CHECKING, Any, Callable, Iterable
 from uuid import UUID
 
@@ -165,7 +165,7 @@ class PynamoDBModelToMongoDictSerializer:
 
 
 # Looks for [1], [2], [12], etc in a string
-INDEX_REGEX = re.compile(r'\[\d+\]')
+INDEX_REGEX = re.compile(r'\[(\d+)\]')
 LAST_NUMBER_REGEX = re.compile(r'\.(\d+)$')
 COMPARISON_MAP = {
     '>': '$gt',
@@ -186,6 +186,20 @@ DYNAMO_TO_MONGO_TYPE_MAP = {
     NUMBER_SET: 'array',
     BINARY_SET: 'array',
 }
+MONGO_REGEX_SPECIAL_CHARS_MAP = {i: '\\' + chr(i) for i in b'.^$*+?{}[]()|\\'}
+
+
+def escape_mongo_regex(value: str) -> str:
+    """
+    Escapes special characters in a MongoDB regex.
+    :param value: string to escape
+    :return: escaped string
+    """
+    return value.translate(MONGO_REGEX_SPECIAL_CHARS_MAP)
+
+
+def _is_pynamo_value(v: Any, /) -> bool:
+    return isinstance(v, Value)
 
 
 def value_to_raw(value: Value) -> Any:
@@ -198,7 +212,7 @@ def value_to_raw(value: Value) -> Any:
     return attribute_value_to_mongo(value.value)
 
 
-def path_to_raw(path: Path) -> str:
+def path_to_raw(path: Path | str) -> str:
     """
     You can query MongoDB by nested attributes (one.two.three) and by
     first nested lists (one.two.3). But not deeper, i.e 'one.two.3.four'
@@ -208,28 +222,61 @@ def path_to_raw(path: Path) -> str:
     :param path:
     :return:
     """
-    raw = str(path)
-    for index in re.findall(INDEX_REGEX, raw):
-        n = index.strip('[]')
-        raw = raw.replace(index, f'.{n}', 1)
-    return raw
+    return INDEX_REGEX.sub(r'.\g<1>', str(path))
 
 
 def path_value_to_raw(value: Path) -> str:
     return '$' + path_to_raw(value)
 
 
-def path_or_value_to_raw(p_or_v: Path | Value, /) -> str | Any:
+def path_or_value_to_raw(p_or_v: Path | Value, /) -> Any:
     """
     Converts PynamoDB Path or Value to raw MongoDB path or value.
     :param p_or_v: PynamoDB Path or Value
     :return: raw MongoDB path or value
     """
-    if isinstance(p_or_v, Path):
-        return path_value_to_raw(p_or_v)
-    elif isinstance(p_or_v, Value):
+    if _is_pynamo_value(p_or_v):
         return value_to_raw(p_or_v)
-    raise TypeError(f'Unsupported type: {p_or_v.__class__.__name__}')
+    # isinstance(p_or_v, Path):
+    return path_value_to_raw(p_or_v)
+
+
+def _convert_contains_constant(p: Path, v: Value) -> dict:
+    return {path_to_raw(p): {'$regex': escape_mongo_regex(value_to_raw(v))}}
+
+
+def _convert_contains_ref(p: Path, v: Path) -> dict:
+    return {
+        '$expr': {
+            '$regexMatch': {
+                'input': path_value_to_raw(p),
+                'regex': path_value_to_raw(v),
+            }
+        }
+    }
+
+
+def _convert_begins_with_constant(p: Path, v: Value) -> dict:
+    """
+    Uses old style mongo regex because it utilizes indexes for anchored values
+    """
+    return {
+        path_to_raw(p): {'$regex': '^' + escape_mongo_regex(value_to_raw(v))}
+    }
+
+
+def _convert_begins_with_ref(p: Path, v: Path) -> dict:
+    """
+    Uses old style mongo regex because it utilizes indexes for anchored values
+    """
+    return {
+        '$expr': {
+            '$regexMatch': {
+                'input': path_value_to_raw(p),
+                'regex': {'$concat': ['^', path_value_to_raw(v)]},
+            }
+        }
+    }
 
 
 def convert_condition_expression(condition: Condition) -> dict:
@@ -272,9 +319,7 @@ def convert_condition_expression(condition: Condition) -> dict:
     if op == 'IN':  # item in array of
         return {
             path_to_raw(condition.values[0]): {
-                '$in': list(
-                    value_to_raw(v) for v in islice(condition.values, 1, None)
-                )
+                '$in': [value_to_raw(v) for v in condition.values[1:]]
             }
         }
     if op == '=':
@@ -315,28 +360,16 @@ def convert_condition_expression(condition: Condition) -> dict:
             }
         }
     if op == 'contains':
-        return {
-            '$expr': {
-                '$regexMatch': {
-                    'input': path_or_value_to_raw(condition.values[0]),
-                    'regex': path_or_value_to_raw(condition.values[1]),
-                }
-            }
-        }
+        p, v, *_ = condition.values
+        if _is_pynamo_value(v):
+            return _convert_contains_constant(p, v)
+        return _convert_contains_ref(p, v)
     if op == 'begins_with':
-        return {
-            '$expr': {
-                '$regexMatch': {
-                    'input': path_or_value_to_raw(condition.values[0]),
-                    'regex': {
-                        '$concat': [
-                            '^',
-                            path_or_value_to_raw(condition.values[1]),
-                        ]
-                    },
-                }
-            }
-        }
+        p, v, *_ = condition.values
+        if _is_pynamo_value(v):
+            return _convert_begins_with_constant(p, v)
+        return _convert_begins_with_ref(p, v)
+
     raise NotImplementedError(f'Operator: {op} is not supported')
 
 
@@ -390,7 +423,7 @@ def convert_update_expression(action: Action) -> dict | list[dict]:
     elif isinstance(action, RemoveAction):
         (path,) = action.values
         raw_path = path_to_raw(path)
-        m = re.search(LAST_NUMBER_REGEX, raw_path)
+        m = LAST_NUMBER_REGEX.search(raw_path)
         if not m:
             return {'$unset': {raw_path: ''}}
         # NOTE: special case when removing an element from a list.
