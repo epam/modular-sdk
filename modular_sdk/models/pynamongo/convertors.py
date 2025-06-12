@@ -173,6 +173,7 @@ COMPARISON_MAP = {
     '>=': '$gte',
     '<=': '$lte',
     '<>': '$ne',
+    '=': '$eq',
 }
 DYNAMO_TO_MONGO_TYPE_MAP = {
     STRING: 'string',
@@ -239,6 +240,37 @@ def path_or_value_to_raw(p_or_v: Path | Value, /) -> Any:
         return value_to_raw(p_or_v)
     # isinstance(p_or_v, Path):
     return path_value_to_raw(p_or_v)
+
+
+def _convert_comparison_constant(p: Path, v: Value, op: str) -> dict:
+    return {path_to_raw(p): {COMPARISON_MAP[op]: value_to_raw(v)}}
+
+
+def _convert_comparison_ref(p: Path, v: Path, op: str) -> dict:
+    return {
+        '$expr': {
+            COMPARISON_MAP[op]: [path_value_to_raw(p), path_value_to_raw(v)]
+        }
+    }
+
+
+def _convert_between_constant(p: Path, a: Value, b: Value) -> dict:
+    """
+    Between in DynamoDB includes both ends, so we use $gte and $lte
+    """
+    return {path_to_raw(p): {'$gte': value_to_raw(a), '$lte': value_to_raw(b)}}
+
+
+def _convert_between_ref(p: Path, a: Path | Value, b: Path | Value) -> dict:
+    pr = path_value_to_raw(p)
+    return {
+        '$expr': {
+            '$and': [
+                {'$gte': [pr, path_or_value_to_raw(a)]},
+                {'$lte': [pr, path_or_value_to_raw(b)]},
+            ]
+        }
+    }
 
 
 def _convert_contains_constant(p: Path, v: Value) -> dict:
@@ -315,58 +347,31 @@ def convert_condition_expression(condition: Condition) -> dict:
             }
         }
 
-    # pynamodb permits path in second value
     if op == 'IN':  # item in array of
-        return {
-            path_to_raw(condition.values[0]): {
-                '$in': [value_to_raw(v) for v in condition.values[1:]]
-            }
-        }
-    if op == '=':
-        return {
-            '$expr': {
-                '$eq': [
-                    path_or_value_to_raw(condition.values[0]),
-                    path_or_value_to_raw(condition.values[1]),
-                ]
-            }
-        }
-    if op in COMPARISON_MAP:
-        return {
-            '$expr': {
-                COMPARISON_MAP[op]: [
-                    path_or_value_to_raw(condition.values[0]),
-                    path_or_value_to_raw(condition.values[1]),
-                ]
-            }
-        }
+        p, *values = condition.values
+        return {path_to_raw(p): {'$in': [value_to_raw(v) for v in values]}}
+
+    # pynamodb permits path in second value
     if op == 'BETWEEN':
-        return {
-            '$expr': {
-                '$and': [
-                    {
-                        '$gte': [
-                            path_or_value_to_raw(condition.values[0]),
-                            path_or_value_to_raw(condition.values[1]),
-                        ]
-                    },
-                    {
-                        '$lte': [
-                            path_or_value_to_raw(condition.values[0]),
-                            path_or_value_to_raw(condition.values[2]),
-                        ]
-                    },
-                ]
-            }
-        }
+        p, a, b = condition.values
+        if _is_pynamo_value(a) and _is_pynamo_value(b):
+            return _convert_between_constant(p, a, b)
+        return _convert_between_ref(p, a, b)
+
+    # operators that require two operands
+    p, v = condition.values
+    is_constant = _is_pynamo_value(v)
+
+    if op in COMPARISON_MAP:
+        if is_constant:
+            return _convert_comparison_constant(p, v, op)
+        return _convert_comparison_ref(p, v, op)
     if op == 'contains':
-        p, v, *_ = condition.values
-        if _is_pynamo_value(v):
+        if is_constant:
             return _convert_contains_constant(p, v)
         return _convert_contains_ref(p, v)
     if op == 'begins_with':
-        p, v, *_ = condition.values
-        if _is_pynamo_value(v):
+        if is_constant:
             return _convert_begins_with_constant(p, v)
         return _convert_begins_with_ref(p, v)
 

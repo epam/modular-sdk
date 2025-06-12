@@ -36,6 +36,7 @@ from pynamodb.models import Model
 class Nested(MapAttribute):
     one = UnicodeAttribute(attr_name='o')
     two = UnicodeAttribute(attr_name='t')
+    number = NumberAttribute(attr_name='n')
 
 
 class TestModel(Model):
@@ -122,14 +123,14 @@ class TestConditionExpressionConvertor:
     def test_equal(self):
         assert convert_condition_expression(
             TestModel.short_string == 'test'
-        ) == {'$expr': {'$eq': ['$s', 'test']}}
+        ) == {'s': {'$eq': 'test'}}
         assert convert_condition_expression(
             TestModel.short_string == TestModel.string
         ) == {'$expr': {'$eq': ['$s', '$string']}}
 
     def test_gt(self):
         assert convert_condition_expression(TestModel.number > 10) == {
-            '$expr': {'$gt': ['$num', 10]}
+            'num': {'$gt': 10}
         }
         assert convert_condition_expression(
             TestModel.string > TestModel.short_string
@@ -137,7 +138,7 @@ class TestConditionExpressionConvertor:
 
     def test_lt(self):
         assert convert_condition_expression(TestModel.number < 10) == {
-            '$expr': {'$lt': ['$num', 10]}
+            'num': {'$lt': 10}
         }
         assert convert_condition_expression(
             TestModel.string < TestModel.short_string
@@ -145,7 +146,7 @@ class TestConditionExpressionConvertor:
 
     def test_gte(self):
         assert convert_condition_expression(TestModel.number >= 10) == {
-            '$expr': {'$gte': ['$num', 10]}
+            'num': {'$gte': 10}
         }
         assert convert_condition_expression(
             TestModel.string >= TestModel.short_string
@@ -153,7 +154,7 @@ class TestConditionExpressionConvertor:
 
     def test_lte(self):
         assert convert_condition_expression(TestModel.number <= 10) == {
-            '$expr': {'$lte': ['$num', 10]}
+            'num': {'$lte': 10}
         }
         assert convert_condition_expression(
             TestModel.string <= TestModel.short_string
@@ -162,7 +163,7 @@ class TestConditionExpressionConvertor:
     def test_not_equal(self):
         assert convert_condition_expression(
             TestModel.short_string != 'test'
-        ) == {'$expr': {'$ne': ['$s', 'test']}}
+        ) == {'s': {'$ne': 'test'}}
         assert convert_condition_expression(
             TestModel.short_string != TestModel.string
         ) == {'$expr': {'$ne': ['$s', '$string']}}
@@ -170,8 +171,13 @@ class TestConditionExpressionConvertor:
     def test_between(self):
         assert convert_condition_expression(
             TestModel.number.between(10, 20)
+        ) == {'num': {'$gte': 10, '$lte': 20}}
+        assert convert_condition_expression(
+            TestModel.number.between(10, TestModel.nested.number)
         ) == {
-            '$expr': {'$and': [{'$gte': ['$num', 10]}, {'$lte': ['$num', 20]}]}
+            '$expr': {
+                '$and': [{'$gte': ['$num', 10]}, {'$lte': ['$num', '$n.n']}]
+            }
         }
 
     def test_begins_with(self):
@@ -192,26 +198,16 @@ class TestConditionExpressionConvertor:
     def test_and(self):
         assert convert_condition_expression(
             (TestModel.number > 10) & (TestModel.short_string == 'test')
-        ) == {
-            '$and': [
-                {'$expr': {'$gt': ['$num', 10]}},
-                {'$expr': {'$eq': ['$s', 'test']}},
-            ]
-        }
+        ) == {'$and': [{'num': {'$gt': 10}}, {'s': {'$eq': 'test'}}]}
 
     def test_or(self):
         assert convert_condition_expression(
             (TestModel.number > 10) | (TestModel.short_string == 'test')
-        ) == {
-            '$or': [
-                {'$expr': {'$gt': ['$num', 10]}},
-                {'$expr': {'$eq': ['$s', 'test']}},
-            ]
-        }
+        ) == {'$or': [{'num': {'$gt': 10}}, {'s': {'$eq': 'test'}}]}
 
     def test_not(self):
         assert convert_condition_expression(~(TestModel.number > 10)) == {
-            '$nor': [{'$expr': {'$gt': ['$num', 10]}}]
+            '$nor': [{'num': {'$gt': 10}}]
         }
 
     def test_complex_condition(self):
@@ -223,20 +219,19 @@ class TestConditionExpressionConvertor:
             )
             | (TestModel.nested.one.startswith('one'))
         )
-
         assert convert_condition_expression(cond) == {
             '$or': [
                 {
                     '$or': [
                         {
                             '$and': [
-                                {'$expr': {'$eq': ['$map.one', 'one']}},
-                                {'$expr': {'$eq': ['$map.two', 'two']}},
+                                {'map.one': {'$eq': 'one'}},
+                                {'map.two': {'$eq': 'two'}},
                             ]
                         },
                         {
                             '$and': [
-                                {'$expr': {'$eq': ['$map.three', 'three']}},
+                                {'map.three': {'$eq': 'three'}},
                                 {'$nor': [{'s': {'$regex': 'sss'}}]},
                             ]
                         },

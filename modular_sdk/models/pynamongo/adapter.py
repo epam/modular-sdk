@@ -364,9 +364,10 @@ class PynamoDBToPymongoAdapter:
         index_name: str | None = None,
         attributes_to_get=None,
     ) -> ResultIterator[_MT]:
-        query = {}
         if filter_condition is not None:
-            query.update(convert_condition_expression(filter_condition))
+            query = convert_condition_expression(filter_condition)
+        else:
+            query = {}
         last_evaluated_key = last_evaluated_key or 0
 
         # TODO: scan a specific index using mongo hint
