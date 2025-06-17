@@ -1,4 +1,5 @@
 from typing import Optional, List
+from enum import Enum
 from pynamodb.expressions.condition import Condition
 from http import HTTPStatus
 
@@ -26,14 +27,6 @@ class ApplicationService:
               is_deleted=False, meta: Optional[dict] = None,
               secret: Optional[str] = None) -> Application:
         application_id = application_id or generate_id()
-        if type not in AVAILABLE_APPLICATION_TYPES:
-            _LOG.error(f'Invalid application type specified. Available '
-                       f'options: \'{AVAILABLE_APPLICATION_TYPES}\'')
-            raise ModularException(
-                code=HTTPStatus.BAD_REQUEST.value,
-                content=f'Invalid application type specified. Available '
-                        f'options: \'{AVAILABLE_APPLICATION_TYPES}\''
-            )
         if not self.customer_service.get(name=customer_id):
             _LOG.error(f'Customer with name \'{customer_id}\' does not exist.')
             raise ModularException(
@@ -43,7 +36,7 @@ class ApplicationService:
         return Application(
             application_id=application_id,
             customer_id=customer_id,
-            type=type.value if isinstance(type, ApplicationType) else type,
+            type=type.value if isinstance(type, Enum) else type,
             description=description,
             is_deleted=is_deleted,
             meta=meta,
