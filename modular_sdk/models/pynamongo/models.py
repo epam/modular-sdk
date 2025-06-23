@@ -20,7 +20,6 @@ from pynamodb.expressions.update import Action
 from pynamodb.models import _T, BatchWrite, _KeyType
 from pynamodb.models import Model as _Model
 from pynamodb.pagination import ResultIterator
-from pynamodb.settings import OperationSettings
 
 from modular_sdk.commons.constants import Env, DBBackend
 from modular_sdk.commons.log_helper import get_logger
@@ -52,7 +51,6 @@ class Model(_Model):
         items: Iterable[Union[_KeyType, Iterable[_KeyType]]],
         consistent_read: Optional[bool] = None,
         attributes_to_get: Optional[Sequence[str]] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> Iterator[_T]:
         if cls.is_mongo_model():
             return cls.mongo_adapter().batch_get(
@@ -62,31 +60,27 @@ class Model(_Model):
             items=items,
             consistent_read=consistent_read,
             attributes_to_get=attributes_to_get,
-            settings=settings,
         )
 
     @classmethod
     def batch_write(
         cls,
         auto_commit: bool = True,
-        settings: OperationSettings = OperationSettings.default,
     ) -> BatchWrite[_T]:
         if cls.is_mongo_model():
             return cls.mongo_adapter().batch_write(model=cls)
-        return super().batch_write(auto_commit=auto_commit, settings=settings)
+        return super().batch_write(auto_commit=auto_commit)
 
     def delete(
         self,
         condition: Optional[Condition] = None,
-        settings: OperationSettings = OperationSettings.default,
         *,
         add_version_condition: bool = True,
     ) -> Any:
         if self.is_mongo_model():
-            return self.mongo_adapter().delete(instance=self)
+            return self.mongo_adapter().delete(instance=self, condition=condition)
         return super().delete(
             condition=condition,
-            settings=settings,
             add_version_condition=add_version_condition,
         )
 
@@ -94,23 +88,20 @@ class Model(_Model):
         self,
         actions: List[Action],
         condition: Optional[Condition] = None,
-        settings: OperationSettings = OperationSettings.default,
         *,
         add_version_condition: bool = True,
     ) -> Any:
         if self.is_mongo_model():
-            return self.mongo_adapter().update(instance=self, actions=actions)
+            return self.mongo_adapter().update(instance=self, actions=actions, condition=condition)
         return super().update(
             actions=actions,
             condition=condition,
-            settings=settings,
             add_version_condition=add_version_condition,
         )
 
     def save(
         self,
         condition: Optional[Condition] = None,
-        settings: OperationSettings = OperationSettings.default,
         *,
         add_version_condition: bool = True,
     ) -> Dict[str, Any]:
@@ -118,19 +109,17 @@ class Model(_Model):
             return self.mongo_adapter().save(instance=self)
         return super().save(
             condition=condition,
-            settings=settings,
             add_version_condition=add_version_condition,
         )
 
     def refresh(
         self,
         consistent_read: bool = False,
-        settings: OperationSettings = OperationSettings.default,
     ) -> None:
         if self.is_mongo_model():
             return self.mongo_adapter().refresh(instance=self)
         return super().refresh(
-            consistent_read=consistent_read, settings=settings
+            consistent_read=consistent_read
         )
 
     @classmethod
@@ -140,7 +129,6 @@ class Model(_Model):
         range_key: Optional[_KeyType] = None,
         consistent_read: bool = False,
         attributes_to_get: Optional[Sequence[Text]] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> _T:
         if cls.is_mongo_model():
             return cls.mongo_adapter().get(
@@ -154,7 +142,6 @@ class Model(_Model):
             range_key=range_key,
             consistent_read=consistent_read,
             attributes_to_get=attributes_to_get,
-            settings=settings,
         )
 
     @classmethod
@@ -164,7 +151,6 @@ class Model(_Model):
         range_key: Optional[_KeyType] = None,
         consistent_read: bool = False,
         attributes_to_get: Optional[Sequence[Text]] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> _T | None:
         try:
             return cls.get(
@@ -172,7 +158,6 @@ class Model(_Model):
                 range_key=range_key,
                 consistent_read=consistent_read,
                 attributes_to_get=attributes_to_get,
-                settings=settings,
             )
         except DoesNotExist:
             return
@@ -187,7 +172,6 @@ class Model(_Model):
         index_name: Optional[str] = None,
         limit: Optional[int] = None,
         rate_limit: Optional[float] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> int:
         if cls.is_mongo_model():
             return cls.mongo_adapter().count(
@@ -206,7 +190,6 @@ class Model(_Model):
             index_name=index_name,
             limit=limit,
             rate_limit=rate_limit,
-            settings=settings,
         )
 
     @classmethod
@@ -223,7 +206,6 @@ class Model(_Model):
         attributes_to_get: Optional[Iterable[str]] = None,
         page_size: Optional[int] = None,
         rate_limit: Optional[float] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> ResultIterator[_T]:
         if cls.is_mongo_model():
             return cls.mongo_adapter().query(
@@ -250,7 +232,6 @@ class Model(_Model):
             attributes_to_get=attributes_to_get,
             page_size=page_size,
             rate_limit=rate_limit,
-            settings=settings,
         )
 
     @classmethod
@@ -266,7 +247,6 @@ class Model(_Model):
         index_name: Optional[str] = None,
         rate_limit: Optional[float] = None,
         attributes_to_get: Optional[Sequence[str]] = None,
-        settings: OperationSettings = OperationSettings.default,
     ) -> ResultIterator[_T]:
         if cls.is_mongo_model():
             return cls.mongo_adapter().scan(
@@ -289,7 +269,6 @@ class Model(_Model):
             index_name=index_name,
             rate_limit=rate_limit,
             attributes_to_get=attributes_to_get,
-            settings=settings,
         )
 
     @classmethod

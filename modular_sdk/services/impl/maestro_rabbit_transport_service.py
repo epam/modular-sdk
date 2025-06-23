@@ -5,11 +5,12 @@ from modular_sdk.commons import (
     ModularException, generate_id, build_secure_message, build_message,
 )
 from modular_sdk.commons.constants import (
+    Env,
     PLAIN_CONTENT_TYPE,
     SUCCESS_STATUS,
     ERROR_STATUS,
     RESULTS,
-    DATA
+    DATA,
 )  # todo remove these imports with major release. They can be used from outside
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.connections.rabbit_connection import RabbitMqConnection
@@ -60,15 +61,6 @@ class MaestroRabbitMQTransport(RabbitMQTransport):
             is_flat_request=is_flat_request,
             compressed=compressed
         )
-        secure_message = message
-        if not compressed:
-            secure_message = build_secure_message(
-                command_name=command_name,
-                parameters_to_secure=parameters,
-                secure_parameters=secure_parameters,
-                request_id=request_id,
-                is_flat_request=is_flat_request
-            )
 
         signer = MaestroSignatureBuilder(
             access_key=config.sdk_access_key if config and config.sdk_access_key else self.access_key,
@@ -76,6 +68,15 @@ class MaestroRabbitMQTransport(RabbitMQTransport):
             user=config.maestro_user if config and config.maestro_user else self.user,
         )
         encrypted_body = signer.encrypt(data=message)
+
+        limit = Env.RABBITMQ_MAX_MESSAGE_SIZE.as_int()
+        if len(encrypted_body) > limit:
+            _LOG.error(f'Message size exceeds maximum allowed size: {limit}')
+            raise ModularException(
+                code=500,
+                content=f'Message size for RabbitMQ exceeds maximum allowed size: {limit} bytes'
+            )
+        _LOG.debug('Message length is within the limit')
 
         _LOG.debug('Message encrypted')
         # sign headers

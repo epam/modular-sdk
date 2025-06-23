@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.1.0] - 2025-06-03
+- supported filter conditions that reference other attributes from the same 
+  document instead of just constant for MongoDB.
+- added payload size limit to `RabbitMQTransport` and `MaestroRabbitMQTransport`
+- support conditional updates and deletes for MongoDB
+- added new application types: `CUSTODIAN_DEFECT_DOJO`, `CUSTODIAN_RABBITMQ`, `RIGHTSIZER_DEFECT_DOJO`, `RIGHTSIZER_RABBITMQ`.
+
 ## [7.0.0] - 2025-04-29
 - Disabled AWS xray SDK Patch, removed `aws-xray-sdk` from dependencies
 - Create one MongoClient instead of multiple ones

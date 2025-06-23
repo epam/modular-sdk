@@ -341,7 +341,7 @@ wheels = [
 
 [[package]]
 name = "modular-sdk"
-version = "7.0.0"
+version = "7.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "boto3" },
@@ -378,7 +378,7 @@ requires-dist = [
     { name = "hvac", marker = "extra == 'hvac'", specifier = "~=2.1.0" },
     { name = "pika", specifier = "~=1.3.2" },
     { name = "pymongo", specifier = "~=4.11.2" },
-    { name = "pynamodb", specifier = "==5.5.1" },
+    { name = "pynamodb", specifier = "==6.1.0" },
     { name = "python-dateutil", specifier = ">=2.9.0.post0" },
 ]
 provides-extras = ["cryptography", "hvac"]
@@ -499,14 +499,15 @@ wheels = [
 
 [[package]]
 name = "pynamodb"
-version = "5.5.1"
+version = "6.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d1/e6/60f364b45f72311b3213b102d2a9b4c2f0a72d1757dc55c7336099e594ab/pynamodb-5.5.1.tar.gz", hash = "sha256:b9d9a59afd9edbc3db63a267e67db764831f277477ae744ed4febb778ef1a098", size = 93091 }
+sdist = { url = "https://files.pythonhosted.org/packages/af/0b/35d24cdfe532fd9c774c184fbd09118b0a8c94eb51ca9598c0c5ef21174d/pynamodb-6.1.0.tar.gz", hash = "sha256:c7d09700ace9f428e67ecf73fa867633c632de3acf402b2c7c136be695afda79", size = 96283 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/29/bc/6c64c75ca93de0c95d48cf1b61400a1241676c2cb8f21618e7127f117b00/pynamodb-5.5.1-py3-none-any.whl", hash = "sha256:6aa659c11d4a8a18ef2d75392a08828d45ab9eefb9638871d455929a52d66fc3", size = 60212 },
+    { url = "https://files.pythonhosted.org/packages/d4/86/71e355d232f28adb50c89b806b018548c095a6cf3d631b645918f415212a/pynamodb-6.1.0-py3-none-any.whl", hash = "sha256:9c0f1a0f177208640b2336ed56c557c5187b0012d356e9c7399c3923c5f93c7f", size = 61685 },
 ]
 
 [[package]]
@@ -652,6 +653,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/5b/b9/1ed31d167be802da0fc95020d04cd27b7d7065cc6fbefdd2f9186f60d7bd/tomli-2.2.1-cp313-cp313-win32.whl", hash = "sha256:d3f5614314d758649ab2ab3a62d4f2004c825922f9e370b29416484086b264ec", size = 98724 },
     { url = "https://files.pythonhosted.org/packages/c7/32/b0963458706accd9afcfeb867c0f9175a741bf7b19cd424230714d722198/tomli-2.2.1-cp313-cp313-win_amd64.whl", hash = "sha256:a38aa0308e754b0e3c67e344754dff64999ff9b513e691d0e786265c93583c69", size = 109383 },
     { url = "https://files.pythonhosted.org/packages/6e/c2/61d3e0f47e2b74ef40a68b9e6ad5984f6241a942f7cd3bbfbdbd03861ea9/tomli-2.2.1-py3-none-any.whl", hash = "sha256:cb55c73c5f4408779d0cf3eef9f762b9c9f147a77de7b258bef0a5628adc85cc", size = 14257 },
+]
+
+[[package]]
+name = "typing-extensions"
+version = "4.14.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d1/bc/51647cd02527e87d05cb083ccc402f93e441606ff1f01739a62c8ad09ba5/typing_extensions-4.14.0.tar.gz", hash = "sha256:8676b788e32f02ab42d9e7c61324048ae4c6d844a399eebace3d4979d75ceef4", size = 107423 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/69/e0/552843e0d356fbb5256d21449fa957fa4eff3bbc135a74a691ee70c7c5da/typing_extensions-4.14.0-py3-none-any.whl", hash = "sha256:a1514509136dd0b477638fc68d6a91497af5076466ad0fa6c338e44e359944af", size = 43839 },
 ]
 
 [[package]]

@@ -236,7 +236,7 @@ BETWEEN              | YES       | Model.number.between(10, 20)                 
 IN                   | YES       | Model.map['key'].is_in('one', 'two')           |
 attribute_exists     | YES       | Model.list.exists()                            |
 attribute_not_exists | YES       | Model.number.does_not_exist()                  |
-attribute_type       | NO        |                                                |
+attribute_type       | YES       | Model.mapping["key"].is_type('S')              |
 begins_with          | YES       | Model.string.startswith('test')                |
 contains             | YES       | Model.string.contains('test')                  | [WARNING: not supported for Sets]
 size                 | NO        |                                                |
@@ -262,8 +262,6 @@ Almost all public methods of Model are supported. Those are:
 What PynamoDB features are not supported:
 - Polymorphism through the use of discriminators (https://pynamodb.readthedocs.io/en/stable/polymorphism.html)
 - Transaction Operations (https://pynamodb.readthedocs.io/en/stable/transaction.html)
-- Conditional writes (https://pynamodb.readthedocs.io/en/stable/conditional.html#conditioning-on-keys)
-
 """
 from .adapter import PynamoDBToPymongoAdapter, ResultIterator
 from .attributes import (
