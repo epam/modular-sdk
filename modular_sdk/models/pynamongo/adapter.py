@@ -2,10 +2,11 @@ import base64
 import binascii
 import json
 import math
-from typing import TYPE_CHECKING, Generator, Iterator, TypeVar
+from typing import TYPE_CHECKING, Any, Generator, Iterator, TypeVar, cast
 
 from pymongo import ASCENDING, DESCENDING, DeleteOne, ReplaceOne
 from pymongo.collection import ReturnDocument
+from pynamodb.expressions.condition import Condition
 from pynamodb.models import Model
 
 from modular_sdk.commons.log_helper import get_logger
@@ -19,8 +20,8 @@ from modular_sdk.models.pynamongo.convertors import (
 
 if TYPE_CHECKING:
     from pymongo.collection import Collection
-    from pymongo.database import Database
     from pymongo.cursor import Cursor
+    from pymongo.database import Database
     from pynamodb.expressions.update import Action
 
 _MT = TypeVar('_MT', bound=Model)
@@ -31,6 +32,7 @@ class ResultIterator(Iterator[_MT]):
     """
     Mocks ResultIterator from PynamoDB
     """
+
     __slots__ = '_cursor', '_model', '_serializer', '_skip', '_total'
 
     def __init__(
@@ -203,7 +205,12 @@ class PynamoDBToPymongoAdapter:
             }
         }
 
-    def update(self, instance: Model, actions: list['Action']) -> dict:
+    def update(
+        self,
+        instance: Model,
+        actions: list['Action'],
+        condition: Condition | None = None,
+    ) -> dict:
         _update = merge_update_expressions(
             map(convert_update_expression, actions)
         )
@@ -211,10 +218,12 @@ class PynamoDBToPymongoAdapter:
             q = {'_id': _id}
         else:
             q = self._ser.instance_serialized_keys(instance)
+        if condition is not None:
+            q = {'$and': [q, convert_condition_expression(condition)]}
         res = self.get_collection(instance).find_one_and_update(
             filter=q,
             update=_update,
-            upsert=True,
+            upsert=True if condition is None else False,
             return_document=ReturnDocument.AFTER,
         )
         if res:
@@ -226,11 +235,15 @@ class PynamoDBToPymongoAdapter:
             }
         }
 
-    def delete(self, instance: Model) -> dict:
+    def delete(
+        self, instance: Model, condition: Condition | None = None
+    ) -> dict:
         if _id := self._ser.get_mongo_id(instance):
             q = {'_id': _id}
         else:
             q = self._ser.instance_serialized_keys(instance)
+        if condition is not None:
+            q = {'$and': [q, convert_condition_expression(condition)]}
 
         self.get_collection(instance).delete_one(q)
         return {
@@ -264,6 +277,53 @@ class PynamoDBToPymongoAdapter:
         # db = self._get_db(model)
         # db.create_collection()
 
+    @staticmethod
+    def _build_query(
+        hash_key_name: str | None,
+        hash_key: Any | None,
+        range_key_name: str | None,
+        range_key_condition: Condition | None,
+        filter_condition: Condition | None,
+    ) -> dict:
+        """
+        We would want to merge them but that seems difficult to get right,
+        so we just make use of constraints imposed by DynamoDB.
+        """
+        if hash_key_name is None and hash_key is not None:
+            raise ValueError('Hash key name must be provided with hash key')
+        if range_key_name is None and range_key_condition is not None:
+            raise ValueError(
+                'Cannot use range key condition is there is no range key'
+            )
+        query = {}
+        if hash_key is not None:
+            query[cast(str, hash_key_name)] = {'$eq': hash_key}
+
+        if range_key_condition is not None:
+            range_key_name = cast(str, range_key_name)
+            c = convert_condition_expression(range_key_condition)
+            if range_key_name not in c:
+                raise ValueError(
+                    'Range key condition should be a simple '
+                    'condition utilizing range key'
+                )
+            query.update(c)
+
+        if filter_condition is not None:
+            # should not use hash key and range key. By here filter query
+            # contains only one or two simple conditions. Whatever this thing
+            # returns it can be just expanded into query
+            c = convert_condition_expression(filter_condition)
+            if (hash_key_name and hash_key_name in c) or (
+                range_key_name and range_key_name in c
+            ):
+                # can be checked inside as well but seems like it's enough
+                raise ValueError(
+                    'Filter condition should not use hash key or range key'
+                )
+            query.update(c)
+        return query
+
     def count(
         self,
         model: type[Model],
@@ -273,24 +333,32 @@ class PynamoDBToPymongoAdapter:
         index_name=None,
         limit=None,
     ) -> int:
-        query = {}
-
         if hash_key:
             if index_name:
                 index = self._ser.model_indexes(model).get(index_name)
                 assert index is not None, 'Index must exist'
 
-                h_attr, _ = self._ser.index_keys(index)
-                query[h_attr.attr_name] = h_attr.serialize(hash_key)
+                h_attr, r_attr = self._ser.index_keys(index)
+                hash_key_name = h_attr.attr_name
+                range_key_name = (
+                    r_attr.attr_name if r_attr is not None else None
+                )
+                hash_key = h_attr.serialize(hash_key)
             else:
-                hash_key_name, _ = self._ser.model_keys_names(model)
+                hash_key_name, range_key_name = self._ser.model_keys_names(
+                    model
+                )
                 hash_key, _ = self._ser.serialize_keys(model, hash_key, None)
-                query[hash_key_name] = hash_key
+        else:
+            hash_key_name, range_key_name = None, None
+        query = self._build_query(
+            hash_key_name=hash_key_name,
+            hash_key=hash_key,
+            range_key_name=range_key_name,
+            range_key_condition=range_key_condition,
+            filter_condition=filter_condition,
+        )
 
-        if range_key_condition is not None:
-            query.update(convert_condition_expression(range_key_condition))
-        if filter_condition is not None:
-            query.update(convert_condition_expression(filter_condition))
         collection = self.get_collection(model)
 
         if limit:
@@ -321,16 +389,19 @@ class PynamoDBToPymongoAdapter:
             hash_key_name, range_key_name = self._ser.model_keys_names(model)
             hash_key, _ = self._ser.serialize_keys(model, hash_key, None)
 
-        q = {hash_key_name: hash_key}
-        if range_key_condition is not None:
-            q.update(convert_condition_expression(range_key_condition))
-        if filter_condition is not None:
-            q.update(convert_condition_expression(filter_condition))
+        query = self._build_query(
+            hash_key_name=hash_key_name,
+            hash_key=hash_key,
+            range_key_name=range_key_name,
+            range_key_condition=range_key_condition,
+            filter_condition=filter_condition,
+        )
+
         last_evaluated_key = last_evaluated_key or 0
 
         col = self.get_collection(model)
         cursor = col.find(
-            q,
+            query,
             projection=convert_attributes_to_get(attributes_to_get),
             skip=last_evaluated_key,
             limit=limit or 0,
@@ -345,7 +416,7 @@ class PynamoDBToPymongoAdapter:
             model=model,
             serializer=self._ser,
             skip=last_evaluated_key,
-            total=col.count_documents(q)
+            total=col.count_documents(query),
         )
 
     def scan(
@@ -358,9 +429,10 @@ class PynamoDBToPymongoAdapter:
         index_name: str | None = None,
         attributes_to_get=None,
     ) -> ResultIterator[_MT]:
-        query = {}
         if filter_condition is not None:
-            query.update(convert_condition_expression(filter_condition))
+            query = convert_condition_expression(filter_condition)
+        else:
+            query = {}
         last_evaluated_key = last_evaluated_key or 0
 
         # TODO: scan a specific index using mongo hint
@@ -377,7 +449,7 @@ class PynamoDBToPymongoAdapter:
             model=model,
             serializer=self._ser,
             skip=last_evaluated_key,
-            total=col.count_documents(query)
+            total=col.count_documents(query),
         )
 
     def batch_get(

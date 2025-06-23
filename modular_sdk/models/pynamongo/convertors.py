@@ -2,12 +2,23 @@ import json
 import re
 from datetime import datetime
 from enum import Enum
-from itertools import chain, islice
+from itertools import chain
 from typing import TYPE_CHECKING, Any, Callable, Iterable
 from uuid import UUID
 
 from pynamodb.attributes import Attribute, AttributeContainer
-from pynamodb.constants import BINARY, BOOLEAN, LIST, MAP, NULL, NUMBER, STRING
+from pynamodb.constants import (
+    BINARY,
+    BINARY_SET,
+    BOOLEAN,
+    LIST,
+    MAP,
+    NULL,
+    NUMBER,
+    NUMBER_SET,
+    STRING,
+    STRING_SET,
+)
 from pynamodb.expressions.condition import Condition
 from pynamodb.expressions.operand import (
     Path,
@@ -72,7 +83,6 @@ class PynamoDBModelToMongoDictSerializer:
     _mongo_id_attr = '__mongo_id__'
 
     def serialize(self, instance: 'Model') -> dict:
-        # TODO: encode not supported keys?
         return {
             k: attribute_value_to_mongo(v)
             for k, v in instance.serialize().items()
@@ -155,7 +165,7 @@ class PynamoDBModelToMongoDictSerializer:
 
 
 # Looks for [1], [2], [12], etc in a string
-INDEX_REGEX = re.compile(r'\[\d+\]')
+INDEX_REGEX = re.compile(r'\[(\d+)\]')
 LAST_NUMBER_REGEX = re.compile(r'\.(\d+)$')
 COMPARISON_MAP = {
     '>': '$gt',
@@ -163,7 +173,34 @@ COMPARISON_MAP = {
     '>=': '$gte',
     '<=': '$lte',
     '<>': '$ne',
+    '=': '$eq',
 }
+DYNAMO_TO_MONGO_TYPE_MAP = {
+    STRING: 'string',
+    NUMBER: 'double',
+    BOOLEAN: 'bool',
+    BINARY: 'binData',
+    LIST: 'array',
+    MAP: 'object',
+    NULL: 'null',
+    STRING_SET: 'array',
+    NUMBER_SET: 'array',
+    BINARY_SET: 'array',
+}
+MONGO_REGEX_SPECIAL_CHARS_MAP = {i: '\\' + chr(i) for i in b'.^$*+?{}[]()|\\'}
+
+
+def escape_mongo_regex(value: str) -> str:
+    """
+    Escapes special characters in a MongoDB regex.
+    :param value: string to escape
+    :return: escaped string
+    """
+    return value.translate(MONGO_REGEX_SPECIAL_CHARS_MAP)
+
+
+def _is_pynamo_value(v: Any, /) -> bool:
+    return isinstance(v, Value)
 
 
 def value_to_raw(value: Value) -> Any:
@@ -176,7 +213,7 @@ def value_to_raw(value: Value) -> Any:
     return attribute_value_to_mongo(value.value)
 
 
-def path_to_raw(path: Path) -> str:
+def path_to_raw(path: Path | str) -> str:
     """
     You can query MongoDB by nested attributes (one.two.three) and by
     first nested lists (one.two.3). But not deeper, i.e 'one.two.3.four'
@@ -186,11 +223,92 @@ def path_to_raw(path: Path) -> str:
     :param path:
     :return:
     """
-    raw = str(path)
-    for index in re.findall(INDEX_REGEX, raw):
-        n = index.strip('[]')
-        raw = raw.replace(index, f'.{n}', 1)
-    return raw
+    return INDEX_REGEX.sub(r'.\g<1>', str(path))
+
+
+def path_value_to_raw(value: Path) -> str:
+    return '$' + path_to_raw(value)
+
+
+def path_or_value_to_raw(p_or_v: Path | Value, /) -> Any:
+    """
+    Converts PynamoDB Path or Value to raw MongoDB path or value.
+    :param p_or_v: PynamoDB Path or Value
+    :return: raw MongoDB path or value
+    """
+    if _is_pynamo_value(p_or_v):
+        return value_to_raw(p_or_v)
+    # isinstance(p_or_v, Path):
+    return path_value_to_raw(p_or_v)
+
+
+def _convert_comparison_constant(p: Path, v: Value, op: str) -> dict:
+    return {path_to_raw(p): {COMPARISON_MAP[op]: value_to_raw(v)}}
+
+
+def _convert_comparison_ref(p: Path, v: Path, op: str) -> dict:
+    return {
+        '$expr': {
+            COMPARISON_MAP[op]: [path_value_to_raw(p), path_value_to_raw(v)]
+        }
+    }
+
+
+def _convert_between_constant(p: Path, a: Value, b: Value) -> dict:
+    """
+    Between in DynamoDB includes both ends, so we use $gte and $lte
+    """
+    return {path_to_raw(p): {'$gte': value_to_raw(a), '$lte': value_to_raw(b)}}
+
+
+def _convert_between_ref(p: Path, a: Path | Value, b: Path | Value) -> dict:
+    pr = path_value_to_raw(p)
+    return {
+        '$expr': {
+            '$and': [
+                {'$gte': [pr, path_or_value_to_raw(a)]},
+                {'$lte': [pr, path_or_value_to_raw(b)]},
+            ]
+        }
+    }
+
+
+def _convert_contains_constant(p: Path, v: Value) -> dict:
+    return {path_to_raw(p): {'$regex': escape_mongo_regex(value_to_raw(v))}}
+
+
+def _convert_contains_ref(p: Path, v: Path) -> dict:
+    return {
+        '$expr': {
+            '$regexMatch': {
+                'input': path_value_to_raw(p),
+                'regex': path_value_to_raw(v),
+            }
+        }
+    }
+
+
+def _convert_begins_with_constant(p: Path, v: Value) -> dict:
+    """
+    Uses old style mongo regex because it utilizes indexes for anchored values
+    """
+    return {
+        path_to_raw(p): {'$regex': '^' + escape_mongo_regex(value_to_raw(v))}
+    }
+
+
+def _convert_begins_with_ref(p: Path, v: Path) -> dict:
+    """
+    Uses old style mongo regex because it utilizes indexes for anchored values
+    """
+    return {
+        '$expr': {
+            '$regexMatch': {
+                'input': path_value_to_raw(p),
+                'regex': {'$concat': ['^', path_value_to_raw(v)]},
+            }
+        }
+    }
 
 
 def convert_condition_expression(condition: Condition) -> dict:
@@ -199,7 +317,7 @@ def convert_condition_expression(condition: Condition) -> dict:
     `pynamodb.expressions.condition`: Comparison, Between, In, Exists,
     NotExists, BeginsWith, Contains, And, Or, Not.
 
-    IsType and size are not supported. Add support if you want
+    size is not supported. Add support if you want
     """
     op = condition.operator
     if op == 'OR':
@@ -220,49 +338,55 @@ def convert_condition_expression(condition: Condition) -> dict:
         return {path_to_raw(condition.values[0]): {'$exists': True}}
     if op == 'attribute_not_exists':
         return {path_to_raw(condition.values[0]): {'$exists': False}}
-    if op == 'contains':
+    if op == 'attribute_type':
         return {
             path_to_raw(condition.values[0]): {
-                '$regex': value_to_raw(condition.values[1])
+                '$type': DYNAMO_TO_MONGO_TYPE_MAP[
+                    value_to_raw(condition.values[1])
+                ]
             }
         }
-    if op == 'IN':
-        return {
-            path_to_raw(condition.values[0]): {
-                '$in': list(
-                    value_to_raw(v) for v in islice(condition.values, 1, None)
-                )
-            }
-        }
-    if op == '=':
-        return {
-            path_to_raw(condition.values[0]): value_to_raw(condition.values[1])
-        }
-    if op in COMPARISON_MAP:
-        return {
-            path_to_raw(condition.values[0]): {
-                COMPARISON_MAP[op]: value_to_raw(condition.values[1])
-            }
-        }
+
+    if op == 'IN':  # item in array of
+        p, *values = condition.values
+        return {path_to_raw(p): {'$in': [value_to_raw(v) for v in values]}}
+
+    # pynamodb permits path in second value
     if op == 'BETWEEN':
-        return {
-            path_to_raw(condition.values[0]): {
-                '$gte': value_to_raw(condition.values[1]),
-                '$lte': value_to_raw(condition.values[2]),
-            }
-        }
+        p, a, b = condition.values
+        if _is_pynamo_value(a) and _is_pynamo_value(b):
+            return _convert_between_constant(p, a, b)
+        return _convert_between_ref(p, a, b)
+
+    # operators that require two operands
+    p, v = condition.values
+    is_constant = _is_pynamo_value(v)
+
+    if op in COMPARISON_MAP:
+        if is_constant:
+            return _convert_comparison_constant(p, v, op)
+        return _convert_comparison_ref(p, v, op)
+    if op == 'contains':
+        if is_constant:
+            return _convert_contains_constant(p, v)
+        return _convert_contains_ref(p, v)
     if op == 'begins_with':
-        return {
-            path_to_raw(condition.values[0]): {
-                '$regex': f'^{value_to_raw(condition.values[1])}'
-            }
-        }
+        if is_constant:
+            return _convert_begins_with_constant(p, v)
+        return _convert_begins_with_ref(p, v)
+
     raise NotImplementedError(f'Operator: {op} is not supported')
 
 
 def convert_update_expression(action: Action) -> dict | list[dict]:
+    """
+    dictionary is returned for simple update expressions, whereas list
+    for pipeline expressions.
+    """
     if isinstance(action, SetAction):
         path, value = action.values
+        if isinstance(value, Path):
+            return [{'$set': {path_to_raw(path): path_value_to_raw(value)}}]
         if isinstance(value, Value):
             return {'$set': {path_to_raw(path): value_to_raw(value)}}
         if isinstance(value, _ListAppend):
@@ -299,12 +423,12 @@ def convert_update_expression(action: Action) -> dict | list[dict]:
             )
             return [{'$set': {path_to_raw(path): {operation: operands}}}]
         raise NotImplementedError(
-            'Operand of type: {value.__class__.__name__} not supported'
+            f'Operand of type: {value.__class__.__name__} not supported'
         )
     elif isinstance(action, RemoveAction):
         (path,) = action.values
         raw_path = path_to_raw(path)
-        m = re.search(LAST_NUMBER_REGEX, raw_path)
+        m = LAST_NUMBER_REGEX.search(raw_path)
         if not m:
             return {'$unset': {raw_path: ''}}
         # NOTE: special case when removing an element from a list.
@@ -357,8 +481,7 @@ def merge_update_expressions(
     lists = [x for x in items if isinstance(x, list)]
     if d and lists:
         # this means that we are going to make Mongo Pipeline instead of
-        # simple update. It currently can happen only if user removes an
-        # element from list by index. Pipeline syntax for some operations
+        # simple update. Pipeline syntax for some operations
         # differs from simple update syntax. $unset is one of such cases.
         stages = []
         for k, v in d.items():

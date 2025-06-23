@@ -59,20 +59,7 @@ class MaestroHTTPTransport(AbstractTransport):
             is_flat_request=is_flat_request,
             compressed=compressed,
         )
-        secure_message = message
-        # todo that is strange because why uncompressed data
-        #  should lack parameters?
-        if not compressed:
-            secure_message = build_secure_message(
-                command_name=command_name,
-                parameters_to_secure=parameters,
-                secure_parameters=secure_parameters,
-                request_id=request_id,
-                is_flat_request=is_flat_request,
-            )
-        _LOG.debug(
-            f'Prepared command: {command_name}\nCommand format: {secure_message}'
-        )
+
         signer = MaestroSignatureBuilder(
             access_key=config.sdk_access_key if config and config.sdk_access_key else self.access_key,
             secret_key=config.sdk_secret_key if config and config.sdk_secret_key else self.secret_key,

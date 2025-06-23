@@ -350,9 +350,9 @@ class MaestroCredentialsService:
             boto3.client('sts').get_caller_identity()
         # or do something else with credentials
 
-    Note: method `complete_credentials` is separated because in involves
+    Note: method `complete_credentials` is separated because it involves
     some logic which can be performed after credentials were retrieved
-    from na application. For example, azure credentials require
+    from an application. For example, azure credentials require
     subscription id, but not all the applications contain it. So, we must
     get it from a tenant.
 
@@ -389,7 +389,7 @@ class MaestroCredentialsService:
               ) -> 'MaestroCredentialsService':
         """
         Allows to build the service specifying some services to override.
-        SSM Service is expected to be overriden because some applications
+        SSM Service is expected to be overridden because some applications
         (like AWS_ROLE, AZURE_CREDENTIALS) have their secrets on Maestro
         prod, and some applications (RABBITMQ) will probably have their
         secrets on our prod. So we need different ssm clients
@@ -527,7 +527,7 @@ class MaestroCredentialsService:
     @cached_property
     def application_type_to_getter(
             self) -> Dict[
-        str, Callable[[Application, Optional[Tenant]], Credentials]]:
+        str, Callable[[Application, Optional[Tenant]], Optional[Credentials]]]:
         """
         Method must have application as input
         """
@@ -538,6 +538,8 @@ class MaestroCredentialsService:
             ApplicationType.AWS_ROLE: self._get_aws_credentials_from_role,
             ApplicationType.GCP_SERVICE_ACCOUNT: self._get_gcp_credentials,
             ApplicationType.GCP_COMPUTE_ACCOUNT: self._get_gcp_credentials,
+            ApplicationType.CUSTODIAN_RABBITMQ: self._get_rabbitmq_credentials,
+            ApplicationType.RIGHTSIZER_RABBITMQ: self._get_rabbitmq_credentials,
             ApplicationType.RABBITMQ: self._get_rabbitmq_credentials,
         }
 
@@ -682,6 +684,8 @@ class MaestroCredentialsService:
                          f' but not in SSM')
             return
         if not isinstance(secret, dict):  # it must be dict
+            _LOG.warning('Secret is not a dict, cannot parse RabbitMQ '
+                         'credentials')
             return
         meta = RabbitMQApplicationMeta.from_dict(application.meta.as_dict())
         secret = RabbitMQApplicationSecret.from_dict(secret)
