@@ -341,7 +341,7 @@ wheels = [
 
 [[package]]
 name = "modular-sdk"
-version = "7.1.0"
+version = "7.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "boto3" },
