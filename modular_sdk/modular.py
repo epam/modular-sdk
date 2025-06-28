@@ -341,7 +341,7 @@ class Modular(ModularServiceProvider, metaclass=SingletonMeta):
         if modular_service_mode is None:
             modular_service_mode = Env.SERVICE_MODE.get()
         if modular_assume_role_arn is None:
-            modular_service_mode = Env.ASSUME_ROLE_ARN.get()
+            modular_assume_role_arn = Env.ASSUME_ROLE_ARN.get()
 
         if (
             modular_service_mode == ServiceMode.SAAS
