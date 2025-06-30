@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [7.1.1] - 2025-06-27
-- Fix `batch_get` now supports both composite (hash+range) and single hash key queries,
+- Fixed `batch_get` now supports both composite (hash+range) and single hash key queries,
   with validation for input format based on model schema.
 
 ## [7.1.0] - 2025-06-03

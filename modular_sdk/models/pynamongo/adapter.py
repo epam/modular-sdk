@@ -453,10 +453,10 @@ class PynamoDBToPymongoAdapter:
         )
 
     def batch_get(
-            self,
-            model: type[_MT],
-            items: list[tuple] | list[Any],
-            attributes_to_get=None
+        self,
+        model: type[_MT],
+        items: list[tuple[Any, Any]] | list[Any],
+        attributes_to_get=None,
     ) -> Generator[_MT, None, None]:
         """
         Seems like bulk read is not supported.
@@ -465,17 +465,20 @@ class PynamoDBToPymongoAdapter:
         ors = []
 
         hash_key_name, range_key_name = self._ser.model_keys_names(model)
+
         for key in items:
             if range_key_name:  # Model has range key - enforce tuple
                 if not isinstance(key, tuple) or len(key) != 2:
-                    raise ValueError(f"Item {key} must be a (hash, range) tuple")
+                    raise ValueError(
+                        f'Item {key} must be a (hash, range) tuple'
+                    )
                 hash_key_val, range_key_val = key
             else:  # Model has no range key - single value (any type)
                 hash_key_val = key
                 range_key_val = None
 
             hash_key_ser, range_key_ser = self._ser.serialize_keys(
-                model=model, hash_key=hash_key_val, range_key=range_key_val,
+                model=model, hash_key=hash_key_val, range_key=range_key_val
             )
 
             query = {hash_key_name: hash_key_ser}
