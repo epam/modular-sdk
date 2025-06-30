@@ -453,7 +453,10 @@ class PynamoDBToPymongoAdapter:
         )
 
     def batch_get(
-        self, model: type[_MT], items: list[tuple], attributes_to_get=None
+        self,
+        model: type[_MT],
+        items: list[tuple[Any, Any]] | list[Any],
+        attributes_to_get=None,
     ) -> Generator[_MT, None, None]:
         """
         Seems like bulk read is not supported.
@@ -462,12 +465,27 @@ class PynamoDBToPymongoAdapter:
         ors = []
 
         hash_key_name, range_key_name = self._ser.model_keys_names(model)
+
         for key in items:
-            hash_key, range_key = self._ser.serialize_keys(model, *key)
-            q = {hash_key_name: hash_key}
-            if range_key_name and range_key:
-                q[range_key_name] = range_key
-            ors.append(q)
+            if range_key_name:  # Model has range key - enforce tuple
+                if not isinstance(key, tuple) or len(key) != 2:
+                    raise ValueError(
+                        f'Item {key} must be a (hash, range) tuple'
+                    )
+                hash_key_val, range_key_val = key
+            else:  # Model has no range key - single value (any type)
+                hash_key_val = key
+                range_key_val = None
+
+            hash_key_ser, range_key_ser = self._ser.serialize_keys(
+                model=model, hash_key=hash_key_val, range_key=range_key_val
+            )
+
+            query = {hash_key_name: hash_key_ser}
+            if range_key_name and range_key_ser is not None:
+                query[range_key_name] = range_key_ser
+            ors.append(query)
+
         cursor = self.get_collection(model).find(
             {'$or': ors},
             projection=convert_attributes_to_get(attributes_to_get),
