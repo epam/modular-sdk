@@ -87,7 +87,6 @@ class MaestroHTTPTransport(AbstractTransport):
         except binascii.Error:
             response_item = response.decode('utf-8')
         try:
-            _LOG.debug(f'Raw decrypted message from server: {response_item}')
             response_json = json.loads(response_item).get('results')[0]
         except json.decoder.JSONDecodeError:
             _LOG.error('Response cannot be decoded - invalid JSON string')

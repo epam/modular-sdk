@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.1.1] - 2025-06-27
+- Fixed `batch_get` now supports both composite (hash+range) and single hash key queries,
+  with validation for input format based on model schema.
+- Update dependencies version:
+    - `boto3>=1.36.11` to `boto3>=1.36.11,<2`
+    - `botocore>=1.36.11` to `botocore>=1.36.11,<2`
+- Remove `requirements.txt`
+- Remove debug log that could expose sensitive information
+
 ## [7.1.0] - 2025-06-03
 - supported filter conditions that reference other attributes from the same 
   document instead of just constant for MongoDB.
