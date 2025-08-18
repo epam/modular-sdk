@@ -366,6 +366,7 @@ class ApplicationType(str, Enum):
     K8S_KUBE_CONFIG = 'K8S_KUBE_CONFIG'
     GCP_CHRONICLE_INSTANCE = 'GCP_CHRONICLE_INSTANCE'
     SEP_SANDBOX_AWS = 'SEP_SANDBOX_AWS'
+    SEP_LICENSES = 'SEP_LICENSES'
 
     @classmethod
     def iter(cls):
