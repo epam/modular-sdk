@@ -69,8 +69,9 @@ class ParentService:
                 type_, scope, ''
             )))
         elif type_:
-            rkc = Parent.type_scope.startswith(
-                f'{type_}{COMPOUND_KEYS_SEPARATOR}')
+            rkc = Parent.type_scope.startswith(COMPOUND_KEYS_SEPARATOR.join((
+                type_, ''
+            )))
         else:
             rkc = None
         if only_active:
