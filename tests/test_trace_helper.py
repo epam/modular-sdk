@@ -42,6 +42,11 @@ def test_get_arg_or_kwarg(args, kwargs, pos, key, expected):
         (({'from': 'args'},), {'event': {'from': 'kwargs'}}, {'from': 'args'}),  # prefers args
         ((), {}, None),  # missing
         ((), {'event': None}, None),  # explicit None
+        (('not_a_mapping',), {}, None),  # string instead of Mapping
+        (([1, 2, 3],), {}, None),  # list instead of Mapping
+        ((123,), {}, None),  # int instead of Mapping
+        ((), {'event': 'string'}, None),  # string in kwargs
+        ((), {'event': ['list']}, None),  # list in kwargs
     ],
 )
 def test_resolve_event(args, kwargs, expected):
@@ -58,6 +63,12 @@ def test_resolve_event(args, kwargs, expected):
         (({}, MockContext('from-args')), {'context': MockContext('from-kwargs')}, 'from-args'),  # prefers args
         ((), {}, None),  # missing
         ((), {'context': None}, None),  # explicit None
+        (({}, 'not_a_context'), {}, None),  # string instead of Context
+        (({}, {'key': 'value'}), {}, None),  # dict without aws_request_id
+        (({}, 123), {}, None),  # int instead of Context
+        ((), {'context': 'string'}, None),  # string in kwargs
+        ((), {'context': {'no_request_id': 'here'}}, None),  # dict in kwargs without aws_request_id
+        (({}, []), {}, None),  # list instead of Context
     ],
 )
 def test_resolve_context(args, kwargs, expected_id):

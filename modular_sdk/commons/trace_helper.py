@@ -51,6 +51,8 @@ def __resolve_event(
     kwargs: dict[str, Any],
 ) -> Optional[Mapping[str, Any]]:
     result = __get_arg_or_kwarg(args, kwargs, 0, "event")
+    if not isinstance(result, Mapping):
+        return None
     return cast(Optional[Mapping[str, Any]], result)
 
 
@@ -59,6 +61,8 @@ def __resolve_context(
     kwargs: dict[str, Any],
 ) -> Optional[Context]:
     result = __get_arg_or_kwarg(args, kwargs, 1, "context")
+    if not hasattr(result, 'aws_request_id'):
+        return None
     return cast(Optional[Context], result)
 
 
