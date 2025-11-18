@@ -145,7 +145,7 @@ def tracer_decorator(
                 )
 
                 event = __resolve_event(args, kwargs) or {}
-                context: Optional[Context] = __resolve_context(args, kwargs)
+                context = __resolve_context(args, kwargs)
                 request_id = (
                     event.get('request_id')
                     or (context.aws_request_id if context else None)
@@ -166,7 +166,7 @@ def tracer_decorator(
                     environment_service=environment_service
                 )
 
-            segment: Any = runtime_tracer.start()
+            segment = runtime_tracer.start()
             
             if is_job:
                 meta = None
