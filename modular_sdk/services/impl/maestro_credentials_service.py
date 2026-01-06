@@ -568,17 +568,21 @@ class MaestroCredentialsService:
             _LOG.warning(f'Error occurred trying to assume role: {role}. {e}')
             return
 
-    def _get_aws_credentials(self, application: Application,
-                             tenant: Optional[Tenant] = None,
-                             ) -> Optional[AWSCredentials]:
+    def _get_aws_credentials(
+        self,
+        application: Application,
+        tenant: Optional[Tenant] = None,
+    ) -> Optional[AWSCredentials]:
         if not application.secret:
             _LOG.warning(f'Application {application.application_id} does not '
                          f'contain secret')
             return
         secret = self._ssm_service.get_parameter(application.secret)
         if not secret:
-            _LOG.warning(f'Secret {application.secret} exists in application,'
-                         f' but not in SSM')
+            _LOG.warning(
+                f'Secret {application.secret} exists in application,'
+                f' but not in {self._ssm_service.storage_type.value}'
+            )
             return
         secret = AWSCredentialsApplicationSecret.from_dict(secret)
         return AWSCredentials(
@@ -588,17 +592,21 @@ class MaestroCredentialsService:
             AWS_DEFAULT_REGION=secret.defaultRegion or self._default_aws_region()
         )
 
-    def _get_azure_credentials(self, application: Application,
-                               tenant: Optional[Tenant] = None,
-                               ) -> Optional[AZURECredentials]:
+    def _get_azure_credentials(
+        self,
+        application: Application,
+        tenant: Optional[Tenant] = None,
+    ) -> Optional[AZURECredentials]:
         if not application.secret:
             _LOG.warning(f'Application {application.application_id} does not '
                          f'contain secret')
             return
         secret = self._ssm_service.get_parameter(application.secret)
         if not secret:
-            _LOG.warning(f'Secret {application.secret} exists in application,'
-                         f' but not in SSM')
+            _LOG.warning(
+                f'Secret {application.secret} exists in application,'
+                f' but not in {self._ssm_service.storage_type.value}'
+            )
             return
         if isinstance(secret, str):
             meta = AZURECredentialsApplicationMeta.from_dict(
@@ -619,17 +627,21 @@ class MaestroCredentialsService:
             AZURE_SUBSCRIPTION_ID=tenant.project if tenant else None
         )
 
-    def _get_azure_certificate(self, application: Application,
-                               tenant: Optional[Tenant] = None,
-                               ) -> Optional[AZURECertificate]:
+    def _get_azure_certificate(
+        self,
+        application: Application,
+        tenant: Optional[Tenant] = None,
+    ) -> Optional[AZURECertificate]:
         if not application.secret:
             _LOG.warning(f'Application {application.application_id} does not '
                          f'contain secret')
             return
         secret = self._ssm_service.get_parameter(application.secret)
         if not secret:
-            _LOG.warning(f'Secret {application.secret} exists in application,'
-                         f' but not in SSM')
+            _LOG.warning(
+                f'Secret {application.secret} exists in application,'
+                f' but not in {self._ssm_service.storage_type.value}'
+            )
             return
         meta = AZURECertificateApplicationMeta.from_dict(
             application.meta.as_dict()
@@ -645,17 +657,21 @@ class MaestroCredentialsService:
             AZURE_CLIENT_CERTIFICATE_PASSWORD=secret.certificate_password
         )
 
-    def _get_gcp_credentials(self, application: Application,
-                             tenant: Optional[Tenant] = None,
-                             ) -> Optional[GOOGLECredentials]:
+    def _get_gcp_credentials(
+        self,
+        application: Application,
+        tenant: Optional[Tenant] = None,
+    ) -> Optional[GOOGLECredentials]:
         if not application.secret:
             _LOG.warning(f'Application {application.application_id} does not '
                          f'contain secret')
             return
         secret = self._ssm_service.get_parameter(application.secret)
         if not secret:
-            _LOG.warning(f'Secret {application.secret} exists in application,'
-                         f' but not in SSM')
+            _LOG.warning(
+                f'Secret {application.secret} exists in application,'
+                f' but not in {self._ssm_service.storage_type.value}'
+            )
             return
         if not isinstance(secret, dict):  # it must be dict
             return
@@ -671,17 +687,21 @@ class MaestroCredentialsService:
             CLOUDSDK_CORE_PROJECT=project_id  # or secret['project_id'] ?
         )
 
-    def _get_rabbitmq_credentials(self, application: Application,
-                                  tenant: Optional[Tenant] = None
-                                  ) -> Optional[RabbitMQCredentials]:
+    def _get_rabbitmq_credentials(
+        self,
+        application: Application,
+        tenant: Optional[Tenant] = None,
+    ) -> Optional[RabbitMQCredentials]:
         if not application.secret:
             _LOG.warning(f'Application {application.application_id} does not '
                          f'contain secret')
             return
         secret = self._ssm_service.get_parameter(application.secret)
         if not secret:
-            _LOG.warning(f'Secret {application.secret} exists in application,'
-                         f' but not in SSM')
+            _LOG.warning(
+                f'Secret {application.secret} exists in application,'
+                f' but not in {self._ssm_service.storage_type.value}'
+            )
             return
         if not isinstance(secret, dict):  # it must be dict
             _LOG.warning('Secret is not a dict, cannot parse RabbitMQ '
