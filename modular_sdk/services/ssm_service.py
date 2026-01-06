@@ -1,7 +1,8 @@
 import json
 import re
 from abc import ABC, abstractmethod
-from typing import Union, Dict, Optional, List
+from typing import Union, Dict, Optional, List, Literal
+from enum import Enum
 
 from botocore.exceptions import ClientError
 from cachetools import TTLCache
@@ -19,7 +20,17 @@ SSM_NOT_AVAILABLE = re.compile(r'[^a-zA-Z0-9/_.-]')
 SecretValue = Union[Dict, List, str]
 
 
+class StorageType(str, Enum):
+    SSM = 'SSM'
+    VAULT = 'Vault'
+
+
 class AbstractSSMClient(ABC):
+
+    @property
+    @abstractmethod
+    def storage_type(self) -> StorageType:
+        """Type of the storage"""
 
     @staticmethod
     def allowed_name(name: str) -> str:
@@ -71,6 +82,10 @@ class VaultSSMClient(AbstractSSMClient):
         _LOG.info('Hvac client was initialized')
 
     @property
+    def storage_type(self) -> StorageType:
+        return StorageType.VAULT
+
+    @property
     def client(self):
         if not self._client:
             self._init_client()
@@ -114,6 +129,10 @@ class SSMService(AWSCredentialsProvider,  # actually it's a client
     def __init__(self, **kwargs):
         kwargs['service_name'] = 'ssm'
         super().__init__(**kwargs)
+
+    @property
+    def storage_type(self) -> StorageType:
+        return StorageType.SSM
 
     def get_parameter(self, name: str) -> Optional[SecretValue]:
         try:
@@ -182,6 +201,10 @@ class SSMClientCachingWrapper(AbstractSSMClient):
         self._cache = TTLCache(
             maxsize=50, ttl=environment_service.inner_cache_ttl_seconds()
         )
+
+    @property
+    def storage_type(self) -> StorageType:
+        return self._client.storage_type
 
     @property
     def client(self) -> AbstractSSMClient:
