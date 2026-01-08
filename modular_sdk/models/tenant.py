@@ -32,6 +32,7 @@ IS_ACTIVE = 'act'
 CUSTOMER_NAME = 'ctmr'
 CLOUD = 'c'
 PARENT_MAP = 'pid'
+LINKED_TO = 'lt'
 
 MODULAR_TENANTS_TABLE_NAME = 'Tenants'
 
@@ -105,6 +106,7 @@ class Tenant(ModularBaseModel):
     regions = ListAttribute(of=RegionAttr, attr_name=REGIONS, default=list)
     contacts = Contacts(attr_name=TENANT_CONTACT, null=True)
     parent_map = MapAttribute(attr_name=PARENT_MAP, default=dict)
+    linked_to = UnicodeAttribute(attr_name=LINKED_TO, null=True)
 
     customer_name_index = CustomerNameIndex()
     project_index = ProjectIndex()
