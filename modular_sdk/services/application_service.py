@@ -3,7 +3,6 @@ from enum import Enum
 from pynamodb.expressions.condition import Condition
 from http import HTTPStatus
 
-from pynamodb.pagination import ResultIterator
 from modular_sdk.commons import generate_id, default_instance
 from modular_sdk.commons.constants import AVAILABLE_APPLICATION_TYPES, \
     ApplicationType
@@ -11,6 +10,7 @@ from modular_sdk.commons.exception import ModularException
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.commons.time_helper import utc_datetime
 from modular_sdk.models.application import Application
+from modular_sdk.models.pynamongo import ResultIterator
 from modular_sdk.services.customer_service import CustomerService
 from modular_sdk.models.pynamongo.convertors import instance_as_json_dict
 

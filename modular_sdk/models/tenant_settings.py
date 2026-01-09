@@ -1,7 +1,7 @@
 from pynamodb.attributes import UnicodeAttribute, MapAttribute
 
 from pynamodb.indexes import GlobalSecondaryIndex
-from modular_sdk.models.pynamongo.models import ModularBaseModel
+from modular_sdk.models.pynamongo.models import BaseModel
 
 from modular_sdk.models.base_meta import BaseMeta, TABLES_PREFIX
 from pynamodb.indexes import AllProjection
@@ -24,7 +24,7 @@ class KeyTenantNameIndex(GlobalSecondaryIndex):
     key = UnicodeAttribute(hash_key=True, attr_name=KEY)
 
 
-class TenantSettings(ModularBaseModel):
+class TenantSettings(BaseModel):
     class Meta(BaseMeta):
         table_name = f'{TABLES_PREFIX}{MODULAR_TENANT_SETTINGS_TABLE_NAME}'
 

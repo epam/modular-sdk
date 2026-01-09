@@ -1,9 +1,9 @@
 from typing import Union, Optional, List
 from pynamodb.expressions.update import Action
 from pynamodb.expressions.condition import Condition
-from pynamodb.pagination import ResultIterator
 
 from modular_sdk.models.customer_settings import CustomerSettings
+from modular_sdk.models.pynamongo import ResultIterator
 
 
 

@@ -136,7 +136,7 @@ class BatchWrite:
         self._collection.bulk_write(self._req)
 
 
-class PynamoDBToPymongoAdapter:
+class MongoAdapter:
     __slots__ = ('_db',)
     _ser = PynamoDBModelToMongoDictSerializer()
 
@@ -150,8 +150,7 @@ class PynamoDBToPymongoAdapter:
     def get_database(self, model: type[Model] | Model) -> 'Database':
         db = getattr(model.Meta, 'mongo_database', self._db)
         assert db is not None, (
-            'Mongo database must be set either to model`s '
-            'Meta or to PynamoDBToPymongoAdapter'
+            'Mongo database must be set either to MongoAdapter'
         )
         return db
 
@@ -172,6 +171,9 @@ class PynamoDBToPymongoAdapter:
         range_key=None,
         attributes_to_get=None,
     ) -> _MT:
+        """
+        Deprecated: use find_one() instead
+        """
         hash_key_name, range_key_name = self._ser.model_keys_names(model)
         hash_key, range_key = self._ser.serialize_keys(
             model, hash_key, range_key
@@ -378,6 +380,9 @@ class PynamoDBToPymongoAdapter:
         attributes_to_get=None,
         page_size=None,
     ) -> ResultIterator[_MT]:
+        """
+        Deprecated: use find() instead
+        """
         if index_name:
             index = self._ser.model_indexes(model).get(index_name)
             assert index is not None, 'Index must exist'
@@ -429,6 +434,9 @@ class PynamoDBToPymongoAdapter:
         index_name: str | None = None,
         attributes_to_get=None,
     ) -> ResultIterator[_MT]:
+        """
+        Deprecated: use find() instead
+        """
         if filter_condition is not None:
             query = convert_condition_expression(filter_condition)
         else:
@@ -459,8 +467,7 @@ class PynamoDBToPymongoAdapter:
         attributes_to_get=None,
     ) -> Generator[_MT, None, None]:
         """
-        Seems like bulk read is not supported.
-        Order not guaranteed
+        Deprecated: use find() instead
         """
         ors = []
 
@@ -544,3 +551,4 @@ class LastEvaluatedKey:
 
     def __bool__(self) -> bool:
         return bool(self._lek)
+

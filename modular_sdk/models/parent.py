@@ -5,7 +5,7 @@ from pynamodb.attributes import UnicodeAttribute, MapAttribute, \
 from pynamodb.indexes import AllProjection
 
 from pynamodb.indexes import GlobalSecondaryIndex
-from modular_sdk.models.pynamongo.models import ModularBaseModel
+from modular_sdk.models.pynamongo.models import BaseModel
 
 from modular_sdk.commons.constants import COMPOUND_KEYS_SEPARATOR, ParentScope
 from modular_sdk.models.base_meta import BaseMeta, TABLES_PREFIX
@@ -50,7 +50,7 @@ class ApplicationIdIndex(GlobalSecondaryIndex):
     application_id = UnicodeAttribute(hash_key=True, attr_name=APPLICATION_ID)
 
 
-class Parent(ModularBaseModel):
+class Parent(BaseModel):
     class Meta(BaseMeta):
         table_name = f'{TABLES_PREFIX}{MODULAR_PARENTS_TABLE_NAME}'
 

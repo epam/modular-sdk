@@ -1,12 +1,12 @@
 from pynamodb.attributes import UnicodeAttribute, UTCDateTimeAttribute, \
     ListAttribute, MapAttribute
 
-from modular_sdk.models.pynamongo.models import ModularBaseModel
+from modular_sdk.models.pynamongo.models import BaseModel
 
 from modular_sdk.models.base_meta import BaseMeta
 
 
-class OperationMode(ModularBaseModel):
+class OperationMode(BaseModel):
     class Meta(BaseMeta):
         table_name = "OperationMode"
     application = UnicodeAttribute(hash_key=True)

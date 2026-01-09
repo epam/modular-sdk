@@ -1,8 +1,7 @@
 from typing import List, Optional
 
-from pynamodb.pagination import ResultIterator
-
 from modular_sdk.models.customer import Customer
+from modular_sdk.models.pynamongo import ResultIterator
 from modular_sdk.models.pynamongo.convertors import instance_as_json_dict
 
 

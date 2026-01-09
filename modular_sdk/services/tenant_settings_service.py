@@ -1,11 +1,10 @@
 from typing import Optional
 from http import HTTPStatus
 
-from pynamodb.pagination import ResultIterator
-
 from modular_sdk.commons import deprecated
 from modular_sdk.commons.exception import ModularException
 from modular_sdk.models.tenant_settings import TenantSettings
+from modular_sdk.models.pynamongo import ResultIterator
 from modular_sdk.models.pynamongo.convertors import instance_as_json_dict
 
 RESOURCE_QUOTA = 'RESOURCE_QUOTA'

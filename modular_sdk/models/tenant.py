@@ -3,7 +3,7 @@ from typing import Optional
 from pynamodb.attributes import (UnicodeAttribute, ListAttribute, MapAttribute)
 from pynamodb.indexes import AllProjection
 from pynamodb.indexes import GlobalSecondaryIndex
-from modular_sdk.models.pynamongo.models import ModularBaseModel
+from modular_sdk.models.pynamongo.models import BaseModel
 
 
 from modular_sdk.commons.constants import ALLOWED_TENANT_PARENT_MAP_KEYS
@@ -85,7 +85,7 @@ class CustomerNameIndex(GlobalSecondaryIndex):
     customer_name = UnicodeAttribute(hash_key=True, attr_name=CUSTOMER_NAME)
 
 
-class Tenant(ModularBaseModel):
+class Tenant(BaseModel):
     class Meta(BaseMeta):
         table_name = f'{TABLES_PREFIX}{MODULAR_TENANTS_TABLE_NAME}'
 

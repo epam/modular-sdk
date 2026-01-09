@@ -2,7 +2,7 @@ from pynamodb.attributes import UnicodeAttribute, MapAttribute, ListAttribute, A
 from pynamodb.indexes import AllProjection
 
 from pynamodb.indexes import GlobalSecondaryIndex
-from modular_sdk.models.pynamongo.models import ModularBaseModel
+from modular_sdk.models.pynamongo.models import BaseModel
 
 from modular_sdk.models.base_meta import BaseMeta, TABLES_PREFIX
 from modular_sdk.models.pynamongo.attributes import M3BooleanAttribute
@@ -58,7 +58,7 @@ class NativeNameCloudIndex(GlobalSecondaryIndex):
     cloud = UnicodeAttribute(attr_name=REGION_CLOUD, range_key=True)
 
 
-class RegionModel(ModularBaseModel, BaseRegion):
+class RegionModel(BaseModel, BaseRegion):
     class Meta(BaseMeta):
         table_name = f'{TABLES_PREFIX}{MODULAR_REGIONS_TABLE_NAME}'
 

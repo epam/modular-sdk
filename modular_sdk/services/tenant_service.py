@@ -1,6 +1,5 @@
 from typing import Optional, Iterator, Union, List
 from http import HTTPStatus
-from pynamodb.pagination import ResultIterator
 
 from modular_sdk.commons import default_instance, deprecated
 from modular_sdk.commons.constants import ALLOWED_TENANT_PARENT_MAP_KEYS
@@ -8,6 +7,7 @@ from modular_sdk.commons.exception import ModularException
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.parent import Parent
 from modular_sdk.models.tenant import Tenant
+from modular_sdk.models.pynamongo import ResultIterator
 from modular_sdk.models.pynamongo.convertors import instance_as_json_dict
 
 _LOG = get_logger(__name__)

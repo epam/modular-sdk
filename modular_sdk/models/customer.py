@@ -1,6 +1,6 @@
 from pynamodb.attributes import UnicodeAttribute, ListAttribute
 
-from modular_sdk.models.pynamongo.models import ModularBaseModel
+from modular_sdk.models.pynamongo.models import BaseModel
 from modular_sdk.models.base_meta import BaseMeta, TABLES_PREFIX
 from modular_sdk.models.pynamongo.attributes import M3BooleanAttribute
 
@@ -12,7 +12,7 @@ ACTIVE = 'act'
 MODULAR_CUSTOMERS_TABLE_NAME = 'Customers'
 
 
-class Customer(ModularBaseModel):
+class Customer(BaseModel):
     class Meta(BaseMeta):
         table_name = f'{TABLES_PREFIX}{MODULAR_CUSTOMERS_TABLE_NAME}'
 

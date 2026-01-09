@@ -110,7 +110,7 @@ Usage:
 All your existing PynamoDB models can already work with MongoDB. The only
 caveat is that UnicodeSetAttribute, NumberSetAttribute, BinarySetAttribute,
 BinaryAttribute must not be used. You can take your model and pass it to
-PynamoDBToPymongoAdapter to work with Mongo.
+MongoAdapter to work with Mongo.
 
     from pynamodb.models import Model
     from pynamodb.attributes import *
@@ -124,7 +124,7 @@ PynamoDBToPymongoAdapter to work with Mongo.
         age = NumberAttribute()
         data = MapAttribute(default=dict)
 
-    adapter = PynamoDBToPymongoAdapter(db=MongoClient().get_database('db'))
+    adapter = MongoAdapter(db=MongoClient().get_database('db'))
     adapter.save(User(
         email='example@gmail.com',
         age=18,
@@ -137,23 +137,18 @@ PynamoDBToPymongoAdapter to work with Mongo.
 
 
 If you want to use native PynamoDB Methods just inherit the model from our
-custom Model type. It has two class methods that should be overridden:
-- is_mongo_model(): must return True of False whether to use MongoDB
+custom Model type. It has a class method that should be overridden:
 - mongo_adapter(): must return initialized Mongo Adapter
-Default implementations are provided but look them up yourself.
+Default implementation is provided but look it up yourself.
 
     from modular_sdk.models.pynamongo.models import Model
 
     class ModularModel(Model):
         @classmethod
-        def is_mongo_model(cls) -> bool:
-            return bool(os.getenv('USE_MONGO'))
-
-        @classmethod
-        def mongo_adapter(cls) -> PynamoDBToPymongoAdapter:
+        def mongo_adapter(cls) -> MongoAdapter:
             if hasattr(cls, '_mongo_adapter'):
                 return cls._mongo_adapter
-            setattr(cls, '_mongo_adapter', PynamoDBToPymongoAdapter(
+            setattr(cls, '_mongo_adapter', MongoAdapter(
                 db=pymongo.MongoClient(os.getenv('MONGO_URL')).get_database(os.getenv('MONGO_DB'))
             ))
             return getattr(cls, '_mongo_adapter')
@@ -263,7 +258,7 @@ What PynamoDB features are not supported:
 - Polymorphism through the use of discriminators (https://pynamodb.readthedocs.io/en/stable/polymorphism.html)
 - Transaction Operations (https://pynamodb.readthedocs.io/en/stable/transaction.html)
 """
-from .adapter import PynamoDBToPymongoAdapter, ResultIterator
+from .adapter import MongoAdapter, ResultIterator
 from .attributes import (
     AS_IS,
     BinaryAttribute,
@@ -281,7 +276,7 @@ from .patch import patch_attributes
 from .indexes_creator import IndexesCreator
 
 __all__ = (
-    'PynamoDBToPymongoAdapter',
+    'MongoAdapter',
     'ResultIterator',
     'AS_IS',
     'BinaryAttribute',

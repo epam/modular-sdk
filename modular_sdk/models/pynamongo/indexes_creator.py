@@ -15,7 +15,7 @@ from pymongo.operations import IndexModel
 from pynamodb.attributes import TTLAttribute
 
 from modular_sdk.commons.log_helper import get_logger
-from modular_sdk.models.pynamongo.models import PynamoDBToPymongoAdapter
+from modular_sdk.models.pynamongo.adapter import MongoAdapter
 
 if TYPE_CHECKING:
     from pymongo.collection import Collection
@@ -273,7 +273,7 @@ class IndexesCreator:
         :param db: default Database object to use if it cannot be resolved
         from models
         """
-        self._adapter = PynamoDBToPymongoAdapter(db)
+        self._adapter = MongoAdapter(db)
 
     def ensure(
         self,
