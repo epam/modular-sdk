@@ -2,12 +2,10 @@ from typing import TYPE_CHECKING
 
 from modular_sdk.commons import SingletonMeta
 from modular_sdk.commons.constants import (
-    ASSUMES_ROLE_SESSION_NAME,
     Env,
     SecretsBackend,
     ServiceMode,
 )
-from modular_sdk.commons.time_helper import utc_iso
 
 if TYPE_CHECKING:
     from modular_sdk.connections.rabbit_connection import RabbitMqConnection
@@ -332,7 +330,6 @@ class Modular(ModularServiceProvider, metaclass=SingletonMeta):
         modular_mongo_url: str | None = None,
         modular_mongo_srv: bool = False,
         modular_mongo_db_name: str | None = None,
-        modular_assume_role_arn: str | list[str] | None = None,
         modular_mongo_uri: str | None = None,
         **kwargs,
     ):
@@ -340,47 +337,17 @@ class Modular(ModularServiceProvider, metaclass=SingletonMeta):
             modular_service_mode = modular_service_mode.value
         if modular_service_mode is None:
             modular_service_mode = Env.SERVICE_MODE.get()
-        if modular_assume_role_arn is None:
-            modular_assume_role_arn = Env.ASSUME_ROLE_ARN.get()
 
-        if (
-            modular_service_mode == ServiceMode.SAAS
-            and modular_assume_role_arn
-        ):
-            if isinstance(modular_assume_role_arn, str):
-                modular_assume_role_arn = modular_assume_role_arn.split(',')
-            sts_service = self.sts_service()
-            assumed_credentials = sts_service.assume_roles_chain(
-                list(
-                    sts_service.assume_roles_default_payloads(
-                        modular_assume_role_arn, ASSUMES_ROLE_SESSION_NAME
-                    )
-                )
-            )
-            Env.INNER_AWS_ACCESS_KEY_ID.set(
-                assumed_credentials['aws_access_key_id']
-            )
-            Env.INNER_AWS_SECRET_ACCESS_KEY.set(
-                assumed_credentials['aws_secret_access_key']
-            )
-            Env.INNER_AWS_SESSION_TOKEN.set(
-                assumed_credentials['aws_session_token']
-            )
-            Env.INNER_AWS_CREDENTIALS_EXPIRATION.set(
-                utc_iso(assumed_credentials['expiration'])
-            )
-            Env.ASSUME_ROLE_ARN.set(','.join(modular_assume_role_arn))
-        elif modular_service_mode == ServiceMode.DOCKER:
-            Env.SERVICE_MODE.set(modular_service_mode)
-            if modular_mongo_user is not None:
-                Env.MONGO_USER.set(modular_mongo_user)
-            if modular_mongo_password is not None:
-                Env.MONGO_PASSWORD.set(modular_mongo_password)
-            if modular_mongo_url is not None:
-                Env.MONGO_URL.set(modular_mongo_url)
-            if modular_mongo_srv:
-                Env.MONGO_SRV.set(str(modular_mongo_srv))
-            if modular_mongo_db_name is not None:
-                Env.MONGO_DB_NAME.set(modular_mongo_db_name)
-            if modular_mongo_uri is not None:
-                Env.MONGO_URI.set(modular_mongo_uri)
+        Env.SERVICE_MODE.set(modular_service_mode)
+        if modular_mongo_user is not None:
+            Env.MONGO_USER.set(modular_mongo_user)
+        if modular_mongo_password is not None:
+            Env.MONGO_PASSWORD.set(modular_mongo_password)
+        if modular_mongo_url is not None:
+            Env.MONGO_URL.set(modular_mongo_url)
+        if modular_mongo_srv:
+            Env.MONGO_SRV.set(str(modular_mongo_srv))
+        if modular_mongo_db_name is not None:
+            Env.MONGO_DB_NAME.set(modular_mongo_db_name)
+        if modular_mongo_uri is not None:
+            Env.MONGO_URI.set(modular_mongo_uri)
