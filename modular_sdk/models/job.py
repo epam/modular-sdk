@@ -5,8 +5,6 @@ from pynamodb.indexes import AllProjection
 from pynamodb.indexes import GlobalSecondaryIndex
 from modular_sdk.models.pynamongo.models import BaseModel
 
-from modular_sdk.models.base_meta import BaseMeta
-
 
 class JobStartedAtIndex(GlobalSecondaryIndex):
     class Meta:
@@ -20,7 +18,7 @@ class JobStartedAtIndex(GlobalSecondaryIndex):
 
 
 class Job(BaseModel):
-    class Meta(BaseMeta):
+    class Meta:
         table_name = 'ModularJobs'
 
     job = UnicodeAttribute(hash_key=True)

@@ -3,11 +3,9 @@ from pynamodb.attributes import UnicodeAttribute, MapAttribute, \
 
 from modular_sdk.models.pynamongo.models import BaseModel
 
-from modular_sdk.models.base_meta import BaseMeta
-
 
 class Heartbeat(BaseModel):
-    class Meta(BaseMeta):
+    class Meta:
         table_name = 'Heartbeats'
 
     component = UnicodeAttribute(hash_key=True)

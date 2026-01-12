@@ -2,7 +2,7 @@ from pynamodb.attributes import UnicodeAttribute, BooleanAttribute, \
     MapAttribute, NumberAttribute
 from pynamodb.indexes import AllProjection
 
-from modular_sdk.models.base_meta import BaseMeta, TABLES_PREFIX
+from modular_sdk.commons.constants import TABLES_PREFIX
 from pynamodb.indexes import GlobalSecondaryIndex
 from modular_sdk.models.pynamongo.models import BaseModel
 
@@ -24,7 +24,7 @@ MODULAR_APPLICATIONS_TABLE_NAME = 'Applications'
 
 
 class CustomerIdTypeIndex(GlobalSecondaryIndex):
-    class Meta(BaseMeta):
+    class Meta:
         index_name = f"{CUSTOMER_ID}-{TYPE}-index"
         read_capacity_units = 1
         write_capacity_units = 1
@@ -35,7 +35,7 @@ class CustomerIdTypeIndex(GlobalSecondaryIndex):
 
 
 class Application(BaseModel):
-    class Meta(BaseMeta):
+    class Meta:
         table_name = f'{TABLES_PREFIX}{MODULAR_APPLICATIONS_TABLE_NAME}'
 
     application_id = UnicodeAttribute(hash_key=True, attr_name=APPLICATION_ID)

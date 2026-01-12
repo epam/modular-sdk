@@ -5,11 +5,10 @@ from pynamodb.indexes import AllProjection
 from pynamodb.indexes import GlobalSecondaryIndex
 from modular_sdk.models.pynamongo.models import BaseModel
 
-from modular_sdk.models.base_meta import BaseMeta
 
 
 class SegmentIndex(GlobalSecondaryIndex):
-    class Meta(BaseMeta):
+    class Meta:
         index_name = 'segment-index'
         read_capacity_units = 1
         write_capacity_units = 1
@@ -20,7 +19,7 @@ class SegmentIndex(GlobalSecondaryIndex):
 
 
 class ExecutionTrace(BaseModel):
-    class Meta(BaseMeta):
+    class Meta:
         table_name = 'ExecutionTraces'
 
     component = UnicodeAttribute(hash_key=True)

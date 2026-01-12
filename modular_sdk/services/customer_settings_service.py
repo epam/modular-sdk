@@ -6,7 +6,6 @@ from modular_sdk.models.customer_settings import CustomerSettings
 from modular_sdk.models.pynamongo import ResultIterator
 
 
-
 class CustomerSettingsService:
 
     @staticmethod

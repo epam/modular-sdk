@@ -7,7 +7,7 @@ from modular_sdk.models.pynamongo.models import BaseModel
 
 
 from modular_sdk.commons.constants import ALLOWED_TENANT_PARENT_MAP_KEYS
-from modular_sdk.models.base_meta import BaseMeta, TABLES_PREFIX
+from modular_sdk.commons.constants import TABLES_PREFIX
 from modular_sdk.models.region import RegionAttr
 from modular_sdk.models.pynamongo.attributes import M3BooleanAttribute
 
@@ -50,7 +50,7 @@ class DisplayNameToLowerCloudIndex(GlobalSecondaryIndex):
     This class represents a Tenant display name + Cloud global secondary index
     """
 
-    class Meta(BaseMeta):
+    class Meta:
         index_name = 'dntl-c-index'
         read_capacity_units = 1
         write_capacity_units = 1
@@ -66,7 +66,7 @@ class ProjectIndex(GlobalSecondaryIndex):
     This class represents a Project global secondary index
     """
 
-    class Meta(BaseMeta):
+    class Meta:
         index_name = 'ac-index'
         read_capacity_units = 1
         write_capacity_units = 1
@@ -76,7 +76,7 @@ class ProjectIndex(GlobalSecondaryIndex):
 
 
 class CustomerNameIndex(GlobalSecondaryIndex):
-    class Meta(BaseMeta):
+    class Meta:
         index_name = f"{CUSTOMER_NAME}-index"
         read_capacity_units = 1
         write_capacity_units = 1
@@ -86,7 +86,7 @@ class CustomerNameIndex(GlobalSecondaryIndex):
 
 
 class Tenant(BaseModel):
-    class Meta(BaseMeta):
+    class Meta:
         table_name = f'{TABLES_PREFIX}{MODULAR_TENANTS_TABLE_NAME}'
 
     name = UnicodeAttribute(hash_key=True, attr_name=TENANT_NAME)

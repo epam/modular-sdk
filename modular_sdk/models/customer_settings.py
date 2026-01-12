@@ -1,7 +1,7 @@
 from pynamodb.attributes import UnicodeAttribute
 
 from modular_sdk.models.pynamongo.models import BaseModel
-from modular_sdk.models.base_meta import BaseMeta, TABLES_PREFIX
+from modular_sdk.commons.constants import TABLES_PREFIX
 from modular_sdk.models.pynamongo.attributes import DynamicAttribute
 
 
@@ -13,7 +13,7 @@ MODULAR_CUSTOMER_SETTINGS_TABLE_NAME = 'CustomerSettings'
 
 
 class CustomerSettings(BaseModel):
-    class Meta(BaseMeta):
+    class Meta:
         table_name = f'{TABLES_PREFIX}{MODULAR_CUSTOMER_SETTINGS_TABLE_NAME}'
 
     customer_name = UnicodeAttribute(hash_key=True, attr_name=CUSTOMER_NAME)

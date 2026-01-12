@@ -4,7 +4,7 @@ from pynamodb.indexes import AllProjection
 from pynamodb.indexes import GlobalSecondaryIndex
 from modular_sdk.models.pynamongo.models import BaseModel
 
-from modular_sdk.models.base_meta import BaseMeta, TABLES_PREFIX
+from modular_sdk.commons.constants import TABLES_PREFIX
 from modular_sdk.models.pynamongo.attributes import M3BooleanAttribute
 
 REGION_CLOUD = 'c'
@@ -48,7 +48,7 @@ class BaseRegion(AttributeContainer):
 
 
 class NativeNameCloudIndex(GlobalSecondaryIndex):
-    class Meta(BaseMeta):
+    class Meta:
         index_name = f'{REGION_NATIVE_NAME}-{REGION_CLOUD}-index'
         read_capacity_units = 1
         write_capacity_units = 1
@@ -59,7 +59,7 @@ class NativeNameCloudIndex(GlobalSecondaryIndex):
 
 
 class RegionModel(BaseModel, BaseRegion):
-    class Meta(BaseMeta):
+    class Meta:
         table_name = f'{TABLES_PREFIX}{MODULAR_REGIONS_TABLE_NAME}'
 
     native_name_cloud_index = NativeNameCloudIndex()

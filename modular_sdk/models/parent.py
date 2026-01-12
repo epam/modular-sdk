@@ -8,7 +8,7 @@ from pynamodb.indexes import GlobalSecondaryIndex
 from modular_sdk.models.pynamongo.models import BaseModel
 
 from modular_sdk.commons.constants import COMPOUND_KEYS_SEPARATOR, ParentScope
-from modular_sdk.models.base_meta import BaseMeta, TABLES_PREFIX
+from modular_sdk.commons.constants import TABLES_PREFIX
 
 PARENT_ID = 'pid'
 CUSTOMER_ID = 'cid'
@@ -29,7 +29,7 @@ MODULAR_PARENTS_TABLE_NAME = 'Parents'
 
 
 class CustomerIdScopeIndex(GlobalSecondaryIndex):
-    class Meta(BaseMeta):
+    class Meta:
         index_name = f'{CUSTOMER_ID}-{SCOPE_ATTR}-index'
         read_capacity_units = 1
         write_capacity_units = 1
@@ -41,7 +41,7 @@ class CustomerIdScopeIndex(GlobalSecondaryIndex):
 
 # this index currently does not exist. It's for the future :)
 class ApplicationIdIndex(GlobalSecondaryIndex):
-    class Meta(BaseMeta):
+    class Meta:
         index_name = f'{APPLICATION_ID}-index'
         read_capacity_units = 1
         write_capacity_units = 1
@@ -51,7 +51,7 @@ class ApplicationIdIndex(GlobalSecondaryIndex):
 
 
 class Parent(BaseModel):
-    class Meta(BaseMeta):
+    class Meta:
         table_name = f'{TABLES_PREFIX}{MODULAR_PARENTS_TABLE_NAME}'
 
     parent_id = UnicodeAttribute(hash_key=True, attr_name=PARENT_ID)

@@ -167,9 +167,7 @@ class Env(str, Enum):
     DB_BACKEND = (
         'MODULAR_SDK_DB_BACKEND',
         (),
-        lambda cls: DBBackend.DYNAMO
-        if cls.SERVICE_MODE.get() == 'saas'
-        else DBBackend.MONGO,
+        DBBackend.MONGO,
     )
     SECRETS_BACKEND = (
         'MODULAR_SDK_SECRETS_BACKEND',
@@ -474,3 +472,5 @@ SUCCESS_STATUS = 'SUCCESS'
 ERROR_STATUS = 'FAILED'
 RESULTS = 'results'
 DATA = 'data'
+
+TABLES_PREFIX = ''

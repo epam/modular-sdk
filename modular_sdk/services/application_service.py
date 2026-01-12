@@ -1,11 +1,8 @@
 from typing import Optional, List
 from enum import Enum
-from pynamodb.expressions.condition import Condition
 from http import HTTPStatus
 
 from modular_sdk.commons import generate_id, default_instance
-from modular_sdk.commons.constants import AVAILABLE_APPLICATION_TYPES, \
-    ApplicationType
 from modular_sdk.commons.exception import ModularException
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.commons.time_helper import utc_datetime
@@ -71,8 +68,8 @@ class ApplicationService:
 
     @staticmethod
     def query_by_customer(customer: str, 
-                          range_key_condition: Optional[Condition] = None,
-                          filter_condition: Optional[Condition] = None,
+                          range_key_condition: Optional = None,
+                          filter_condition: Optional = None,
                           limit: Optional[int] = None,
                           last_evaluated_key: Optional[dict | int] = None,
                           rate_limit: Optional[int] = None

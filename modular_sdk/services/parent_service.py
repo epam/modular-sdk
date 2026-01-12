@@ -1,7 +1,6 @@
 from typing import Optional, Iterator, Union, List
 from http import HTTPStatus
 
-from pynamodb.expressions.condition import Condition
 from datetime import datetime
 from modular_sdk.commons import generate_id
 from modular_sdk.commons.constants import ALL_PARENT_TYPES, ParentScope, \
@@ -88,7 +87,7 @@ class ParentService:
     def i_get_parent_by_customer(self, customer_id: str,
                                  parent_type: Optional[Union[ParentType, List[ParentType]]] = None,  # noqa
                                  is_deleted: Optional[bool] = None,
-                                 meta_conditions: Optional[Condition] = None,
+                                 meta_conditions: Optional = None,
                                  limit: Optional[int] = None,
                                  last_evaluated_key: Optional[dict] = None
                                  ) -> Iterator[Parent]:
