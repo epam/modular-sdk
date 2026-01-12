@@ -1,10 +1,10 @@
 from pynamodb.attributes import UnicodeAttribute, MapAttribute, \
     UTCDateTimeAttribute
 
-from modular_sdk.models.pynamongo.models import BaseModel
+from modular_sdk.models.pynamongo.models import ModularBaseModel
 
 
-class Heartbeat(BaseModel):
+class Heartbeat(ModularBaseModel):
     class Meta:
         table_name = 'Heartbeats'
 

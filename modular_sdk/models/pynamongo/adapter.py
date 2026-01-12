@@ -164,6 +164,33 @@ class MongoAdapter:
         setattr(model.Meta, 'mongo_collection', col)
         return col
 
+    def find_one(
+        self,
+        model: type[_MT],
+        filter: dict,
+        projection: dict | list[str] | tuple[str, ...] | None = None,
+        raise_if_not_found: bool = False,
+    ) -> _MT | None:
+        """
+        Native MongoDB find_one method.
+        
+        Args:
+            model: Model class
+            filter: MongoDB query filter dict
+            projection: Optional projection dict, list, or tuple of field names
+            raise_if_not_found: If True, raise model.DoesNotExist() when no document found
+            
+        Returns:
+            Model instance or None if not found (unless raise_if_not_found=True)
+        """
+        collection = self.get_collection(model)
+        item = collection.find_one(filter, projection=projection)
+        if not item:
+            if raise_if_not_found:
+                raise model.DoesNotExist()
+            return None
+        return self._ser.deserialize(model, item)
+
     def get(
         self,
         model: type[_MT],
@@ -182,14 +209,19 @@ class MongoAdapter:
         if range_key_name and range_key:
             query[range_key_name] = range_key
 
-        item = self.get_collection(model).find_one(
-            query, projection=convert_attributes_to_get(attributes_to_get)
-        )
-        if not item:
-            raise model.DoesNotExist()
-        return self._ser.deserialize(model, item)
+        projection = convert_attributes_to_get(attributes_to_get) if attributes_to_get else None
+        return self.find_one(model, filter=query, projection=projection, raise_if_not_found=True)
 
     def save(self, instance: Model) -> dict:
+        """
+        Save model instance to MongoDB collection.
+        
+        Returns:
+            dict with MongoDB operation result:
+            - matched_count: Number of documents matched
+            - modified_count: Number of documents modified
+            - upserted_id: ID of upserted document (if any)
+        """
         collection = self.get_collection(instance)
         if _id := self._ser.get_mongo_id(instance):
             q = {'_id': _id}
@@ -201,10 +233,9 @@ class MongoAdapter:
         if _id := res.upserted_id:
             self._ser.set_mongo_id(instance, _id)
         return {
-            'ConsumedCapacity': {
-                'CapacityUnits': 1.0,
-                'TableName': instance.Meta.table_name,
-            }
+            'matched_count': res.matched_count,
+            'modified_count': res.modified_count,
+            'upserted_id': res.upserted_id,
         }
 
     def update(
@@ -213,6 +244,15 @@ class MongoAdapter:
         actions: list['Action'],
         condition: Condition | None = None,
     ) -> dict:
+        """
+        Update model instance in MongoDB collection.
+        
+        Returns:
+            dict with MongoDB operation result:
+            - matched_count: Number of documents matched
+            - modified_count: Number of documents modified
+            - upserted_id: ID of upserted document (if any)
+        """
         _update = merge_update_expressions(
             map(convert_update_expression, actions)
         )
@@ -231,15 +271,21 @@ class MongoAdapter:
         if res:
             self._ser.deserialize_to(instance, res)
         return {
-            'ConsumedCapacity': {
-                'CapacityUnits': 1.0,
-                'TableName': instance.Meta.table_name,
-            }
+            'matched_count': 1 if res else 0,
+            'modified_count': 1 if res else 0,
+            'upserted_id': res._id if res else None
         }
 
     def delete(
         self, instance: Model, condition: Condition | None = None
     ) -> dict:
+        """
+        Delete model instance from MongoDB collection.
+        
+        Returns:
+            dict with MongoDB operation result:
+            - deleted_count: Number of documents deleted
+        """
         if _id := self._ser.get_mongo_id(instance):
             q = {'_id': _id}
         else:
@@ -247,12 +293,9 @@ class MongoAdapter:
         if condition is not None:
             q = {'$and': [q, convert_condition_expression(condition)]}
 
-        self.get_collection(instance).delete_one(q)
+        res = self.get_collection(instance).delete_one(q)
         return {
-            'ConsumedCapacity': {
-                'CapacityUnits': 1.0,
-                'TableName': instance.Meta.table_name,
-            }
+            'deleted_count': res.deleted_count,
         }
 
     def refresh(self, instance: Model) -> None:
@@ -367,6 +410,56 @@ class MongoAdapter:
             return collection.count_documents(query, limit=limit)
         return collection.count_documents(query)
 
+    def find(
+        self,
+        model: type[_MT],
+        filter: dict,
+        projection: dict | list[str] | tuple[str, ...] | None = None,
+        sort: list[tuple[str, int]] | None = None,
+        skip: int = 0,
+        limit: int | None = None,
+        batch_size: int | None = None,
+    ) -> ResultIterator[_MT]:
+        """
+        Native MongoDB find method.
+        
+        Args:
+            model: Model class
+            filter: MongoDB query filter dict
+            projection: Optional projection dict, list, or tuple of field names
+            sort: Optional list of (field, direction) tuples where direction is 1 (ASC) or -1 (DESC)
+            skip: Number of documents to skip
+            limit: Maximum number of documents to return
+            batch_size: Number of documents to return per batch
+            
+        Returns:
+            ResultIterator over model instances
+        """
+        collection = self.get_collection(model)
+        find_kwargs = {
+            'filter': filter,
+            'skip': skip,
+        }
+        if projection is not None:
+            find_kwargs['projection'] = projection
+        if limit is not None:
+            find_kwargs['limit'] = limit
+        if batch_size is not None:
+            find_kwargs['batch_size'] = batch_size
+        
+        cursor = collection.find(**find_kwargs)
+        if sort:
+            cursor = cursor.sort(sort)
+        
+        total = collection.count_documents(filter)
+        return ResultIterator(
+            cursor=cursor,
+            model=model,
+            serializer=self._ser,
+            skip=skip,
+            total=total,
+        )
+
     def query(
         self,
         model: type[_MT],
@@ -403,25 +496,20 @@ class MongoAdapter:
         )
 
         last_evaluated_key = last_evaluated_key or 0
-
-        col = self.get_collection(model)
-        cursor = col.find(
-            query,
-            projection=convert_attributes_to_get(attributes_to_get),
-            skip=last_evaluated_key,
-            limit=limit or 0,
-            batch_size=page_size or 0,
-        )
+        projection = convert_attributes_to_get(attributes_to_get) if attributes_to_get else None
+        
+        sort = None
         if range_key_name:
-            cursor = cursor.sort(
-                range_key_name, ASCENDING if scan_index_forward else DESCENDING
-            )
-        return ResultIterator(
-            cursor=cursor,
+            sort = [(range_key_name, ASCENDING if scan_index_forward else DESCENDING)]
+        
+        return self.find(
             model=model,
-            serializer=self._ser,
+            filter=query,
+            projection=projection,
+            sort=sort,
             skip=last_evaluated_key,
-            total=col.count_documents(query),
+            limit=limit,
+            batch_size=page_size,
         )
 
     def scan(
@@ -442,22 +530,16 @@ class MongoAdapter:
         else:
             query = {}
         last_evaluated_key = last_evaluated_key or 0
+        projection = convert_attributes_to_get(attributes_to_get) if attributes_to_get else None
 
         # TODO: scan a specific index using mongo hint
-        col = self.get_collection(model)
-        cursor = col.find(
-            query,
-            projection=convert_attributes_to_get(attributes_to_get),
-            skip=last_evaluated_key,
-            limit=limit or 0,
-            batch_size=page_size or 0,
-        )
-        return ResultIterator(
-            cursor=cursor,
+        return self.find(
             model=model,
-            serializer=self._ser,
+            filter=query,
+            projection=projection,
             skip=last_evaluated_key,
-            total=col.count_documents(query),
+            limit=limit,
+            batch_size=page_size,
         )
 
     def batch_get(
@@ -508,7 +590,8 @@ class MongoAdapter:
 
 class LastEvaluatedKey:
     """
-    Simple abstraction over DynamoDB last evaluated key & MongoDB offset :)
+    Pagination token for MongoDB queries.
+    Encapsulates offset/skip position for cursor-based pagination.
     """
 
     payload_key_name = 'key'
@@ -531,13 +614,13 @@ class LastEvaluatedKey:
             decoded = base64.urlsafe_b64decode(s.encode()).decode()
             _payload = json.loads(decoded)
         except binascii.Error:
-            _LOG.warning('Invalid base64 encoding in last evaluated key token')
+            _LOG.warning('Invalid base64 encoding in pagination token')
         except json.JSONDecodeError:
-            _LOG.warning('Invalid json string within last evaluated key token')
+            _LOG.warning('Invalid json string within pagination token')
         except Exception as e:  # you never know :)
             _LOG.warning(
                 'Some unexpected exception occurred while '
-                f"deserializing last evaluated key token : '{e}'"
+                f"deserializing pagination token : '{e}'"
             )
         return cls(_payload.get(cls.payload_key_name))
 
@@ -551,4 +634,3 @@ class LastEvaluatedKey:
 
     def __bool__(self) -> bool:
         return bool(self._lek)
-

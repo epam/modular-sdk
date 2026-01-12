@@ -1,6 +1,6 @@
 from pynamodb.attributes import UnicodeAttribute
 
-from modular_sdk.models.pynamongo.models import BaseModel
+from modular_sdk.models.pynamongo.models import ModularBaseModel
 from modular_sdk.commons.constants import TABLES_PREFIX
 from modular_sdk.models.pynamongo.attributes import DynamicAttribute
 
@@ -12,7 +12,7 @@ VALUE = 'v'
 MODULAR_CUSTOMER_SETTINGS_TABLE_NAME = 'CustomerSettings'
 
 
-class CustomerSettings(BaseModel):
+class CustomerSettings(ModularBaseModel):
     class Meta:
         table_name = f'{TABLES_PREFIX}{MODULAR_CUSTOMER_SETTINGS_TABLE_NAME}'
 

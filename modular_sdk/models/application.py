@@ -4,7 +4,7 @@ from pynamodb.indexes import AllProjection
 
 from modular_sdk.commons.constants import TABLES_PREFIX
 from pynamodb.indexes import GlobalSecondaryIndex
-from modular_sdk.models.pynamongo.models import BaseModel
+from modular_sdk.models.pynamongo.models import ModularBaseModel
 
 APPLICATION_ID = 'aid'
 CUSTOMER_ID = 'cid'
@@ -34,7 +34,7 @@ class CustomerIdTypeIndex(GlobalSecondaryIndex):
     type = UnicodeAttribute(range_key=True, attr_name=TYPE)
 
 
-class Application(BaseModel):
+class Application(ModularBaseModel):
     class Meta:
         table_name = f'{TABLES_PREFIX}{MODULAR_APPLICATIONS_TABLE_NAME}'
 

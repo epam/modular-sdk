@@ -1,9 +1,8 @@
-from pynamodb.attributes import UnicodeAttribute, MapAttribute, \
-    UTCDateTimeAttribute
+from pynamodb.attributes import UnicodeAttribute, MapAttribute
 from pynamodb.indexes import AllProjection
 
 from pynamodb.indexes import GlobalSecondaryIndex
-from modular_sdk.models.pynamongo.models import BaseModel
+from modular_sdk.models.pynamongo.models import ModularBaseModel
 
 
 class JobStartedAtIndex(GlobalSecondaryIndex):
@@ -17,7 +16,7 @@ class JobStartedAtIndex(GlobalSecondaryIndex):
     started_at = UnicodeAttribute(range_key=True)
 
 
-class Job(BaseModel):
+class Job(ModularBaseModel):
     class Meta:
         table_name = 'ModularJobs'
 

@@ -324,7 +324,7 @@ class MongoClientSingleton:
         return cls._instance
 
 
-class BaseModel(SafeUpdateModel):
+class ModularBaseModel(SafeUpdateModel):
     """
     Base model for Modular SDK that always uses MongoDB.
     Provides mongo adapter configured from environment variables.

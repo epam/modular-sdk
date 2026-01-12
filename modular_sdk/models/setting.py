@@ -1,11 +1,11 @@
 from pynamodb.attributes import UnicodeAttribute
 
-from modular_sdk.models.pynamongo.models import BaseModel
+from modular_sdk.models.pynamongo.models import ModularBaseModel
 
 from modular_sdk.models.pynamongo.attributes import DynamicAttribute
 
 
-class Setting(BaseModel):
+class Setting(ModularBaseModel):
     class Meta:
         table_name = 'Settings'
 

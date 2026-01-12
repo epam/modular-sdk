@@ -3,7 +3,7 @@ from pynamodb.attributes import UnicodeAttribute, \
 from pynamodb.indexes import AllProjection
 
 from pynamodb.indexes import GlobalSecondaryIndex
-from modular_sdk.models.pynamongo.models import BaseModel
+from modular_sdk.models.pynamongo.models import ModularBaseModel
 
 
 
@@ -18,7 +18,7 @@ class SegmentIndex(GlobalSecondaryIndex):
     execution_id = UnicodeAttribute(range_key=True)
 
 
-class ExecutionTrace(BaseModel):
+class ExecutionTrace(ModularBaseModel):
     class Meta:
         table_name = 'ExecutionTraces'
 
