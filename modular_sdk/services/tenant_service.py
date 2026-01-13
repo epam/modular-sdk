@@ -82,12 +82,15 @@ class TenantService:
 
     @staticmethod
     def i_get_tenant_by_customer(
-            customer_id: str, active: Optional[bool] = None,
-            tenant_name: Optional[str] = None, limit: int = None,
+            customer_id: str,
+            active: Optional[bool] = None,
+            tenant_name: Optional[str] = None,
+            limit: int = None,
             last_evaluated_key: Union[dict, str] = None,
             cloud: Optional[str] = None,
+            linked_to: Optional[str] = None,
             attributes_to_get: Optional[list] = None,
-            rate_limit: Optional[int] = None
+            rate_limit: Optional[int] = None,
     ) -> ResultIterator:
 
         condition = active if active is None else (Tenant.is_active == active)
@@ -102,6 +105,11 @@ class TenantService:
             condition &= Tenant.cloud == cloud
         elif cloud:
             condition = Tenant.cloud == cloud
+
+        if condition is not None and linked_to:
+            condition &= Tenant.linked_to == linked_to
+        elif linked_to:
+            condition = Tenant.linked_to == linked_to
 
         return Tenant.customer_name_index.query(
             hash_key=customer_id, filter_condition=condition, limit=limit,
