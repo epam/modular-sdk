@@ -1,15 +1,15 @@
-from typing import Optional, List
+from typing import Optional, List, Any
 from enum import Enum
 from http import HTTPStatus
 
-from modular_sdk.commons import generate_id, default_instance
+from modular_sdk.commons import generate_id
 from modular_sdk.commons.exception import ModularException
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.commons.time_helper import utc_datetime
 from modular_sdk.models.application import Application
 from modular_sdk.models.pynamongo import ResultIterator
 from modular_sdk.services.customer_service import CustomerService
-from modular_sdk.models.pynamongo.convertors import instance_as_json_dict
+from modular_sdk.models.pynamongo.convertors import instance_as_json_dict, convert_condition_expression
 
 _LOG = get_logger(__name__)
 
@@ -43,28 +43,22 @@ class ApplicationService:
 
     @staticmethod
     def get_application_by_id(application_id) -> Optional[Application]:
-        return Application.get_nullable(hash_key=application_id)
+        return Application.find_one(
+            filter={'aid': application_id}
+        )
 
     @staticmethod
     def i_get_application_by_customer(
             customer_id: str, application_type: Optional[str] = None,
             deleted: Optional[bool] = None
     ) -> ResultIterator[Application]:
+        filter_dict: dict[str, Any] = {'cid': customer_id}
+        if application_type:
+            filter_dict['t'] = application_type
+        if deleted is not None:
+            filter_dict['d'] = deleted
 
-        condition = deleted if deleted is None else (
-                Application.is_deleted == deleted
-        )
-        rkc = None
-        _type: str = default_instance(application_type, str)
-
-        if _type:
-            rkc = (Application.type == _type)
-
-        return Application.customer_id_type_index.query(
-            hash_key=customer_id,
-            range_key_condition=rkc,
-            filter_condition=condition
-        )
+        return Application.find(filter=filter_dict)
 
     @staticmethod
     def query_by_customer(customer: str, 
@@ -77,13 +71,27 @@ class ApplicationService:
         """
         Allows to specify flexible conditions
         """
-        return Application.customer_id_type_index.query(
-            hash_key=customer,
-            range_key_condition=range_key_condition,
-            filter_condition=filter_condition,
+        filter_dict: dict[str, Any] = {'cid': customer}
+        
+        if range_key_condition is not None:
+            range_condition_dict = convert_condition_expression(range_key_condition)
+            filter_dict.update(range_condition_dict)
+        
+        if filter_condition is not None:
+            filter_condition_dict = convert_condition_expression(filter_condition)
+            if len(filter_dict) > 1 or len(filter_condition_dict) > 1:
+                # Merge conditions using $and if we have multiple conditions
+                filter_dict = {'$and': [filter_dict, filter_condition_dict]}
+            else:
+                filter_dict.update(filter_condition_dict)
+        
+        skip = last_evaluated_key if isinstance(last_evaluated_key, int) else 0
+        
+        return Application.find(
+            filter=filter_dict,
             limit=limit,
-            last_evaluated_key=last_evaluated_key,
-            rate_limit=rate_limit
+            skip=skip,
+            batch_size=rate_limit
         )
 
     @staticmethod
@@ -92,26 +100,21 @@ class ApplicationService:
              limit: Optional[int] = None,
              last_evaluated_key: dict | int | None = None
              ) -> ResultIterator[Application]:
-        condition = None
-        rkc = None
-        if isinstance(deleted, bool):
-            condition &= Application.is_deleted == deleted
-        if isinstance(_type, str):
-            rkc &= (Application.type == _type)
+        filter_dict: dict[str, Any] = {}
+        
         if customer:
-            return Application.customer_id_type_index.query(
-                hash_key=customer,
-                range_key_condition=rkc,
-                filter_condition=condition,
-                limit=limit,
-                last_evaluated_key=last_evaluated_key
-            )
-        if rkc is not None:
-            condition &= rkc
-        return Application.scan(
-            filter_condition=condition,
+            filter_dict['cid'] = customer
+        if isinstance(_type, str):
+            filter_dict['t'] = _type
+        if isinstance(deleted, bool):
+            filter_dict['d'] = deleted
+        
+        skip = last_evaluated_key if isinstance(last_evaluated_key, int) else 0
+        
+        return Application.find(
+            filter=filter_dict,
             limit=limit,
-            last_evaluated_key=last_evaluated_key
+            skip=skip
         )
 
     @staticmethod
@@ -144,7 +147,9 @@ class ApplicationService:
         actions = []
 
         for attribute in attributes:
-            if attribute not in updatable_attributes:
+            # Use identity check instead of 'in' to avoid boolean evaluation
+            # issues with pynamodb Comparison objects
+            if not any(attr.attr_name == attribute.attr_name for attr in updatable_attributes):
                 _LOG.warning(f'Attribute {attribute.attr_name} '
                              f'can\'t be updated.')
                 continue

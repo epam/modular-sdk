@@ -2,7 +2,8 @@ from typing import Union, Optional, List
 from pynamodb.expressions.update import Action
 from pynamodb.expressions.condition import Condition
 
-from modular_sdk.models.customer_settings import CustomerSettings
+from modular_sdk.models.customer_settings import CustomerSettings, \
+    CUSTOMER_NAME, KEY
 from modular_sdk.models.pynamongo import ResultIterator
 
 
@@ -21,10 +22,8 @@ class CustomerSettingsService:
     @staticmethod
     def get_nullable(customer_name: str, key: str
                      ) -> Optional[CustomerSettings]:
-        return CustomerSettings.get_nullable(
-            hash_key=customer_name,
-            range_key=key
-        )
+        filter_dict = {CUSTOMER_NAME: customer_name, KEY: key}
+        return CustomerSettings.find_one(filter=filter_dict)
 
     @staticmethod
     def query_by_customer_name(customer_name: str, 
@@ -44,7 +43,6 @@ class CustomerSettingsService:
     @staticmethod
     def delete(setting: CustomerSettings):
         setting.delete()
-
 
     @staticmethod
     def save(setting: CustomerSettings):

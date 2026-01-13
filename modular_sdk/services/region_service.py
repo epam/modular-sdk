@@ -1,5 +1,6 @@
 from typing import Optional
-from modular_sdk.models.region import RegionModel, RegionAttr
+from modular_sdk.models.region import RegionModel, RegionAttr, ACTIVE, \
+    REGION_NAME, REGION_CLOUD
 from modular_sdk.services.tenant_service import TenantService
 from modular_sdk.models.pynamongo.convertors import instance_as_json_dict, instance_as_dict
 
@@ -16,39 +17,41 @@ VIRT_PROFILE_ERROR_PATTERN = 'There is no virt profiles in region {0}'
 SHAPE_MAPPING_ERROR_PATTERN = 'There is no shape mapping in region {0}'
 
 
-
 class RegionService:
     def __init__(self, tenant_service: TenantService):
         self.tenant_service = tenant_service
 
     @staticmethod
-    def get_all_regions(only_active=False):
-        regions = list(RegionModel.scan())
+    def get_all_regions(only_active: bool = False):
+        filter_dict = {}
         if only_active:
-            return list(filter(lambda region: region.is_active, regions))
-        return regions
+            filter_dict[ACTIVE] = only_active
+        return list(RegionModel.find())
 
     @staticmethod
-    def get_region(region_name):
-        return RegionModel.get_nullable(hash_key=region_name)
+    def get_region(region_name: str):
+        filter_dict = {REGION_NAME: region_name}
+        return RegionModel.find_one(filter=filter_dict)
 
     @staticmethod
-    def get_region_by_native_name(native_name: str,
-                                  cloud: Optional[str] = None
-                                  ) -> Optional[RegionModel]:
+    def get_region_by_native_name(
+            native_name: str,
+            cloud: Optional[str] = None
+    ) -> Optional[RegionModel]:
         """
         Always returns one region or None. But still cloud should be specified
         """
-        condition = None
+        filter_dict = {REGION_NATIVE_NAME: native_name}
         if cloud:
-            condition = RegionModel.cloud == cloud
-        return next(RegionModel.native_name_cloud_index.query(
-            hash_key=native_name, range_key_condition=condition
-        ), None)
+            filter_dict[REGION_CLOUD] = cloud
+
+        return next(RegionModel.find(filter=filter_dict), None)
 
     @staticmethod
-    def get_regions(region_names):
-        return RegionModel.batch_get(list(set(region_names)))
+    def get_regions(region_names: set | list):
+        return RegionModel.find(
+            filter={REGION_NAME: {'$in': list(set(region_names))}}
+        )
 
     @staticmethod
     def check_region_is_not_activated(region_to_add, tenant_regions):

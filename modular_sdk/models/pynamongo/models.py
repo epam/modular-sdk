@@ -45,6 +45,9 @@ class Model(_Model):
         consistent_read: Optional[bool] = None,  # Ignored for MongoDB
         attributes_to_get: Optional[Sequence[str]] = None,
     ) -> Iterator[_T]:
+        """
+        Deprecated: use find() with `$in` operator instead
+        """
         return cls.mongo_adapter().batch_get(
             model=cls, items=items, attributes_to_get=attributes_to_get
         )
@@ -95,6 +98,9 @@ class Model(_Model):
         consistent_read: bool = False,  # Ignored for MongoDB
         attributes_to_get: Optional[Sequence[Text]] = None,
     ) -> _T:
+        """
+        Deprecated: use find() instead
+        """
         return cls.mongo_adapter().get(
             model=cls,
             hash_key=hash_key,
@@ -110,6 +116,9 @@ class Model(_Model):
         consistent_read: bool = False,  # Ignored for MongoDB
         attributes_to_get: Optional[Sequence[Text]] = None,
     ) -> _T | None:
+        """
+        Deprecated: use find_one() instead
+        """
         try:
             return cls.get(
                 hash_key=hash_key,
@@ -155,6 +164,9 @@ class Model(_Model):
         page_size: Optional[int] = None,
         rate_limit: Optional[float] = None,  # Ignored for MongoDB
     ) -> ResultIterator[_T]:
+        """
+        Deprecated: use find() instead
+        """
         return cls.mongo_adapter().query(
             model=cls,
             hash_key=hash_key,
@@ -182,6 +194,9 @@ class Model(_Model):
         rate_limit: Optional[float] = None,  # Ignored for MongoDB
         attributes_to_get: Optional[Sequence[str]] = None,
     ) -> ResultIterator[_T]:
+        """
+        Deprecated: use find() instead
+        """
         return cls.mongo_adapter().scan(
             model=cls,
             filter_condition=filter_condition,
@@ -214,6 +229,60 @@ class Model(_Model):
         ignore_update_ttl_errors: bool = False,
     ) -> Any:
         return cls.mongo_adapter().create_table(cls)
+
+    @classmethod
+    def find_one(
+            cls,
+            filter: dict,
+            projection: dict | list[str] | tuple[str, ...] | None = None,
+            raise_if_not_found: bool = False,
+    ) -> _T | None:
+        """
+        MongoDB-native find_one method.
+        Use this instead of get() for more flexible queries.
+
+        Example:
+            Application.find_one(filter={'customer_id': '123', 'type': 'api'})
+        """
+        return cls.mongo_adapter().find_one(
+            model=cls,
+            filter=filter,
+            projection=projection,
+            raise_if_not_found=raise_if_not_found,
+        )
+
+    @classmethod
+    def find(
+            cls,
+            filter: dict = None,
+            projection: dict | list[str] | tuple[str, ...] | None = None,
+            sort: list[tuple[str, int]] | None = None,
+            skip: int = 0,
+            limit: int | None = None,
+            batch_size: int | None = None,
+            count_total: bool = False,
+    ) -> ResultIterator[_T]:
+        """
+        MongoDB-native find method.
+        Use this instead of query() for more flexible queries.
+
+        Example:
+            Application.find(
+                filter={'customer_id': '123'},
+                sort=[('type', 1)],
+                limit=10
+            )
+        """
+        return cls.mongo_adapter().find(
+            model=cls,
+            filter=filter,
+            projection=projection,
+            sort=sort,
+            skip=skip,
+            limit=limit,
+            batch_size=batch_size,
+            count_total=count_total,
+        )
 
 
 class SafeUpdateModel(Model):

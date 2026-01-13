@@ -67,11 +67,16 @@ connection, different sets of env variables must be set:
    Alternatively, instead of specifying `modular_mongo_user`, `modular_mongo_password`,  
    `modular_mongo_url`, and `modular_mongo_srv`, you can use:  
    `modular_mongo_uri`: `$MONGO_URI` # Format: `mongodb+srv://<USER>:<PASSWORD>@<URL>/`  
-2. SaaS, DynamoDB (cross-account access):  
+2. SaaS, MongoDB Atlas:  
    `modular_service_mode`: `saas` # Optional  
-   `modular_assume_role_arn`: `$ASSUME_ROLE_ARN`  
-3. SAAS, DynamoDB (same AWS account):  
-   `modular_service_mode`: `saas` # Optional  
+   `modular_mongo_user`: `$MONGO_USER`,  
+   `modular_mongo_password`: `$MONGO_PASSWORD`,  
+   `modular_mongo_url`: `$MONGO_URL`,  
+   `modular_mongo_db_name`: `$MONGO_DB_NAME`,  
+   `modular_mongo_srv`: `True`, # Optional  
+   Alternatively, instead of specifying `modular_mongo_user`, `modular_mongo_password`,  
+   `modular_mongo_url`, and `modular_mongo_srv`, you can use:  
+   `modular_mongo_uri`: `$MONGO_URI` # Format: `mongodb+srv://<USER>:<PASSWORD>@<URL>/`  
    
 Alternatively, you can pass these parameters (fully or partially) on 
 initialization:

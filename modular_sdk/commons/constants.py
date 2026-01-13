@@ -18,9 +18,6 @@ class DBBackend(str, Enum):
     Type of database backend for models
     """
 
-    # uses boto credentials or role
-    DYNAMO = 'dynamo'
-
     # uses mongo uri built from different parameters
     MONGO = 'mongo'
 

@@ -223,10 +223,13 @@ class ParentService:
         actions = []
 
         for attribute in attributes:
-            if attribute not in updatable_attributes:
+            # Use identity check instead of 'in' to avoid boolean evaluation
+            # issues with pynamodb Comparison objects
+            if not any(attr.attr_name == attribute.attr_name for attr in updatable_attributes):
                 _LOG.warning(f'Attribute {attribute.attr_name} '
                              f'can\'t be updated.')
                 continue
+            # TODO get rid of pynamodb
             python_attr_name = Parent._dynamo_to_python_attr(
                 attribute.attr_name)
             update_value = getattr(parent, python_attr_name)

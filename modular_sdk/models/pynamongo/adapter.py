@@ -41,7 +41,7 @@ class ResultIterator(Iterator[_MT]):
         model: type[_MT],
         serializer: PynamoDBModelToMongoDictSerializer,
         skip: int = 0,
-        total: int = math.inf,  # pyright: ignore
+        total: int | float = math.inf,  # pyright: ignore
     ):
         self._cursor = cursor
         self._model = model
@@ -164,6 +164,35 @@ class MongoAdapter:
         setattr(model.Meta, 'mongo_collection', col)
         return col
 
+    @staticmethod
+    def _normalize_projection(
+        projection: dict | list[str] | tuple[str, ...] | None
+    ) -> dict | None:
+        """
+        Normalize projection to MongoDB dict format.
+        
+        Args:
+            projection: Projection as dict, list/tuple of field names, or None
+            
+        Returns:
+            Normalized projection dict or None
+        """
+        if projection is None:
+            return None
+        
+        if isinstance(projection, dict):
+            return projection
+        
+        if isinstance(projection, (list, tuple)):
+            # Convert list/tuple to dict format
+            projection_dict = {field: 1 for field in projection}
+            # Exclude _id if not explicitly included
+            if '_id' not in projection:
+                projection_dict['_id'] = 0
+            return projection_dict
+        
+        return None
+
     def find_one(
         self,
         model: type[_MT],
@@ -184,7 +213,8 @@ class MongoAdapter:
             Model instance or None if not found (unless raise_if_not_found=True)
         """
         collection = self.get_collection(model)
-        item = collection.find_one(filter, projection=projection)
+        normalized_projection = self._normalize_projection(projection)
+        item = collection.find_one(filter, projection=normalized_projection)
         if not item:
             if raise_if_not_found:
                 raise model.DoesNotExist()
@@ -210,6 +240,7 @@ class MongoAdapter:
             query[range_key_name] = range_key
 
         projection = convert_attributes_to_get(attributes_to_get) if attributes_to_get else None
+        # convert_attributes_to_get returns tuple[str, ...], which will be normalized by find_one
         return self.find_one(model, filter=query, projection=projection, raise_if_not_found=True)
 
     def save(self, instance: Model) -> dict:
@@ -413,12 +444,13 @@ class MongoAdapter:
     def find(
         self,
         model: type[_MT],
-        filter: dict,
+        filter: dict = None,
         projection: dict | list[str] | tuple[str, ...] | None = None,
         sort: list[tuple[str, int]] | None = None,
         skip: int = 0,
         limit: int | None = None,
         batch_size: int | None = None,
+        count_total: bool = False
     ) -> ResultIterator[_MT]:
         """
         Native MongoDB find method.
@@ -431,17 +463,22 @@ class MongoAdapter:
             skip: Number of documents to skip
             limit: Maximum number of documents to return
             batch_size: Number of documents to return per batch
+            count_total: If True, count total documents matching filter (expensive operation)
             
         Returns:
             ResultIterator over model instances
         """
+        if not filter:
+            filter = {}
+
         collection = self.get_collection(model)
+        normalized_projection = self._normalize_projection(projection)
         find_kwargs = {
             'filter': filter,
             'skip': skip,
         }
-        if projection is not None:
-            find_kwargs['projection'] = projection
+        if normalized_projection is not None:
+            find_kwargs['projection'] = normalized_projection
         if limit is not None:
             find_kwargs['limit'] = limit
         if batch_size is not None:
@@ -451,7 +488,8 @@ class MongoAdapter:
         if sort:
             cursor = cursor.sort(sort)
         
-        total = collection.count_documents(filter)
+        # Only count documents if explicitly requested (expensive operation)
+        total = collection.count_documents(filter) if count_total else math.inf
         return ResultIterator(
             cursor=cursor,
             model=model,
@@ -549,7 +587,7 @@ class MongoAdapter:
         attributes_to_get=None,
     ) -> Generator[_MT, None, None]:
         """
-        Deprecated: use find() instead
+        Deprecated: use find() with `$in` operator instead
         """
         ors = []
 
@@ -575,9 +613,11 @@ class MongoAdapter:
                 query[range_key_name] = range_key_ser
             ors.append(query)
 
+        projection = convert_attributes_to_get(attributes_to_get) if attributes_to_get else None
+        normalized_projection = self._normalize_projection(projection)
         cursor = self.get_collection(model).find(
             {'$or': ors},
-            projection=convert_attributes_to_get(attributes_to_get),
+            projection=normalized_projection,
         )
         for item in cursor:
             yield self._ser.deserialize(model, item)
