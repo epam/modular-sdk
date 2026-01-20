@@ -1,12 +1,13 @@
 import json
 import re
 from datetime import datetime
+from decimal import Decimal
 from enum import Enum
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Callable, Iterable
 from uuid import UUID
 
-from pynamodb.attributes import Attribute, AttributeContainer
+from pynamodb.attributes import Attribute, AttributeContainer, NumberAttribute
 from pynamodb.constants import (
     BINARY,
     BINARY_SET,
@@ -132,7 +133,17 @@ class PynamoDBModelToMongoDictSerializer:
         """
         The same as one above but without keys, only values in correct order
         """
-        return model._serialize_keys(hash_key, range_key)
+        if hash_key is not None:
+            hash_key_attribute = model._hash_key_attribute()
+            if isinstance(hash_key_attribute, NumberAttribute):
+                # number attribute is not serialized to a string for MongoDB
+                hash_key = hash_key
+            else:
+                hash_key = hash_key_attribute.serialize(hash_key)
+        if range_key is not None:
+            range_key = model._range_key_attribute().serialize(range_key)
+
+        return hash_key, range_key
 
     @staticmethod
     def model_keys_names(model: type['Model']) -> tuple[str, str | None]:
