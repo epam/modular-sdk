@@ -1,7 +1,6 @@
 import json
 import re
 from datetime import datetime
-from decimal import Decimal
 from enum import Enum
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Callable, Iterable
