@@ -2,6 +2,7 @@ import base64
 import binascii
 import json
 import math
+from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, Generator, Iterator, TypeVar, cast
 
 from pymongo import ASCENDING, DESCENDING, DeleteOne, ReplaceOne
@@ -9,6 +10,7 @@ from pymongo.collection import ReturnDocument
 from pynamodb.expressions.condition import Condition
 from pynamodb.models import Model
 
+from modular_sdk.commons import ModularException
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.models.pynamongo.convertors import (
     PynamoDBModelToMongoDictSerializer,
@@ -520,9 +522,11 @@ class LastEvaluatedKey:
         if not s or not isinstance(s, str):
             return cls()
         _payload = {}
+        error = True
         try:
             decoded = base64.urlsafe_b64decode(s.encode()).decode()
             _payload = json.loads(decoded)
+            error = False
         except binascii.Error:
             _LOG.warning('Invalid base64 encoding in last evaluated key token')
         except json.JSONDecodeError:
@@ -532,6 +536,13 @@ class LastEvaluatedKey:
                 'Some unexpected exception occurred while '
                 f"deserializing last evaluated key token : '{e}'"
             )
+
+        if error:
+            raise ModularException(
+                code=HTTPStatus.BAD_REQUEST,
+                content='Invalid last evaluated key token',
+            )
+
         return cls(_payload.get(cls.payload_key_name))
 
     @property

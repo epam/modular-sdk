@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.10"
 
 [[package]]
@@ -369,7 +369,7 @@ wheels = [
 
 [[package]]
 name = "modular-sdk"
-version = "7.1.7"
+version = "7.1.8"
 source = { editable = "." }
 dependencies = [
     { name = "boto3" },

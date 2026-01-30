@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.1.8] - 2026-01-29
+- Changed `LastEvaluatedKey` deserialization logic to raise an error if the key cannot be deserialized
+  instead of returning None.
+
 ## [7.1.7] - 2026-01-20
 - Fixed an issue with `NumberAttribute` serialization for MongoDB when the hash key converted to a string for queries.
 
