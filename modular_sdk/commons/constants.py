@@ -158,6 +158,19 @@ class Env(str, Enum):
                 f'Env {self.value} must be one of: {[i.value for i in typ]}'
             )
 
+    def as_log_level(self, default: str = 'INFO') -> str:
+        """
+        Returns validated logging level.
+        If env var is not set or invalid, returns default
+        """
+        valid_levels = \
+            frozenset({'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'})
+        level = self.get()
+        if level is None:
+            return default
+        level_upper = level.upper()
+        return level_upper if level_upper in valid_levels else default
+
     # NOTE: aliases are kept for backward compatibility
     SERVICE_MODE = (
         'MODULAR_SDK_SERVICE_MODE',
