@@ -322,6 +322,7 @@ class Cloud(str, Enum):
     VSPHERE = 'VSPHERE'
     VMWARE = 'VMWARE'  # VCloudDirector group
     NUTANIX = 'NUTANIX'
+    KUBERNETES = 'KUBERNETES'
 
     @classmethod
     def iter(cls):
