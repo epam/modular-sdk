@@ -14,7 +14,7 @@ logging.config.dictConfig({
     },
     'loggers': {
         'modular_sdk': {
-            'level': Env.LOG_LEVEL.get(),
+            'level': Env.LOG_LEVEL.as_log_level(),
             'handlers': ['null_handler'],
             'propagate': False,
         },
@@ -27,4 +27,3 @@ def get_logger(name: str, level: str | None = None, /):
     if level:
         log.setLevel(level)
     return log
-

@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.1.9] - 2026-02-06
+- Added `as_log_level()` method to `Env` class for validated logging level retrieval
+- Fixed an issue where invalid `MODULAR_SDK_LOG_LEVEL` values caused application crash during startup
+- Added `KUBERNETES` to the `Cloud` enum
+
 ## [7.1.8] - 2026-01-29
 - Changed `LastEvaluatedKey` deserialization logic to raise an error if the key cannot be deserialized
   instead of returning None.
