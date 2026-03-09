@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.1.10] - 2026-02-25
+- Added `SEP_SANDBOX_AZURE` and `SANDBOX_PROVISIONING_DATA` application types
+
 ## [7.1.9] - 2026-02-06
 - Added `as_log_level()` method to `Env` class for validated logging level retrieval
 - Fixed an issue where invalid `MODULAR_SDK_LOG_LEVEL` values caused application crash during startup
