@@ -1,5 +1,7 @@
 from typing import Optional, Iterator, Union, List
 from http import HTTPStatus
+
+from pynamodb.expressions.condition import Condition
 from pynamodb.pagination import ResultIterator
 
 from modular_sdk.commons import default_instance, deprecated
@@ -46,11 +48,18 @@ class TenantService:
             only_active, limit, last_evaluated_key))
 
     @staticmethod
-    def i_scan_tenants(only_active=False, limit: int = None,
-                       last_evaluated_key: Union[dict, str] = None):
-        condition = None
-        if only_active:
+    def i_scan_tenants(
+            only_active=False,
+            limit: int = None,
+            last_evaluated_key: Union[dict, str] = None,
+            filter_condition: Optional[Condition] = None,
+    ):
+        condition = filter_condition
+        if condition is not None and only_active:
             condition &= Tenant.is_active == True
+        elif only_active:
+            condition = Tenant.is_active == True
+
         return Tenant.scan(limit=limit, last_evaluated_key=last_evaluated_key,
                            filter_condition=condition)
 
@@ -91,10 +100,16 @@ class TenantService:
             linked_to: Optional[str] = None,
             attributes_to_get: Optional[list] = None,
             rate_limit: Optional[int] = None,
+            filter_condition: Optional[Condition] = None,
     ) -> ResultIterator:
 
-        condition = active if active is None else (Tenant.is_active == active)
         name = default_instance(tenant_name, str)
+        condition = filter_condition
+
+        if condition is not None and active:
+            condition &= Tenant.is_active == active
+        elif active:
+            condition = Tenant.is_active == active
 
         if condition is not None and name:
             condition &= Tenant.name == name
@@ -112,10 +127,12 @@ class TenantService:
             condition = Tenant.linked_to == linked_to
 
         return Tenant.customer_name_index.query(
-            hash_key=customer_id, filter_condition=condition, limit=limit,
+            hash_key=customer_id,
+            filter_condition=condition,
+            limit=limit,
             last_evaluated_key=last_evaluated_key,
             attributes_to_get=attributes_to_get,
-            rate_limit=rate_limit
+            rate_limit=rate_limit,
         )
 
     @staticmethod
