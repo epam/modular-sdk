@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.1.11] - 2026-04-02
+- Added filter condition support for `i_scan_tenants` and `i_get_tenant_by_customer` methods in `TenantService`
+
 ## [7.1.10] - 2026-02-25
 - Added `SEP_SANDBOX_AZURE` and `SANDBOX_PROVISIONING_DATA` application types
 
