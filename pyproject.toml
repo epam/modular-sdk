@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "modular_sdk"
 
-version = "7.1.10"
+version = "7.1.11"
 
 authors = [
     {name = "EPAM Systems", email = "support@syndicate.team"}
