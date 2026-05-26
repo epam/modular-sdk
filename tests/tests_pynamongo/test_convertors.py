@@ -40,6 +40,7 @@ class Nested(MapAttribute):
 
 
 class TestModel(Model):
+    __test__ = False
     string = UnicodeAttribute()
     short_string = UnicodeAttribute(attr_name='s')
     number = NumberAttribute(attr_name='num')

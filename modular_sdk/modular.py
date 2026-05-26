@@ -312,7 +312,7 @@ class ModularServiceProvider(metaclass=SingletonMeta):
         for example, in case of gitlab service - when we want to use
         different rule-sources configurations
         """
-        private_service_name = f'__ModularServiceProvider_{service}'
+        private_service_name = f'_ModularServiceProvider__{service}'
         if not hasattr(self, private_service_name):
             raise AssertionError(
                 f'In case you are using this method, make sure your '

@@ -21,6 +21,8 @@ class Nested(MapAttribute):
 
 
 class TestModel(Model):
+    __test__ = False
+
     class Meta:
         table_name = 'TestModel'
 

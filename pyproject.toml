@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "modular_sdk"
 
-version = "7.1.11"
+version = "7.1.12"
 
 authors = [
     {name = "EPAM Systems", email = "support@syndicate.team"}
@@ -17,8 +17,13 @@ readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "License :: OSI Approved :: Apache Software License",
-    "Operating System :: OS Independent"
+    "Operating System :: OS Independent",
 ]
 dependencies = [
     "pika==1.3.2",
@@ -26,16 +31,22 @@ dependencies = [
     "botocore>=1.36.11,<2",
     "pymongo~=4.11.2",
     "python-dateutil>=2.9.0.post0",
-    "cachetools>=5.5.1,<=6.2.2",
+    "cachetools>=5.5.1,<8",
     "pynamodb==6.1.0",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
+cryptography = [
+    "cryptography~=43.0.3",
+]
+hvac = [
+    "hvac~=2.1.0",
+]
 test = [
-    "pytest>=8.3.2",
-    "mongomock>=4",
-    "pytest-xdist>=3.6.1",
-    "pytest-cov>=6.0.0",
+    "pytest>=9.0.3",
+    "mongomock>=4.3.0",
+    "pytest-xdist>=3.8.0",
+    "pytest-cov>=7.1.0",
 ]
 
 
@@ -51,15 +62,6 @@ where = ["."]
 include = ["modular_sdk*"]
 exclude = ["tests*", "patch_scripts*"]
 namespaces = false
-
-
-[project.optional-dependencies]
-cryptography = [
-    "cryptography~=43.0.3",
-]
-hvac = [
-    "hvac~=2.1.0",
-]
 
 
 [tool.pytest.ini_options]
@@ -86,4 +88,3 @@ src = ["modular_sdk", "tests"]
 quote-style = "single"
 indent-style = "space"
 skip-magic-trailing-comma = true
-

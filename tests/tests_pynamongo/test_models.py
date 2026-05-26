@@ -33,6 +33,7 @@ class ExampleMapAttrFull(MapAttribute):
 
 
 class TestModel1(SafeUpdateModel):
+    __test__ = False
     class Meta:
         table_name = 'User'
         region = 'us-west-1'
@@ -41,6 +42,7 @@ class TestModel1(SafeUpdateModel):
 
 
 class TestModel2(SafeUpdateModel):
+    __test__ = False
     class Meta:
         table_name = 'User'
         region = 'us-west-1'
@@ -59,6 +61,7 @@ class TestModel2(SafeUpdateModel):
 
 
 class TestModel3PartialMapCustom(SafeUpdateModel):
+    __test__ = False
     class Meta:
         table_name = 'User'
         region = 'us-west-1'
@@ -82,6 +85,7 @@ class TestModel3PartialMapCustom(SafeUpdateModel):
 
 
 class TestModel4PartialListMapCustom(SafeUpdateModel):
+    __test__ = False
     class Meta:
         table_name = 'User'
         region = 'us-west-1'
