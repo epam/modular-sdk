@@ -16,6 +16,8 @@ description = "Data level integration for services built atop of Modular Framewo
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.14,<4"
 classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.14",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
