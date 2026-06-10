@@ -15,7 +15,7 @@ You use Modular SDK to create, configure, and manage common entities, such as:
 - Parents;
 
 ### Prerequisites
-- Python 3.10+ required
+- Python 3.14 required
 
 ### [Building distribution archives](https://packaging.python.org/en/latest/tutorials/packaging-projects/#generating-distribution-archives)
 - Make sure you have the latest version of PyPA’s build installed: `python3 -m pip install --upgrade build`

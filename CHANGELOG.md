@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `pip install modular-sdk[test]` being silently no-op — moved `test`
   from `[dependency-groups]` to `[project.optional-dependencies]`
 - Relaxed `cachetools` constraint from `>=5.5.1,<=6.2.2` to `>=5.5.1,<8`
-- Added Python 3.11–3.14 to supported versions classifiers
+- Added Python 3.14 to supported versions classifiers
 - Verified Python 3.14 compatibility across the entire SDK; no source
   changes were required
 - Added test suite for `SSMClientCachingWrapper` (`tests/test_ssm_caching.py`)
