@@ -67,6 +67,18 @@ namespaces = false
 [tool.pytest.ini_options]
 pythonpath = ["modular_sdk"]
 testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--tb=short",
+    "--cov=modular_sdk.models.pynamongo",
+    "--cov-report=term-missing",
+]
 
 
 [tool.pyright]
