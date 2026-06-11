@@ -64,6 +64,9 @@ exclude = ["tests*", "patch_scripts*"]
 namespaces = false
 
 
+# =============================================================================
+# Pytest Configuration
+# =============================================================================
 [tool.pytest.ini_options]
 pythonpath = ["modular_sdk"]
 testpaths = ["tests"]
@@ -76,9 +79,45 @@ addopts = [
     "--strict-markers",
     "--strict-config",
     "--tb=short",
+    # coverage scoped to pynamongo (what's currently under verification).
+    # change to "--cov=modular_sdk" for whole-package coverage.
     "--cov=modular_sdk.models.pynamongo",
     "--cov-report=term-missing",
 ]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "compat: marks Python 3.14 migration / compatibility tests",
+]
+
+
+# =============================================================================
+# Coverage Configuration
+# =============================================================================
+[tool.coverage.run]
+source = ["modular_sdk"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "@abstractmethod",
+    "@abc.abstractmethod",
+    "\\.\\.\\.",
+]
+show_missing = true
+skip_covered = false
+# NOTE: deliberately NOT setting fail_under here.
+# pynamongo total is ~72%, but individual files (patch.py 36%, etc.) are low.
+# Add `fail_under = 70` only once you've decided on a coverage gate.
 
 
 [tool.pyright]
