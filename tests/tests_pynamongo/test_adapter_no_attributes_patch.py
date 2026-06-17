@@ -21,6 +21,8 @@ class Nested(MapAttribute):
 
 
 class TestModel(Model):
+    __test__ = False
+
     class Meta:
         table_name = 'TestModel'
 
@@ -93,6 +95,7 @@ def test_delete(adapter, model_instance):
     with pytest.raises(DoesNotExist):
         adapter.get(TestModel, hash_key='test')
 
+
 def test_delete_with_condition(adapter, model_instance):
     adapter.save(model_instance)
 
@@ -106,6 +109,7 @@ def test_delete_with_condition(adapter, model_instance):
 
     with pytest.raises(DoesNotExist):
         adapter.get(TestModel, hash_key='test')
+
 
 def test_update(adapter, model_instance):
     adapter.save(model_instance)
@@ -132,26 +136,28 @@ def test_update(adapter, model_instance):
                                              tzinfo=timezone.utc)
         assert instance.json == {'new_key': 'new_value'}
 
+
 def test_update_with_condition(adapter, model_instance):
     adapter.save(model_instance)
 
     adapter.update(
         model_instance,
-        [TestModel.boolean.set(False)], 
+        [TestModel.boolean.set(False)],
         TestModel.number > 50
     )
-    
+
     item = adapter.get(TestModel, hash_key='test')
     assert item.boolean
 
     adapter.update(
         model_instance,
-        [TestModel.boolean.set(False)], 
+        [TestModel.boolean.set(False)],
         TestModel.number <= 43
     )
 
     item = adapter.get(TestModel, hash_key='test')
     assert not item.boolean
+
 
 def test_update_pipeline(adapter, model_instance):
     """
@@ -185,3 +191,46 @@ def test_refresh(adapter, model_instance):
     assert model_instance.number == 42.142322
     assert model_instance.map.as_dict() == {'key': 'value', 'key2': [1, 2, 3]}
     assert model_instance.list == ['one', 'two']
+
+
+def test_query_filter_exists(adapter, model_instance):
+    """bug2 e2e: operand-less filter through full query path must not
+    raise IndexError"""
+    adapter.save(model_instance)
+    items = list(adapter.query(
+        TestModel,
+        hash_key='test',
+        filter_condition=TestModel.short_name.exists(),
+    ))
+    assert len(items) == 1
+
+
+def test_query_filter_not_exists(adapter, model_instance):
+    adapter.save(model_instance)
+    items = list(adapter.query(
+        TestModel,
+        hash_key='test',
+        filter_condition=TestModel.short_name.does_not_exist(),
+    ))
+    assert items == []
+
+
+def test_query_filter_bool(adapter, model_instance):
+    """bug1 e2e: bool operand through full query path must not trigger
+    BETWEEN subscripting"""
+    adapter.save(model_instance)
+    items = list(adapter.query(
+        TestModel,
+        hash_key='test',
+        filter_condition=(TestModel.boolean == True),  # noqa: E712
+    ))
+    assert len(items) == 1
+
+
+def test_scan_filter_exists(adapter, model_instance):
+    adapter.save(model_instance)
+    items = list(adapter.scan(
+        TestModel,
+        filter_condition=TestModel.short_name.exists(),
+    ))
+    assert len(items) == 1

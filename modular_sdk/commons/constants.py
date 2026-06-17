@@ -17,10 +17,8 @@ class DBBackend(str, Enum):
     """
     Type of database backend for models
     """
-
     # uses boto credentials or role
     DYNAMO = 'dynamo'
-
     # uses mongo uri built from different parameters
     MONGO = 'mongo'
 
@@ -31,7 +29,6 @@ class DBBackend(str, Enum):
 class SecretsBackend(str, Enum):
     # uses boto credentials or role
     SSM = 'ssm'
-
     # uses token and url from envs
     VAULT = 'vault'
 
@@ -194,10 +191,7 @@ class Env(str, Enum):
 
     MONGO_USER = 'MODULAR_SDK_MONGO_USER', ('modular_mongo_user',)
     MONGO_PASSWORD = 'MODULAR_SDK_MONGO_PASSWORD', ('modular_mongo_password',)
-    MONGO_URL = (
-        'MODULAR_SDK_MONGO_URL',
-        ('modular_mongo_url',),
-    )  # hostname:port
+    MONGO_URL = ('MODULAR_SDK_MONGO_URL', ('modular_mongo_url',), )  # hostname:port
     MONGO_SRV = 'MODULAR_SDK_MONGO_SRV', ('modular_mongo_srv',)
     MONGO_URI = 'MODULAR_SDK_MONGO_URI', ('modular_mongo_uri',)  # full uri
     MONGO_DB_NAME = 'MODULAR_SDK_MONGO_DB_NAME', ('modular_mongo_db_name',)
