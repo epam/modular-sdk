@@ -214,8 +214,6 @@ def test_query_filter_not_exists(adapter, model_instance):
 
 
 def test_query_filter_bool(adapter, model_instance):
-    """bug1 e2e: bool operand through full query path must not trigger
-    BETWEEN subscripting"""
     adapter.save(model_instance)
     items = list(adapter.query(
         TestModel,
