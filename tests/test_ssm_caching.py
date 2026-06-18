@@ -129,10 +129,7 @@ def test_put_parameter_caches_under_returned_name(wrapper, mock_inner_client):
     mock_inner_client.get_parameter.assert_not_called()
 
 
-@pytest.mark.skip(
-    reason="Known issue: cache misses when inner client transforms name. "
-           "See TODO in SSMClientCachingWrapper.put_parameter"
-)
+@pytest.mark.skip(reason="cache misses when inner client transforms name")
 def test_put_parameter_caches_under_original_name_too(
         wrapper, mock_inner_client,
 ):
