@@ -1,4 +1,5 @@
 import base64
+import binascii
 import hashlib
 import hmac
 import json
@@ -20,22 +21,28 @@ class MaestroSignatureBuilder:
         Decode received message from Base64 format, cut initialization
         vector ("iv") from beginning of the message, decrypt message
         """
-        from cryptography.hazmat.primitives.ciphers import (
-            Cipher, algorithms, modes,
-        )
-        decoded_data = base64.b64decode(data)
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+        try:
+            decoded_data = base64.b64decode(data, validate=True)
+        except binascii.Error as e:
+            raise ValueError('Encrypted payload must be valid base64') from e
+
+        # AES-GCM payload = 12-byte IV + ciphertext + 16-byte auth tag.
+        if len(decoded_data) < 28:
+            raise ValueError('Encrypted payload is too short')
+
         iv = decoded_data[:12]
-        encrypted_data = decoded_data[12:]
-        cipher = Cipher(
-            algorithms.AES(key=self._secret_key.encode('utf-8')),
-            modes.GCM(initialization_vector=iv)
-        ).decryptor()
-        origin_data_with_iv = cipher.update(encrypted_data)
-        # Due to Initialization vector in encrypting method
-        # there is need to split useful and useless parts of the
-        # server response.
-        response = origin_data_with_iv[:-16]
-        return response
+        encrypted_data = decoded_data[12:]  # ciphertext + 16-byte GCM auth tag
+        try:
+            cipher = AESGCM(key=self._secret_key.encode('utf-8'))
+        except ValueError as e:
+            raise ValueError(str(e).replace('AESGCM key', 'Secret Key'))
+        return cipher.decrypt(
+            nonce=iv,
+            data=encrypted_data,
+            associated_data=None,
+        )
 
     def encrypt(self, data: str | dict | list) -> bytes:
         """

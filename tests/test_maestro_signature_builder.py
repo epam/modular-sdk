@@ -1,6 +1,7 @@
 import json
 import random
 import secrets
+from base64 import b64encode
 from unittest.mock import patch
 
 import pytest
@@ -61,6 +62,54 @@ def test_decrypt():
     )
     assert signer.decrypt(
         b'kVUII6Yho1wGMkVQuKP8vFjt5iTwAoEWrrwqgSVx251IeXBcbP3AHQ==') == b'secret-data2'
+
+
+@pytest.mark.skipif(
+    not _cryptography_installed, reason='Cryptography is not installed'
+)
+def test_decrypt_rejects_tampered_payload(secret_key):
+    from cryptography.exceptions import InvalidTag
+
+    signer = MaestroSignatureBuilder(
+        access_key='access_key',
+        secret_key=secret_key,
+        user='user'
+    )
+
+    encrypted = bytearray(signer.encrypt('my-secret-data'))
+    encrypted[-1] = ord('A') if encrypted[-1] != ord('A') else ord('B')
+
+    with pytest.raises(InvalidTag):
+        signer.decrypt(bytes(encrypted))
+
+
+@pytest.mark.skipif(
+    not _cryptography_installed, reason='Cryptography is not installed'
+)
+def test_decrypt_rejects_invalid_base64(secret_key):
+    signer = MaestroSignatureBuilder(
+        access_key='access_key',
+        secret_key=secret_key,
+        user='user'
+    )
+
+    with pytest.raises(ValueError, match='valid base64'):
+        signer.decrypt('@@not-base64@@')
+
+
+@pytest.mark.skipif(
+    not _cryptography_installed, reason='Cryptography is not installed'
+)
+def test_decrypt_rejects_short_payload(secret_key):
+    signer = MaestroSignatureBuilder(
+        access_key='access_key',
+        secret_key=secret_key,
+        user='user'
+    )
+
+    short_payload = b64encode(b'1' * 27)
+    with pytest.raises(ValueError, match='too short'):
+        signer.decrypt(short_payload)
 
 
 def test_get_headers():

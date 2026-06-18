@@ -405,7 +405,6 @@ SEP_SANDBOX_AWS_TYPE = ApplicationType.SEP_SANDBOX_AWS.value
 AVAILABLE_APPLICATION_TYPES = list(ApplicationType.iter())
 
 # environment service
-ENVS_TO_HIDE = set()
 HIDDEN_ENV_PLACEHOLDER = '****'
 
 # Tenant parent map types - probably deprecate
@@ -484,3 +483,28 @@ SUCCESS_STATUS = 'SUCCESS'
 ERROR_STATUS = 'FAILED'
 RESULTS = 'results'
 DATA = 'data'
+
+ENVS_TO_HIDE = {
+    env_name
+    for env_name in (
+        # AWS credentials
+        ENV_AWS_SECRET_ACCESS_KEY,
+        ENV_AWS_SESSION_TOKEN,
+        Env.INNER_AWS_SECRET_ACCESS_KEY.value,
+        Env.INNER_AWS_SESSION_TOKEN.value,
+        Env.INNER_AWS_SECRET_ACCESS_KEY.alias(),
+        Env.INNER_AWS_SESSION_TOKEN.alias(),
+        # MongoDB
+        Env.MONGO_PASSWORD.value,
+        Env.MONGO_PASSWORD.alias(),
+        Env.MONGO_URI.value,
+        Env.MONGO_URI.alias(),
+        # Vault
+        Env.VAULT_TOKEN.value,
+        Env.VAULT_TOKEN.alias(),
+        # Azure
+        ENV_AZURE_CLIENT_SECRET,
+        ENV_AZURE_CLIENT_CERTIFICATE_PASSWORD,
+    )
+    if env_name
+}

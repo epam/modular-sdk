@@ -17,9 +17,10 @@ class EnvironmentService:
         self._environment = os.environ
 
     def __repr__(self) -> str:
+        hidden_envs = {env_name.upper() for env_name in ENVS_TO_HIDE}
         return ', '.join(
             [
-                f'{k}={v if k not in ENVS_TO_HIDE else HIDDEN_ENV_PLACEHOLDER}'
+                f'{k}={v if k.upper() not in hidden_envs else HIDDEN_ENV_PLACEHOLDER}'
                 for k, v in self._environment.items()
             ]
         )
