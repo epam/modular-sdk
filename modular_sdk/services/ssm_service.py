@@ -259,29 +259,10 @@ class SSMClientCachingWrapper(AbstractSSMClient):
             value: SecretValue,
             _type='SecureString',
     ) -> Optional[str]:
-        # TODO: Cache key mismatch when inner client transforms
-        # the name. See commented alternative below for proposed fix.
-        # Tracked in: <TICKET-ID>
         name = self.client.put_parameter(name, value, _type)
         if name:
             self._cache[name] = value
         return name
-
-    # Proposed alternative (kept here for review/discussion, do not delete):
-    #
-    # def put_parameter(
-    #         self,
-    #         name: str,
-    #         value: SecretValue,
-    #         _type='SecureString',
-    # ) -> Optional[str]:
-    #     original_name = name
-    #     name = self.client.put_parameter(name, value, _type)
-    #     if name:
-    #         self._cache[name] = value
-    #         if name != original_name:
-    #             self._cache[original_name] = value
-    #     return name
 
     def delete_parameter(self, name: str) -> bool:
         self._cache.pop(name, None)
