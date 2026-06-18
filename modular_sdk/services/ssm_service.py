@@ -10,8 +10,9 @@ from cachetools import TTLCache
 from modular_sdk.commons.constants import Env
 from modular_sdk.commons.log_helper import get_logger
 from modular_sdk.commons.time_helper import utc_datetime
-from modular_sdk.services.aws_creds_provider import AWSCredentialsProvider, \
-    ModularAssumeRoleClient
+from modular_sdk.services.aws_creds_provider import (
+    AWSCredentialsProvider, ModularAssumeRoleClient,
+)
 from modular_sdk.services.environment_service import EnvironmentService
 
 _LOG = get_logger(__name__)
@@ -39,8 +40,12 @@ class AbstractSSMClient(ABC):
         """
         return str(re.sub(SSM_NOT_AVAILABLE, '-', name))
 
-    def safe_name(self, name: str, prefix: Optional[str] = None,
-                  date: Optional[bool] = True) -> str:
+    def safe_name(
+            self,
+            name: str,
+            prefix: Optional[str] = None,
+            date: Optional[bool] = True,
+    ) -> str:
         if prefix:
             name = f'{prefix}.{name}'
         if date:
@@ -52,8 +57,12 @@ class AbstractSSMClient(ABC):
         ...
 
     @abstractmethod
-    def put_parameter(self, name: str, value: SecretValue,
-                      _type='SecureString') -> Optional[str]:
+    def put_parameter(
+            self,
+            name: str,
+            value: SecretValue,
+            _type='SecureString',
+    ) -> Optional[str]:
         ...
 
     @abstractmethod
@@ -94,9 +103,11 @@ class VaultSSMClient(AbstractSSMClient):
     def get_parameter(self, name: str) -> Optional[SecretValue]:
         try:
             response = self.client.secrets.kv.v2.read_secret_version(
-                path=name, mount_point=self.mount_point) or {}
+                path=name,
+                mount_point=self.mount_point,
+            ) or {}
         except Exception:  # hvac.InvalidPath
-            return
+            return None
         val = response.get('data', {}).get('data', {}).get(self.key)
         if isinstance(val, str):
             try:
@@ -105,8 +116,12 @@ class VaultSSMClient(AbstractSSMClient):
                 pass
         return val
 
-    def put_parameter(self, name: str, value: SecretValue,
-                      _type='SecureString') -> Optional[str]:
+    def put_parameter(
+            self,
+            name: str,
+            value: SecretValue,
+            _type='SecureString',
+    ) -> Optional[str]:
         if isinstance(value, str):
             # probably Maestro does not dump string to json.
             to_save = value
@@ -115,17 +130,23 @@ class VaultSSMClient(AbstractSSMClient):
         self.client.secrets.kv.v2.create_or_update_secret(
             path=name,
             secret={self.key: to_save},
-            mount_point=self.mount_point
+            mount_point=self.mount_point,
         )
         return name
 
     def delete_parameter(self, name: str) -> bool:
-        return bool(self.client.secrets.kv.v2.delete_metadata_and_all_versions(
-            path=name, mount_point=self.mount_point))
+        return bool(
+            self.client.secrets.kv.v2.delete_metadata_and_all_versions(
+                path=name,
+                mount_point=self.mount_point,
+            )
+        )
 
 
-class SSMService(AWSCredentialsProvider,  # actually it's a client
-                 AbstractSSMClient):
+class SSMService(
+    AWSCredentialsProvider,  # actually it's a client
+    AbstractSSMClient,
+):
     def __init__(self, **kwargs):
         kwargs['service_name'] = 'ssm'
         super().__init__(**kwargs)
@@ -138,7 +159,7 @@ class SSMService(AWSCredentialsProvider,  # actually it's a client
         try:
             response = self.client.get_parameter(
                 Name=name,
-                WithDecryption=True
+                WithDecryption=True,
             )
             value_str = response['Parameter']['Value']
             try:
@@ -147,12 +168,18 @@ class SSMService(AWSCredentialsProvider,  # actually it's a client
                 return value_str
         except ClientError as e:
             error_code = e.response['Error']['Code']
-            _LOG.error(f'Can\'t get secret for name \'{name}\', '
-                       f'error code: \'{error_code}\'')
-            return
+            _LOG.error(
+                f'Can\'t get secret for name \'{name}\', '
+                f'error code: \'{error_code}\''
+            )
+            return None
 
-    def put_parameter(self, name: str, value: SecretValue,
-                      _type='SecureString') -> Optional[str]:
+    def put_parameter(
+            self,
+            name: str,
+            value: SecretValue,
+            _type='SecureString',
+    ) -> Optional[str]:
         """
         In case the secret was saved successfully, its real name is returned.
         (the name can differ from the given one).
@@ -160,27 +187,31 @@ class SSMService(AWSCredentialsProvider,  # actually it's a client
         """
         try:
             if isinstance(value, (list, dict)):
-                value = json.dumps(value, separators=(",", ":"),
-                                   sort_keys=True)
+                value = json.dumps(value, separators=(",", ":"), sort_keys=True)
             self.client.put_parameter(
                 Name=name,
                 Value=value,
                 Overwrite=True,
-                Type=_type)
+                Type=_type,
+            )
             return name
         except ClientError as e:
             error_code = e.response['Error']['Code']
-            _LOG.error(f'Can\'t put secret for name \'{name}\', '
-                       f'error code: \'{error_code}\'')
-            return
+            _LOG.error(
+                f'Can\'t put secret for name \'{name}\', '
+                f'error code: \'{error_code}\''
+            )
+            return None
 
     def delete_parameter(self, name: str) -> bool:
         try:
             self.client.delete_parameter(Name=name)
         except ClientError as e:
             error_code = e.response['Error']['Code']
-            _LOG.error(f'Can\'t delete secret name \'{name}\', '
-                       f'error code: \'{error_code}\'')
+            _LOG.error(
+                f'Can\'t delete secret name \'{name}\', '
+                f'error code: \'{error_code}\''
+            )
             return False
         return True
 
@@ -195,11 +226,15 @@ class ModularAssumeRoleSSMService(SSMService):
 
 
 class SSMClientCachingWrapper(AbstractSSMClient):
-    def __init__(self, client: AbstractSSMClient,
-                 environment_service: EnvironmentService):
+    def __init__(
+            self,
+            client: AbstractSSMClient,
+            environment_service: EnvironmentService,
+    ) -> None:
         self._client = client
         self._cache = TTLCache(
-            maxsize=50, ttl=environment_service.inner_cache_ttl_seconds()
+            maxsize=50,
+            ttl=environment_service.inner_cache_ttl_seconds(),
         )
 
     @property
@@ -218,8 +253,12 @@ class SSMClientCachingWrapper(AbstractSSMClient):
             self._cache[name] = value
         return value
 
-    def put_parameter(self, name: str, value: SecretValue,
-                      _type='SecureString') -> Optional[str]:
+    def put_parameter(
+            self,
+            name: str,
+            value: SecretValue,
+            _type='SecureString',
+    ) -> Optional[str]:
         name = self.client.put_parameter(name, value, _type)
         if name:
             self._cache[name] = value

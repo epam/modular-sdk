@@ -4,7 +4,6 @@ import gzip
 import json
 import warnings
 from functools import partial
-from typing import Sequence
 from uuid import uuid4
 from typing import Generator, TypeVar
 
@@ -18,10 +17,10 @@ def deprecated(message):
     def deprecated_decorator(func):
         def deprecated_func(*args, **kwargs):
             warnings.warn(
-                "{} is a deprecated function. {}".format(func.__name__,
-                                                         message),
+                "{} is a deprecated function. {}".format(func.__name__, message),
                 category=DeprecationWarning,
-                stacklevel=2)
+                stacklevel=2,
+            )
             warnings.simplefilter('default', DeprecationWarning)
             return func(*args, **kwargs)
 
@@ -49,8 +48,9 @@ def validate_params(event, required_params_list):
     missing_params_list = get_missing_parameters(event, required_params_list)
 
     if missing_params_list:
-        raise ValueError('The following parameters '
-                         'are missing: {0}'.format(missing_params_list))
+        raise ValueError(
+            f'The following parameters are missing: {missing_params_list}'
+        )
 
 
 def generate_id():
@@ -157,9 +157,7 @@ class DataclassBase:
         :param dct:
         :return:
         """
-        return cls(**{
-            k.name: dct.get(k.name) for k in dataclasses.fields(cls)
-        })
+        return cls(**{k.name: dct.get(k.name) for k in dataclasses.fields(cls)})
 
 
 T = TypeVar('T')

@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "modular_sdk"
 
-version = "7.1.11"
+version = "8.0.0"
 
 authors = [
     {name = "EPAM Systems", email = "support@syndicate.team"}
@@ -14,28 +14,39 @@ authors = [
 license = {file = "LICENSE"}
 description = "Data level integration for services built atop of Modular Framework"
 readme = {file = "README.md", content-type = "text/markdown"}
-requires-python = ">=3.10"
+requires-python = ">=3.14,<4"
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.14",
     "License :: OSI Approved :: Apache Software License",
-    "Operating System :: OS Independent"
+    "Operating System :: OS Independent",
 ]
 dependencies = [
     "pika==1.3.2",
     "boto3>=1.36.11,<2",
     "botocore>=1.36.11,<2",
     "pymongo~=4.11.2",
-    "python-dateutil>=2.9.0.post0",
-    "cachetools>=5.5.1,<=6.2.2",
+    "python-dateutil>=2.9,<3",
+    "cachetools>=5.5.1,<8",
     "pynamodb==6.1.0",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
+cryptography = [
+    "cryptography~=43.0.3",
+]
+hvac = [
+    "hvac~=2.1.0",
+]
 test = [
-    "pytest>=8.3.2",
-    "mongomock>=4",
-    "pytest-xdist>=3.6.1",
-    "pytest-cov>=6.0.0",
+    "pytest>=9.0.2",
+    "mongomock>=4.3.0",
+    "pytest-xdist>=3.8.0",
+    "pytest-cov>=7.0.0",
+]
+all = [
+    "modular-sdk[cryptography,hvac, test]"
 ]
 
 
@@ -53,18 +64,60 @@ exclude = ["tests*", "patch_scripts*"]
 namespaces = false
 
 
-[project.optional-dependencies]
-cryptography = [
-    "cryptography~=43.0.3",
-]
-hvac = [
-    "hvac~=2.1.0",
-]
-
-
+# =============================================================================
+# Pytest Configuration
+# =============================================================================
 [tool.pytest.ini_options]
 pythonpath = ["modular_sdk"]
 testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--tb=short",
+    # coverage scoped to pynamongo (what's currently under verification).
+    # change to "--cov=modular_sdk" for whole-package coverage.
+    "--cov=modular_sdk.models.pynamongo",
+    "--cov-report=term-missing",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "compat: marks Python 3.14 migration / compatibility tests",
+]
+
+
+# =============================================================================
+# Coverage Configuration
+# =============================================================================
+[tool.coverage.run]
+source = ["modular_sdk"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "@abstractmethod",
+    "@abc.abstractmethod",
+    "\\.\\.\\.",
+]
+show_missing = true
+skip_covered = false
+# NOTE: deliberately NOT setting fail_under here.
+# pynamongo total is ~72%, but individual files (patch.py 36%, etc.) are low.
+# Add `fail_under = 70` only once you've decided on a coverage gate.
 
 
 [tool.pyright]
@@ -72,10 +125,10 @@ include = ["modular_sdk/"]
 exclude = [
     "**/__pycache__",
 ]
-pythonVersion = "3.10"
+pythonVersion = "3.14"
 reportIncompatibleMethodOverride = "warning"
 executionEnvironments = [
-    {root = "tests/", pythonVersion = "3.10", extraPaths = ["./"]}
+    {root = "tests/", pythonVersion = "3.14", extraPaths = ["./"]}
 ]
 
 [tool.ruff]
@@ -86,4 +139,3 @@ src = ["modular_sdk", "tests"]
 quote-style = "single"
 indent-style = "space"
 skip-magic-trailing-comma = true
-

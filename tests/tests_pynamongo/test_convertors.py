@@ -40,6 +40,7 @@ class Nested(MapAttribute):
 
 
 class TestModel(Model):
+    __test__ = False
     string = UnicodeAttribute()
     short_string = UnicodeAttribute(attr_name='s')
     number = NumberAttribute(attr_name='num')
@@ -464,3 +465,27 @@ def test_path_to_raw():
     assert path_to_raw('attr1.attr2.attr3') == 'attr1.attr2.attr3'
     assert path_to_raw('attr1.attr2.attr3[10]') == 'attr1.attr2.attr3.10'
     assert path_to_raw('one.two[3].four[5]') == 'one.two.3.four.5'
+
+class TestRegressionM3adminParity:
+
+    def test_bool_operand_does_not_break(self):
+        assert convert_condition_expression(
+            TestModel.short_string == True  # noqa: E712
+        ) == {'s': {'$eq': True}}
+        assert convert_condition_expression(
+            TestModel.short_string == False  # noqa: E712
+        ) == {'s': {'$eq': False}}
+        assert convert_condition_expression(
+            (TestModel.short_string == True) & (TestModel.number > 1)  # noqa: E712
+        ) == {'$and': [{'s': {'$eq': True}}, {'num': {'$gt': 1}}]}
+
+    def test_operandless_does_not_break(self):
+        assert convert_condition_expression(
+            TestModel.short_string.exists()
+        ) == {'s': {'$exists': True}}
+        assert convert_condition_expression(
+            TestModel.short_string.does_not_exist()
+        ) == {'s': {'$exists': False}}
+        assert convert_condition_expression(
+            TestModel.short_string.exists() & (TestModel.number > 1)
+        ) == {'$and': [{'s': {'$exists': True}}, {'num': {'$gt': 1}}]}

@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.0.0] - 2026-06-18
+- Fixed `pip install modular-sdk[test]` being silently no-op — moved `test`
+  from `[dependency-groups]` to `[project.optional-dependencies]`
+- Relaxed `cachetools` constraint from `>=5.5.1,<=6.2.2` to `>=5.5.1,<8`
+- Added Python 3.14 to supported versions classifiers
+- Added test suite for `SSMClientCachingWrapper` (`tests/test_ssm_caching.py`)
+  to lock in caching behavior across `cachetools` versions
+- Added test suite for `Modular` / `ModularServiceProvider` singleton
+  semantics, lazy service caching, and `ServiceMode.DOCKER` init side
+  effects (`tests/test_modular_singleton.py`)
+- Fixed name-mangling bug in `ModularServiceProvider.reset()` that caused
+  the method to never actually clear cached services
+
 ## [7.1.11] - 2026-04-02
 - Added filter condition support for `i_scan_tenants` and `i_get_tenant_by_customer` methods in `TenantService`
 
