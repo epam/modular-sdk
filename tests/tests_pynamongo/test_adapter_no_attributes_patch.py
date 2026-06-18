@@ -194,8 +194,6 @@ def test_refresh(adapter, model_instance):
 
 
 def test_query_filter_exists(adapter, model_instance):
-    """bug2 e2e: operand-less filter through full query path must not
-    raise IndexError"""
     adapter.save(model_instance)
     items = list(adapter.query(
         TestModel,
