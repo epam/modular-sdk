@@ -467,11 +467,8 @@ def test_path_to_raw():
     assert path_to_raw('one.two[3].four[5]') == 'one.two.3.four.5'
 
 class TestRegressionM3adminParity:
-    """Guard against the two m3admin PynamoDBToPyMongoAdapter bugs ever
-    appearing in modular-sdk's convertors."""
 
     def test_bool_operand_does_not_break(self):
-        # bug1 parity: bool operand must NOT trigger BETWEEN subscripting
         assert convert_condition_expression(
             TestModel.short_string == True  # noqa: E712
         ) == {'s': {'$eq': True}}
@@ -483,8 +480,6 @@ class TestRegressionM3adminParity:
         ) == {'$and': [{'s': {'$eq': True}}, {'num': {'$gt': 1}}]}
 
     def test_operandless_does_not_break(self):
-        # bug2 parity: exists()/does_not_exist() carry only the path,
-        # must not reach condition.values[1]
         assert convert_condition_expression(
             TestModel.short_string.exists()
         ) == {'s': {'$exists': True}}
