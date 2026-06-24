@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from modular_sdk.services.thread_local_storage_service import (
         ThreadLocalStorageService,
     )
+    from modular_sdk.services.user_service import UserService
 
 
 class ModularServiceProvider(metaclass=SingletonMeta):
@@ -57,6 +58,7 @@ class ModularServiceProvider(metaclass=SingletonMeta):
     __tenant_service = None
     __tenant_settings_service = None
     __customer_settings_service = None
+    __user_service = None
     __sts_service = None
     __sqs_service = None
     __lambda_service = None
@@ -144,6 +146,16 @@ class ModularServiceProvider(metaclass=SingletonMeta):
 
             self.__customer_settings_service = CustomerSettingsService()
         return self.__customer_settings_service
+
+    def user_service(self) -> 'UserService':
+        if not self.__user_service:
+            from modular_sdk.services.user_service import UserService
+
+            self.__user_service = UserService(
+                customer_service=self.customer_service(),
+                tenant_service=self.tenant_service(),
+            )
+        return self.__user_service
 
     def sts_service(self) -> 'StsService':
         if not self.__sts_service:
