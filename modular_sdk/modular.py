@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from modular_sdk.services.thread_local_storage_service import (
         ThreadLocalStorageService,
     )
+    from modular_sdk.services.jwt_token_service import JWTTokenService
 
 
 class ModularServiceProvider(metaclass=SingletonMeta):
@@ -70,6 +71,7 @@ class ModularServiceProvider(metaclass=SingletonMeta):
 
     __ssm_service = None
     __assume_role_ssm_service = None
+    __jwt_token_service = None
 
     def __str__(self):
         return str(id(self))
@@ -305,6 +307,23 @@ class ModularServiceProvider(metaclass=SingletonMeta):
 
             self.__thread_local_storage_service = ThreadLocalStorageService()
         return self.__thread_local_storage_service
+
+    def jwt_token_service(
+            self,
+            secret_key: str,
+            algorithm: str | None = None,
+            public_key: str | None = None,
+
+    ) -> 'JWTTokenService':
+        if not self.__jwt_token_service:
+            from modular_sdk.services.jwt_token_service import JWTTokenService
+
+            self.__jwt_token_service = JWTTokenService(
+                secret_key=secret_key,
+                algorithm=algorithm,
+                public_key=public_key
+            )
+        return self.__jwt_token_service
 
     def reset(self, service: str):
         """

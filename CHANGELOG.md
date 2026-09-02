@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [8.0.1] - 2026-06-18
+## [8.0.1] - 2026-09-02
 - Fixed AES-GCM decryption in `MaestroSignatureBuilder.decrypt()` to verify
   the authentication tag and reject tampered ciphertexts
 - Added strict payload validation in decryption flow:
@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added regression tests for decrypt security checks and environment redaction:
   `tests/test_maestro_signature_builder.py`,
   `tests/test_environment_service.py`
+
+## [8.1.0] - 2026-08-07
+- Added JWTTokenService for encoding and decoding JWT tokens
 
 ## [8.0.0] - 2026-06-17
 - Fixed `pip install modular-sdk[test]` being silently no-op — moved `test`
