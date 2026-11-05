@@ -211,6 +211,7 @@ class PynamoDBToPymongoAdapter:
         if condition is not None:
             q = {'$and': [q, convert_condition_expression(condition)]}
         operation_kwargs = {'session': session} if session is not None else {}
+        # TODO: Support atomic conditional creates with attribute_not_exists
         res = collection.replace_one(
             filter=q,
             replacement=self._ser.serialize(instance),
