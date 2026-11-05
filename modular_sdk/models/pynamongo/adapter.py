@@ -8,6 +8,12 @@ from typing import TYPE_CHECKING, Any, Generator, Iterator, TypeVar, cast
 from pymongo import ASCENDING, DESCENDING, DeleteOne, ReplaceOne
 from pymongo.collection import ReturnDocument
 from pynamodb.expressions.condition import Condition
+from pynamodb.exceptions import (
+    DeleteError,
+    PutError,
+    TransactWriteError,
+    UpdateError
+)
 from pynamodb.models import Model
 
 from modular_sdk.commons import ModularException
@@ -211,6 +217,10 @@ class PynamoDBToPymongoAdapter:
             upsert=condition is None,
             **operation_kwargs,
         )
+        if condition is not None and not res.matched_count:
+            raise PutError(
+                f'Condition check failed for {instance.Meta.table_name}'
+            )
         if _id := res.upserted_id:
             self._ser.set_mongo_id(instance, _id)
         return {
@@ -243,6 +253,10 @@ class PynamoDBToPymongoAdapter:
         )
         if res:
             self._ser.deserialize_to(instance, res)
+        elif condition is not None:
+            raise UpdateError(
+                f'Condition check failed for {instance.Meta.table_name}'
+            )
         return {
             'ConsumedCapacity': {
                 'CapacityUnits': 1.0,
@@ -261,7 +275,14 @@ class PynamoDBToPymongoAdapter:
             q = {'$and': [q, convert_condition_expression(condition)]}
 
         operation_kwargs = {'session': session} if session is not None else {}
-        self.get_collection(instance).delete_one(q, **operation_kwargs)
+        res = self.get_collection(instance).delete_one(
+            q,
+            **operation_kwargs,
+        )
+        if condition is not None and not res.deleted_count:
+            raise DeleteError(
+                f'Condition check failed for {instance.Meta.table_name}'
+            )
         return {
             'ConsumedCapacity': {
                 'CapacityUnits': 1.0,
@@ -282,7 +303,7 @@ class PynamoDBToPymongoAdapter:
         instance: Model,
         condition: Condition,
         session=None
-    ) -> bool:
+    ) -> None:
         query = {
             '$and': [
                 self._instance_query(instance),
@@ -290,11 +311,15 @@ class PynamoDBToPymongoAdapter:
             ]
         }
         operation_kwargs = {'session': session} if session is not None else {}
-        return self.get_collection(instance).find_one(
+        result = self.get_collection(instance).find_one(
             query,
             projection={'_id': True},
             **operation_kwargs,
-        ) is not None
+        )
+        if result is None:
+            raise TransactWriteError(
+                f'Condition check failed for {instance.Meta.table_name}'
+            )
 
     def refresh(self, instance: Model) -> None:
         q = self._instance_query(instance)

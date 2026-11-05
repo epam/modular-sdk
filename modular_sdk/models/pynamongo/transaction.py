@@ -47,13 +47,28 @@ class DynamoDBTransactionSession:
         )
 
     def check(self, instance: Model, condition: Condition) -> None:
-        self._transaction.condition_check(instance, condition=condition)
+        model = type(instance)
+        hash_key = getattr(instance, model._hash_keyname)
+        range_key = (
+            getattr(instance, model._range_keyname)
+            if model._range_keyname
+            else None
+        )
+        self._transaction.condition_check(
+            model,
+            hash_key,
+            range_key=range_key,
+            condition=condition,
+        )
 
 
 @contextmanager
-def dynamodb_transaction() -> Iterator[DynamoDBTransactionSession]:
+def dynamodb_transaction(
+    model: type[Model],
+) -> Iterator[DynamoDBTransactionSession]:
     """Create and commit a DynamoDB transaction on successful exit."""
-    with TransactWrite() as transaction:
+    connection = model._get_connection().connection
+    with TransactWrite(connection=connection) as transaction:
         yield DynamoDBTransactionSession(transaction)
 
 
@@ -103,8 +118,8 @@ class MongoTransactionSession:
             session=self._session,
         )
 
-    def check(self, instance: Model, condition: Condition) -> bool:
-        return self._adapter.check(
+    def check(self, instance: Model, condition: Condition) -> None:
+        self._adapter.check(
             instance,
             condition=condition,
             session=self._session,
@@ -134,4 +149,4 @@ class TransactionAdapter:
         is_mongo_model = getattr(self._model, 'is_mongo_model', None)
         if callable(is_mongo_model) and is_mongo_model():
             return mongo_transaction(self._model.mongo_adapter())
-        return dynamodb_transaction()
+        return dynamodb_transaction(self._model)

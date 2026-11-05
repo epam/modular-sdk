@@ -106,7 +106,10 @@ class Model(_Model):
         add_version_condition: bool = True,
     ) -> Dict[str, Any]:
         if self.is_mongo_model():
-            return self.mongo_adapter().save(instance=self)
+            return self.mongo_adapter().save(
+                instance=self,
+                condition=condition,
+            )
         return super().save(
             condition=condition,
             add_version_condition=add_version_condition,
