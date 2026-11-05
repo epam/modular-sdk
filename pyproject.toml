@@ -11,7 +11,7 @@ version = "8.2.0"
 authors = [
     {name = "EPAM Systems", email = "support@syndicate.team"}
 ]
-license = {file = "LICENSE"}
+license-files = ["LICENSE"]
 description = "Data level integration for services built atop of Modular Framework"
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.14,<4"
