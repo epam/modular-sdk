@@ -261,7 +261,6 @@ Almost all public methods of Model are supported. Those are:
 
 What PynamoDB features are not supported:
 - Polymorphism through the use of discriminators (https://pynamodb.readthedocs.io/en/stable/polymorphism.html)
-- Transaction Operations (https://pynamodb.readthedocs.io/en/stable/transaction.html)
 """
 from .adapter import PynamoDBToPymongoAdapter, ResultIterator
 from .attributes import (
@@ -279,6 +278,13 @@ from .attributes import (
 from .convertors import PynamoDBModelToMongoDictSerializer
 from .patch import patch_attributes
 from .indexes_creator import IndexesCreator
+from modular_sdk.commons import (
+    ConditionalWriteFailed,
+    DuplicateKeyError,
+    TransactionError,
+    TransientTransactionError,
+)
+from .transaction import TransactionAdapter
 
 __all__ = (
     'PynamoDBToPymongoAdapter',
@@ -295,5 +301,10 @@ __all__ = (
     'UUIDAttribute',
     'PynamoDBModelToMongoDictSerializer',
     'patch_attributes',
-    'IndexesCreator'
+    'IndexesCreator',
+    'TransactionAdapter',
+    'TransactionError',
+    'ConditionalWriteFailed',
+    'DuplicateKeyError',
+    'TransientTransactionError',
 )

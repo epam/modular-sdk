@@ -8,6 +8,12 @@ from typing import TYPE_CHECKING, Any, Generator, Iterator, TypeVar, cast
 from pymongo import ASCENDING, DESCENDING, DeleteOne, ReplaceOne
 from pymongo.collection import ReturnDocument
 from pynamodb.expressions.condition import Condition
+from pynamodb.exceptions import (
+    DeleteError,
+    PutError,
+    TransactWriteError,
+    UpdateError
+)
 from pynamodb.models import Model
 
 from modular_sdk.commons import ModularException
@@ -149,6 +155,11 @@ class PynamoDBToPymongoAdapter:
     def mongo_database(self) -> 'Database | None':
         return self._db
 
+    def _instance_query(self, instance: Model) -> dict:
+        if _id := self._ser.get_mongo_id(instance):
+            return {'_id': _id}
+        return self._ser.instance_serialized_keys(instance)
+
     def get_database(self, model: type[Model] | Model) -> 'Database':
         db = getattr(model.Meta, 'mongo_database', self._db)
         assert db is not None, (
@@ -189,15 +200,46 @@ class PynamoDBToPymongoAdapter:
             raise model.DoesNotExist()
         return self._ser.deserialize(model, item)
 
-    def save(self, instance: Model) -> dict:
+    def save(
+        self,
+        instance: Model,
+        condition: Condition | None = None,
+        session=None
+    ) -> dict:
         collection = self.get_collection(instance)
-        if _id := self._ser.get_mongo_id(instance):
-            q = {'_id': _id}
-        else:
-            q = self._ser.instance_serialized_keys(instance)
+        serialized = self._ser.serialize(instance)
+        if condition is not None and self._is_conditional_create(
+                instance, condition
+        ):
+            operation_kwargs = (
+                {'session': session} if session is not None else {}
+            )
+            result = collection.insert_one(
+                serialized,
+                **operation_kwargs,
+            )
+            self._ser.set_mongo_id(instance, result.inserted_id)
+            return {
+                'ConsumedCapacity': {
+                    'CapacityUnits': 1.0,
+                    'TableName': instance.Meta.table_name,
+                }
+            }
+
+        q = self._instance_query(instance)
+        if condition is not None:
+            q = {'$and': [q, convert_condition_expression(condition)]}
+        operation_kwargs = {'session': session} if session is not None else {}
         res = collection.replace_one(
-            filter=q, replacement=self._ser.serialize(instance), upsert=True
+            filter=q,
+            replacement=serialized,
+            upsert=condition is None,
+            **operation_kwargs,
         )
+        if condition is not None and not res.matched_count:
+            raise PutError(
+                f'Condition check failed for {instance.Meta.table_name}'
+            )
         if _id := res.upserted_id:
             self._ser.set_mongo_id(instance, _id)
         return {
@@ -207,29 +249,43 @@ class PynamoDBToPymongoAdapter:
             }
         }
 
+    def _is_conditional_create(
+            self, instance: Model, condition: Condition
+    ) -> bool:
+        """Return whether condition requests an insert for the primary key."""
+        if condition.operator != 'attribute_not_exists':
+            return False
+        path = condition.values[0]
+        hash_key_name, _ = self._ser.model_keys_names(type(instance))
+        return getattr(path, 'values', None) == ([hash_key_name],)
+
     def update(
         self,
         instance: Model,
         actions: list['Action'],
         condition: Condition | None = None,
+        session=None
     ) -> dict:
         _update = merge_update_expressions(
             map(convert_update_expression, actions)
         )
-        if _id := self._ser.get_mongo_id(instance):
-            q = {'_id': _id}
-        else:
-            q = self._ser.instance_serialized_keys(instance)
+        q = self._instance_query(instance)
         if condition is not None:
             q = {'$and': [q, convert_condition_expression(condition)]}
+        operation_kwargs = {'session': session} if session is not None else {}
         res = self.get_collection(instance).find_one_and_update(
             filter=q,
             update=_update,
             upsert=True if condition is None else False,
             return_document=ReturnDocument.AFTER,
+            **operation_kwargs,
         )
         if res:
             self._ser.deserialize_to(instance, res)
+        elif condition is not None:
+            raise UpdateError(
+                f'Condition check failed for {instance.Meta.table_name}'
+            )
         return {
             'ConsumedCapacity': {
                 'CapacityUnits': 1.0,
@@ -238,16 +294,24 @@ class PynamoDBToPymongoAdapter:
         }
 
     def delete(
-        self, instance: Model, condition: Condition | None = None
+        self,
+        instance: Model,
+        condition: Condition | None = None,
+        session=None
     ) -> dict:
-        if _id := self._ser.get_mongo_id(instance):
-            q = {'_id': _id}
-        else:
-            q = self._ser.instance_serialized_keys(instance)
+        q = self._instance_query(instance)
         if condition is not None:
             q = {'$and': [q, convert_condition_expression(condition)]}
 
-        self.get_collection(instance).delete_one(q)
+        operation_kwargs = {'session': session} if session is not None else {}
+        res = self.get_collection(instance).delete_one(
+            q,
+            **operation_kwargs,
+        )
+        if condition is not None and not res.deleted_count:
+            raise DeleteError(
+                f'Condition check failed for {instance.Meta.table_name}'
+            )
         return {
             'ConsumedCapacity': {
                 'CapacityUnits': 1.0,
@@ -255,11 +319,39 @@ class PynamoDBToPymongoAdapter:
             }
         }
 
+    def transaction(self):
+        """Return a context manager for an atomic MongoDB transaction."""
+        from modular_sdk.models.pynamongo.transaction import (
+            mongo_transaction
+        )
+
+        return mongo_transaction(self)
+
+    def check(
+        self,
+        instance: Model,
+        condition: Condition,
+        session=None
+    ) -> None:
+        query = {
+            '$and': [
+                self._instance_query(instance),
+                convert_condition_expression(condition)
+            ]
+        }
+        operation_kwargs = {'session': session} if session is not None else {}
+        result = self.get_collection(instance).find_one(
+            query,
+            projection={'_id': True},
+            **operation_kwargs,
+        )
+        if result is None:
+            raise TransactWriteError(
+                f'Condition check failed for {instance.Meta.table_name}'
+            )
+
     def refresh(self, instance: Model) -> None:
-        if _id := self._ser.get_mongo_id(instance):
-            q = {'_id': _id}
-        else:
-            q = self._ser.instance_serialized_keys(instance)
+        q = self._instance_query(instance)
         item = self.get_collection(instance).find_one(q)
         if not item:
             raise instance.DoesNotExist()

@@ -143,3 +143,41 @@ parent = parent_service.get_parent_by_id(parent_id="$PARENT_ID")
 # deleting parent
 parent_service.mark_deleted(parent=parent)
 ```
+
+### Transactions
+
+Repositories can accept an optional transaction session and use it for all database writes:
+
+```python
+from modular_sdk.models.pynamongo import TransactionAdapter
+
+# The backend is selected from the model configuration.
+adapter = TransactionAdapter(model=Quota)
+
+with adapter.transaction() as session:
+    quota_repository.reserve(quota_id, session=session)
+    job_repository.create(job, session=session)
+```
+
+Inside a repository, write through the session when one is provided:
+```python
+# job_repository.py
+
+def create(self, job, session=None):
+    if session is None:
+        return job.save()
+    return session.save(job)
+```
+
+Always pass the session to every write that belongs to the transaction.
+Calling `job.save()` directly inside the `with` block bypasses the
+transaction.
+
+The DynamoDB transaction is committed when the context exits successfully and
+is rolled back when an exception is raised. DynamoDB transactions support up
+to 100 actions, allow only one action per item, and all items must be in the
+same region. An empty DynamoDB transaction fails on commit.
+
+MongoDB transactions require a replica set or sharded cluster. MongoDB allows
+multiple writes to the same document, and an empty MongoDB transaction
+commits successfully.
