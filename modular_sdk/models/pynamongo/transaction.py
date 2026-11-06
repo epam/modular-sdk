@@ -7,6 +7,9 @@ from pynamodb.expressions.update import Action
 from pynamodb.models import Model
 from pynamodb.transactions import TransactWrite
 
+from modular_sdk.commons.helpers import model_collection
+from modular_sdk.commons.transaction_helper import translate_error
+
 if TYPE_CHECKING:
     from pymongo.client_session import ClientSession
 
@@ -26,14 +29,28 @@ class DynamoDBTransactionSession:
         instance: Model,
         condition: Condition | None = None,
     ) -> None:
-        self._transaction.save(instance, condition=condition)
+        try:
+            self._transaction.save(instance, condition=condition)
+        except BaseException as error:
+            translate_error(
+                error,
+                model=type(instance),
+                collection=model_collection(type(instance)),
+            )
 
     def delete(
         self,
         instance: Model,
         condition: Condition | None = None,
     ) -> None:
-        self._transaction.delete(instance, condition=condition)
+        try:
+            self._transaction.delete(instance, condition=condition)
+        except BaseException as error:
+            translate_error(
+                error,
+                model=type(instance),
+                collection=model_collection(type(instance)),
+            )
 
     def update(
         self,
@@ -41,11 +58,18 @@ class DynamoDBTransactionSession:
         actions: list[Action],
         condition: Condition | None = None,
     ) -> None:
-        self._transaction.update(
-            instance,
-            actions=actions,
-            condition=condition,
-        )
+        try:
+            self._transaction.update(
+                instance,
+                actions=actions,
+                condition=condition,
+            )
+        except BaseException as error:
+            translate_error(
+                error,
+                model=type(instance),
+                collection=model_collection(type(instance)),
+            )
 
     def check(self, instance: Model, condition: Condition) -> None:
         model = type(instance)
@@ -55,12 +79,19 @@ class DynamoDBTransactionSession:
             if model._range_keyname
             else None
         )
-        self._transaction.condition_check(
-            model,
-            hash_key,
-            range_key=range_key,
-            condition=condition,
-        )
+        try:
+            self._transaction.condition_check(
+                model,
+                hash_key,
+                range_key=range_key,
+                condition=condition,
+            )
+        except BaseException as error:
+            translate_error(
+                error,
+                model=model,
+                collection=model_collection(model),
+            )
 
 
 @contextmanager
@@ -69,8 +100,15 @@ def dynamodb_transaction(
 ) -> Iterator[DynamoDBTransactionSession]:
     """Create and commit a DynamoDB transaction on successful exit."""
     connection = model._get_connection().connection
-    with TransactWrite(connection=connection) as transaction:
-        yield DynamoDBTransactionSession(transaction)
+    try:
+        with TransactWrite(connection=connection) as transaction:
+            yield DynamoDBTransactionSession(transaction)
+    except BaseException as error:
+        translate_error(
+            error,
+            model=model,
+            collection=model_collection(model),
+        )
 
 
 class MongoTransactionSession:
@@ -121,24 +159,40 @@ class MongoTransactionSession:
         instance: Model,
         condition: Condition | None = None,
     ) -> None:
-        self._snapshot(instance)
-        self._adapter_for(instance).save(
-            instance,
-            condition=condition,
-            session=self._session,
-        )
+        try:
+            adapter = self._adapter_for(instance)
+            self._snapshot(instance)
+            adapter.save(
+                instance,
+                condition=condition,
+                session=self._session,
+            )
+        except BaseException as error:
+            translate_error(
+                error,
+                model=type(instance),
+                collection=self._collection_for(instance),
+            )
 
     def delete(
         self,
         instance: Model,
         condition: Condition | None = None,
     ) -> None:
-        self._snapshot(instance)
-        self._adapter_for(instance).delete(
-            instance,
-            condition=condition,
-            session=self._session,
-        )
+        try:
+            adapter = self._adapter_for(instance)
+            self._snapshot(instance)
+            adapter.delete(
+                instance,
+                condition=condition,
+                session=self._session,
+            )
+        except BaseException as error:
+            translate_error(
+                error,
+                model=type(instance),
+                collection=self._collection_for(instance),
+            )
 
     def update(
         self,
@@ -146,20 +200,38 @@ class MongoTransactionSession:
         actions: list[Action],
         condition: Condition | None = None,
     ) -> None:
-        self._snapshot(instance)
-        self._adapter_for(instance).update(
-            instance,
-            actions=actions,
-            condition=condition,
-            session=self._session,
-        )
+        try:
+            adapter = self._adapter_for(instance)
+            self._snapshot(instance)
+            adapter.update(
+                instance,
+                actions=actions,
+                condition=condition,
+                session=self._session,
+            )
+        except BaseException as error:
+            translate_error(
+                error,
+                model=type(instance),
+                collection=self._collection_for(instance),
+            )
 
     def check(self, instance: Model, condition: Condition) -> None:
-        self._adapter_for(instance).check(
-            instance,
-            condition=condition,
-            session=self._session,
-        )
+        try:
+            self._adapter_for(instance).check(
+                instance,
+                condition=condition,
+                session=self._session,
+            )
+        except BaseException as error:
+            translate_error(
+                error,
+                model=type(instance),
+                collection=self._collection_for(instance),
+            )
+
+    def _collection_for(self, instance: Model):
+        return self._adapter_for(instance).get_collection(instance)
 
 
 @contextmanager
@@ -181,21 +253,28 @@ def mongo_transaction(
     )
     client = database.client
     with client.start_session() as session:
-        with session.start_transaction():
-            transaction_session = MongoTransactionSession(
-                adapter,
-                session,
-                client
-            )
-            try:
+        try:
+            with session.start_transaction():
+                transaction_session = MongoTransactionSession(
+                    adapter,
+                    session,
+                    client,
+                )
                 yield transaction_session
-            except BaseException:
+        except BaseException as error:
+            if 'transaction_session' in locals():
                 transaction_session.restore_local_state()
-                raise
+            translate_error(
+                error,
+                model=model,
+                collection=model_collection(model, adapter),
+            )
 
 
 class TransactionAdapter:
-    """Backend-neutral transaction adapter."""
+    """
+    Backend-neutral transaction adapter
+    """
 
     def __init__(self, model: type[Model]):
         self._model = model

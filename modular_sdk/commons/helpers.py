@@ -1,3 +1,6 @@
+from typing import Any
+
+
 class classproperty:
     """
     Decorator that converts a method with a single cls argument into a property
@@ -14,3 +17,11 @@ class classproperty:
     def getter(self, method):
         self.fget = method
         return self
+
+
+def model_collection(model: type[Any] | None, adapter=None):
+    if model is None:
+        return None
+    if adapter is not None:
+        return adapter.get_collection(model)
+    return getattr(getattr(model, 'Meta', None), 'table_name', None)

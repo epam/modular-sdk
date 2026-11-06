@@ -278,6 +278,12 @@ from .attributes import (
 from .convertors import PynamoDBModelToMongoDictSerializer
 from .patch import patch_attributes
 from .indexes_creator import IndexesCreator
+from modular_sdk.commons import (
+    ConditionalWriteFailed,
+    DuplicateKeyError,
+    TransactionError,
+    TransientTransactionError,
+)
 from .transaction import TransactionAdapter
 
 __all__ = (
@@ -297,4 +303,8 @@ __all__ = (
     'patch_attributes',
     'IndexesCreator',
     'TransactionAdapter',
+    'TransactionError',
+    'ConditionalWriteFailed',
+    'DuplicateKeyError',
+    'TransientTransactionError',
 )

@@ -7,7 +7,13 @@ from functools import partial
 from uuid import uuid4
 from typing import Generator, TypeVar
 
-from modular_sdk.commons.exception import ModularException
+from modular_sdk.commons.exception import (
+    ConditionalWriteFailed,
+    DuplicateKeyError,
+    ModularException,
+    TransactionError,
+    TransientTransactionError,
+)
 from modular_sdk.commons.log_helper import get_logger
 
 _LOG = get_logger(__name__)
