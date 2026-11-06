@@ -207,14 +207,32 @@ class PynamoDBToPymongoAdapter:
         session=None
     ) -> dict:
         collection = self.get_collection(instance)
+        serialized = self._ser.serialize(instance)
+        if condition is not None and self._is_conditional_create(
+                instance, condition
+        ):
+            operation_kwargs = (
+                {'session': session} if session is not None else {}
+            )
+            result = collection.insert_one(
+                serialized,
+                **operation_kwargs,
+            )
+            self._ser.set_mongo_id(instance, result.inserted_id)
+            return {
+                'ConsumedCapacity': {
+                    'CapacityUnits': 1.0,
+                    'TableName': instance.Meta.table_name,
+                }
+            }
+
         q = self._instance_query(instance)
         if condition is not None:
             q = {'$and': [q, convert_condition_expression(condition)]}
         operation_kwargs = {'session': session} if session is not None else {}
-        # TODO: Support atomic conditional creates with attribute_not_exists
         res = collection.replace_one(
             filter=q,
-            replacement=self._ser.serialize(instance),
+            replacement=serialized,
             upsert=condition is None,
             **operation_kwargs,
         )
@@ -230,6 +248,16 @@ class PynamoDBToPymongoAdapter:
                 'TableName': instance.Meta.table_name,
             }
         }
+
+    def _is_conditional_create(
+            self, instance: Model, condition: Condition
+    ) -> bool:
+        """Return whether condition requests an insert for the primary key."""
+        if condition.operator != 'attribute_not_exists':
+            return False
+        path = condition.values[0]
+        hash_key_name, _ = self._ser.model_keys_names(type(instance))
+        return getattr(path, 'values', None) == ([hash_key_name],)
 
     def update(
         self,
