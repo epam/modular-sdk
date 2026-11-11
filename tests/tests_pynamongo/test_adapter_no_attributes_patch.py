@@ -4,7 +4,7 @@ import pytest
 from pynamodb.attributes import UnicodeAttribute, JSONAttribute, \
     BooleanAttribute, NumberAttribute, UTCDateTimeAttribute, TTLAttribute, \
     NullAttribute, MapAttribute, DynamicMapAttribute, ListAttribute
-from pynamodb.exceptions import DoesNotExist
+from pynamodb.exceptions import DeleteError, DoesNotExist, UpdateError
 from pynamodb.models import Model
 
 from modular_sdk.models.pynamongo.adapter import PynamoDBToPymongoAdapter
@@ -99,7 +99,8 @@ def test_delete(adapter, model_instance):
 def test_delete_with_condition(adapter, model_instance):
     adapter.save(model_instance)
 
-    adapter.delete(model_instance, condition=TestModel.unicode != 'test')
+    with pytest.raises(DeleteError):
+        adapter.delete(model_instance, condition=TestModel.unicode != 'test')
 
     item = adapter.get(TestModel, hash_key='test')
     assert item
@@ -140,11 +141,12 @@ def test_update(adapter, model_instance):
 def test_update_with_condition(adapter, model_instance):
     adapter.save(model_instance)
 
-    adapter.update(
-        model_instance,
-        [TestModel.boolean.set(False)],
-        TestModel.number > 50
-    )
+    with pytest.raises(UpdateError):
+        adapter.update(
+            model_instance,
+            [TestModel.boolean.set(False)],
+            TestModel.number > 50
+        )
 
     item = adapter.get(TestModel, hash_key='test')
     assert item.boolean
