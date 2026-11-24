@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [8.2.0] - 2026-11-03
 - Added transaction support for both DynamoDB and MongoDB adapters
 - Added transaction session operations for `save`, `delete`, `update` and conditional checks
+- Updated `cryptography` version from `43.0.3` to `50.0.2`
+- Bumped:
+  - `actions/checkout` from 4 to 5
+  - `setup-python` from 5 to 6
+  - `astral-sh/setup-uv` from 6 to 7
+  - `actions/upload-artifact` from 4 to 5
+  - `actions/download-artifact` from 4 to 6
 
 ## [8.1.0] - 2026-08-07
 - Added JWTTokenService for encoding and decoding JWT tokens
