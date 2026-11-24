@@ -33,7 +33,7 @@ dependencies = [
 
 [project.optional-dependencies]
 cryptography = [
-    "cryptography~=46.0.6",
+    "cryptography~=50.0.2",
 ]
 jwt = [
     "PyJWT>=2.8.0,<3",
